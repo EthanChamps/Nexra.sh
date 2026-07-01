@@ -31,7 +31,7 @@ export function ChatPane({
   const activeName = eng.name
   const activeTypeLabel = state.data.types[eng.type].label
   const chatFocusLabel = phaseLabel(eng, chat.phaseId)
-  const composerPlaceholder = 'Message the ' + chatFocusLabel + ' agent…'
+  const composerPlaceholder = chatFocusLabel ? 'Message the ' + chatFocusLabel + ' agent…' : 'Message the agent…'
 
   const { editingName, nameDraft, rightOpen } = state.ui
 
@@ -72,7 +72,7 @@ export function ChatPane({
                 >
                   ✎
                 </Hoverable>
-                <span style={{ flex: 'none', fontSize: 10, fontWeight: 500, letterSpacing: '0.04em', color: theme.accentSoft, background: 'rgba(111,123,240,0.14)', border: '1px solid rgba(111,123,240,0.24)', padding: '2px 9px', borderRadius: 20 }}>{chatFocusLabel}</span>
+                {chatFocusLabel && <span style={{ flex: 'none', fontSize: 10, fontWeight: 500, letterSpacing: '0.04em', color: theme.accentSoft, background: 'rgba(111,123,240,0.14)', border: '1px solid rgba(111,123,240,0.24)', padding: '2px 9px', borderRadius: 20 }}>{chatFocusLabel}</span>}
               </div>
             )}
             <span style={{ fontFamily: theme.mono, fontSize: 11, color: theme.dim2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{companyName} · {activeName} · {activeTypeLabel}</span>
