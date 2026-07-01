@@ -43,7 +43,7 @@ export function Sidebar({ state, dispatch }: { state: AppState; dispatch: Dispat
   const openNew = () => dispatch({ t: 'openNew' })
   const selectEngagement = (id: string) => dispatch({ t: 'selectEngagement', id })
   const selectChat = (id: string) => dispatch({ t: 'selectChat', id })
-  const openNewChat = (engId: string) => dispatch({ t: 'openNewChat', engId })
+  const startNewChat = (engId: string) => dispatch({ t: 'createChat', engId })
   const onChatContext = (ev: MouseEvent, engId: string, chatId: string) => {
     ev.preventDefault()
     if (ev.stopPropagation) ev.stopPropagation()
@@ -145,7 +145,7 @@ export function Sidebar({ state, dispatch }: { state: AppState; dispatch: Dispat
                 <Hoverable
                   as="button"
                   type="button"
-                  onClick={() => openNewChat(p.id)}
+                  onClick={() => startNewChat(p.id)}
                   hoverStyle={{ color: '#aab0f7', background: 'rgba(111,123,240,0.08)', borderColor: 'rgba(111,123,240,0.28)' }}
                   baseStyle={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 3, padding: '7px 10px', borderRadius: 8, border: '1px dashed rgba(255,255,255,0.12)', background: 'transparent', color: '#7d838c', fontFamily: 'inherit', fontSize: 11.5, fontWeight: 500, cursor: 'pointer', transition: 'all .12s' }}
                 >

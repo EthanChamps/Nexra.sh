@@ -31,7 +31,6 @@ export const initialUI: UIState = {
   view: 'home', activeCompanyId: null, activeEngagementId: null, activeChatByEngagement: {},
   draft: '', rightOpen: true, editingName: false, nameDraft: '', colorMenuOpen: false,
   newProjectOpen: false, newCompanyName: '', newOpen: false, selectedType: 'aws', newName: '',
-  newChatOpen: false, newChatName: '', newChatFocus: '', newChatColor: '#0a0b0d',
   ctxMenu: { open: false, x: 0, y: 0, engId: null, chatId: null },
   terminalOpen: false, terminalShell: 'pwsh', terminalHeight: 346, terminalInput: '',
   settingsOpen: false,
@@ -67,7 +66,7 @@ export type Action =
   | { t: 'toggleRight' }
   | { t: 'openNewProject' } | { t: 'closeNewProject' } | { t: 'setNewCompanyName'; value: string } | { t: 'createCompany' }
   | { t: 'openNew' } | { t: 'closeNew' } | { t: 'setSelectedType'; id: string } | { t: 'setNewName'; value: string } | { t: 'createProject' }
-  | { t: 'openNewChat'; engId?: string } | { t: 'closeNewChat' } | { t: 'setNewChatName'; value: string } | { t: 'setNewChatFocus'; id: string } | { t: 'setNewChatColor'; bg: string } | { t: 'createChat'; engId?: string }
+  | { t: 'createChat'; engId?: string }
   | { t: 'startRename' } | { t: 'setNameDraft'; value: string } | { t: 'saveName' } | { t: 'cancelRename' }
   | { t: 'setChatColor'; bg: string }
   | { t: 'openCtx'; x: number; y: number; engId: string; chatId: string } | { t: 'closeCtx' } | { t: 'ctxRename' } | { t: 'ctxSetColor'; bg: string } | { t: 'ctxDelete'; engId: string; chatId: string }
@@ -122,14 +121,6 @@ export function reducer(state: AppState, a: Action): AppState {
       const c = activeCompany(s)!; c.updated = 'just now'; c.engagements = [eng, ...c.engagements]
       U.activeEngagementId = eng.id; U.newOpen = false; U.editingName = false; return s
     }
-    case 'openNewChat': {
-      const id = a.engId || U.activeEngagementId; const eng = id ? engagementById(s, id) : null; if (!eng) return state
-      U.activeEngagementId = eng.id; U.newChatOpen = true; U.newChatName = ''; U.newChatFocus = eng.phases[0].id; U.newChatColor = '#0a0b0d'; return s
-    }
-    case 'closeNewChat': U.newChatOpen = false; return s
-    case 'setNewChatName': U.newChatName = a.value; return s
-    case 'setNewChatFocus': U.newChatFocus = a.id; return s
-    case 'setNewChatColor': U.newChatColor = a.bg; return s
     case 'createChat': {
       const id = a.engId || U.activeEngagementId; const eng = id ? engagementById(s, id) : null; if (!eng) return state
       U.activeEngagementId = eng.id
