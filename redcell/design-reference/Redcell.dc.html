@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;height:100%}
+body{background:#0a0b0d;color:#e7e9ec;font-family:'IBM Plex Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:8px;border:2px solid transparent;background-clip:content-box}
+::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.16);background-clip:content-box}
+input::placeholder{color:#565c65}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+</style>
+</helmet>
+
+<!-- ============ HOME / MAIN MENU ============ -->
+<sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+  <div data-screen-label="Main menu" style="height:100vh;width:100vw;overflow-y:auto;background:#0a0b0d;display:flex;flex-direction:column">
+    <header style="flex:none;border-bottom:1px solid rgba(255,255,255,0.07);background:#0c0d10">
+      <div style="max-width:1040px;margin:0 auto;width:100%;display:flex;align-items:center;gap:11px;padding:15px 28px">
+        <div style="flex:none;width:30px;height:30px;border-radius:8px;background:linear-gradient(160deg,#7d5cff,#5866f0);display:flex;align-items:center;justify-content:center;font-size:15px;color:#fff">◆</div>
+        <div style="line-height:1.1">
+          <div style="font-size:13px;font-weight:600;letter-spacing:0.14em;color:#e7e9ec">REDCELL</div>
+          <div style="font-size:10px;color:#656b74;letter-spacing:0.04em">Security Assistant</div>
+        </div>
+      </div>
+    </header>
+
+    <div style="flex:1;width:100%;max-width:1040px;margin:0 auto;padding:36px 28px 48px">
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:24px">
+        <div>
+          <h1 style="margin:0;font-size:23px;font-weight:600;letter-spacing:-0.01em;color:#e7e9ec">Projects</h1>
+          <div style="margin-top:6px;font-size:13px;color:#8b929c">Each project is a client. Open one to run engagements against it.</div>
+        </div>
+        <button onClick="{{ onNewProject }}" style-hover="background:#5866f0" style="flex:none;display:flex;align-items:center;gap:7px;height:38px;padding:0 16px;border-radius:10px;border:none;background:#6f7bf0;color:#fff;font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;transition:background .12s">
+          <span style="font-size:16px;line-height:0;margin-top:-1px">+</span> New Project
+        </button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(304px,1fr));gap:14px">
+        <sc-for list="{{ companies }}" as="c" hint-placeholder-count="3">
+          <button onClick="{{ c.onOpen }}" style-hover="border-color:rgba(111,123,240,0.4);background:#111318" style="text-align:left;display:flex;flex-direction:column;gap:14px;padding:17px 17px 15px;border-radius:13px;border:1px solid rgba(255,255,255,0.08);background:#101216;cursor:pointer;color:inherit;font-family:inherit;transition:border-color .14s,background .14s">
+            <div style="display:flex;align-items:center;gap:13px">
+              <div style="flex:1;min-width:0">
+                <div style="font-size:15.5px;font-weight:600;color:#e7e9ec;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.name }}</div>
+                <div style="margin-top:3px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#656b74">{{ c.engCountLabel }} · {{ c.updated }}</div>
+              </div>
+              <span style="flex:none;font-size:17px;color:#565c65;line-height:0">›</span>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;min-height:24px">
+              <sc-for list="{{ c.chips }}" as="ch">
+                <span style="display:flex;align-items:center;gap:6px;padding:3px 9px 3px 8px;border-radius:6px;background:#15171c;border:1px solid rgba(255,255,255,0.06)">
+                  <span style="flex:none;width:6px;height:6px;border-radius:50%;background:{{ ch.color }}"></span>
+                  <span style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#9096a0">{{ ch.short }}</span>
+                </span>
+              </sc-for>
+              <sc-if value="{{ c.empty }}">
+                <span style="font-size:11.5px;color:#565c65;align-self:center">No engagements yet</span>
+              </sc-if>
+            </div>
+          </button>
+        </sc-for>
+
+        <button onClick="{{ onNewProject }}" style-hover="border-color:rgba(111,123,240,0.4);color:#aab0f7" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:112px;border-radius:13px;border:1px dashed rgba(255,255,255,0.13);background:transparent;cursor:pointer;color:#656b74;font-family:inherit;transition:all .14s">
+          <span style="font-size:22px;line-height:0">+</span>
+          <span style="font-size:12.5px;font-weight:500">New Project</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<!-- ============ WORKSPACE (project → engagements → chats) ============ -->
+<sc-if value="{{ isWorkspace }}">
+<div style="display:flex;height:100vh;width:100vw;overflow:hidden">
+
+  <!-- SIDEBAR -->
+  <aside data-screen-label="Engagements sidebar" style="width:274px;flex:none;background:#0d0e11;border-right:1px solid rgba(255,255,255,0.07);display:flex;flex-direction:column">
+    <div style="padding:12px 12px 4px">
+      <button onClick="{{ onHome }}" style-hover="color:#c9cdd4;background:rgba(255,255,255,0.04)" style="display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:7px;border:none;background:transparent;color:#8b929c;font-family:inherit;font-size:12px;cursor:pointer;transition:all .12s">
+        <span style="font-size:14px;line-height:0">‹</span> All Projects
+      </button>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:11px;padding:6px 16px 14px">
+      <div style="flex:none;width:34px;height:34px;border-radius:9px;background:#181b21;border:1px solid rgba(255,255,255,0.09);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#aab0f7">{{ companyMonogram }}</div>
+      <div style="line-height:1.15;min-width:0">
+        <div style="font-size:14px;font-weight:600;color:#e7e9ec;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ companyName }}</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#656b74">{{ companyEngCount }}</div>
+      </div>
+    </div>
+
+    <div style="padding:0 12px 12px">
+      <button onClick="{{ onNew }}" style-hover="background:rgba(111,123,240,0.16)" style="width:100%;display:flex;align-items:center;justify-content:center;gap:7px;padding:9px;border-radius:9px;border:1px solid rgba(111,123,240,0.32);background:rgba(111,123,240,0.1);color:#aab0f7;font-family:inherit;font-size:12.5px;font-weight:500;cursor:pointer;transition:background .12s">
+        <span style="font-size:15px;line-height:0;margin-top:-1px">+</span> New Engagement
+      </button>
+    </div>
+
+    <div style="padding:4px 20px 6px;font-size:10.5px;font-weight:500;letter-spacing:0.1em;color:#565c65;text-transform:uppercase">Engagements</div>
+
+    <div style="flex:1;overflow-y:auto;padding:2px 10px 12px;display:flex;flex-direction:column;gap:2px">
+      <sc-for list="{{ engagements }}" as="p" hint-placeholder-count="2">
+        <div style="display:flex;flex-direction:column">
+          <button onClick="{{ p.onClick }}" style-hover="background:rgba(255,255,255,0.03)" style="position:relative;width:100%;text-align:left;display:flex;gap:11px;align-items:center;padding:10px 11px;border-radius:9px;border:1px solid transparent;background:transparent;cursor:pointer;color:inherit;font-family:inherit;transition:background .12s">
+            <sc-if value="{{ p.isActive }}" hint-placeholder-val="{{ true }}">
+              <span style="position:absolute;inset:0;border-radius:9px;background:rgba(111,123,240,0.08);border:1px solid rgba(111,123,240,0.2);pointer-events:none"></span>
+              <span style="position:absolute;left:0;top:9px;bottom:9px;width:2.5px;border-radius:0 2px 2px 0;background:#6f7bf0"></span>
+            </sc-if>
+            <span style="position:relative;z-index:1;flex:none;width:7px;height:7px;border-radius:50%;background:{{ p.statusColor }}"></span>
+            <span style="position:relative;z-index:1;flex:1;min-width:0;display:flex;flex-direction:column;gap:3px">
+              <span style="font-size:12.5px;font-weight:500;color:#dfe2e6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.name }}</span>
+              <span style="font-size:10.5px;color:#656b74">{{ p.typeLabel }} · {{ p.chatCountLabel }}</span>
+            </span>
+          </button>
+
+          <sc-if value="{{ p.isActive }}">
+            <div style="display:flex;flex-direction:column;gap:1px;margin:3px 0 9px;padding-left:19px;border-left:1px solid rgba(255,255,255,0.06);margin-left:15px">
+              <sc-for list="{{ p.chats }}" as="ch">
+                <button onClick="{{ ch.onClick }}" onContextMenu="{{ ch.onContext }}" style-hover="border-color:rgba(255,255,255,0.16)" style="position:relative;width:100%;text-align:left;display:flex;gap:9px;align-items:center;padding:7px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:{{ ch.color }};cursor:pointer;color:inherit;font-family:inherit;transition:border-color .12s">
+                  <sc-if value="{{ ch.isActive }}">
+                    <span style="position:absolute;inset:0;border-radius:8px;background:rgba(111,123,240,0.12);border:1px solid rgba(111,123,240,0.26);pointer-events:none"></span>
+                  </sc-if>
+                  <span style="position:relative;z-index:1;flex:none;width:7px;height:7px;border-radius:2px;background:{{ ch.dot }}"></span>
+                  <span style="position:relative;z-index:1;flex:1;min-width:0;display:flex;flex-direction:column;gap:1px">
+                    <span style="font-size:12px;font-weight:500;color:{{ ch.nameColor }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ ch.name }}</span>
+                    <span style="font-size:10px;color:#565c65" data-comment-anchor="6879b3e5e4-span">{{ ch.focusLabel }}</span>
+                  </span>
+                </button>
+              </sc-for>
+              <sc-if value="{{ p.noChats }}">
+                <div style="padding:6px 10px;font-size:11px;color:#565c65">No chats yet</div>
+              </sc-if>
+              <button onClick="{{ p.onNewChat }}" style-hover="color:#aab0f7;background:rgba(111,123,240,0.08);border-color:rgba(111,123,240,0.28)" style="display:flex;align-items:center;gap:7px;margin-top:3px;padding:7px 10px;border-radius:8px;border:1px dashed rgba(255,255,255,0.12);background:transparent;color:#7d838c;font-family:inherit;font-size:11.5px;font-weight:500;cursor:pointer;transition:all .12s">
+                <span style="font-size:13px;line-height:0">+</span> New chat
+              </button>
+            </div>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main data-screen-label="Chat" style="flex:1;min-width:0;display:flex;flex-direction:column;background:#0a0b0d">
+
+    <sc-if value="{{ noEngagement }}">
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:40px;text-align:center">
+        <div style="width:52px;height:52px;border-radius:13px;background:#101216;border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;font-size:22px;color:#565c65">◆</div>
+        <div>
+          <div style="font-size:16px;font-weight:600;color:#e7e9ec">No engagements in {{ companyName }} yet</div>
+          <div style="margin-top:6px;font-size:13px;color:#8b929c;max-width:340px">Create an engagement, then spin up focused chats inside it.</div>
+        </div>
+        <button onClick="{{ onNew }}" style-hover="background:#5866f0" style="display:flex;align-items:center;gap:7px;height:38px;padding:0 16px;border-radius:10px;border:none;background:#6f7bf0;color:#fff;font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;transition:background .12s">
+          <span style="font-size:16px;line-height:0;margin-top:-1px">+</span> New Engagement
+        </button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ engNoChats }}">
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:40px;text-align:center">
+        <div style="width:52px;height:52px;border-radius:13px;background:#101216;border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;font-size:22px;color:#565c65">✦</div>
+        <div>
+          <div style="font-size:16px;font-weight:600;color:#e7e9ec">No chats in {{ activeName }} yet</div>
+          <div style="margin-top:6px;font-size:13px;color:#8b929c;max-width:380px">Spin up a focused chat — recon, a single host, or one config area. Each chat keeps its own context so the window never fills up.</div>
+        </div>
+        <button onClick="{{ onNewChat }}" style-hover="background:#5866f0" style="display:flex;align-items:center;gap:7px;height:38px;padding:0 16px;border-radius:10px;border:none;background:#6f7bf0;color:#fff;font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;transition:background .12s">
+          <span style="font-size:16px;line-height:0;margin-top:-1px">+</span> New chat
+        </button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ hasChat }}">
+    <header style="flex:none;border-bottom:1px solid rgba(255,255,255,0.07);background:#0c0d10">
+      <div style="display:flex;align-items:center;gap:12px;padding:14px 20px">
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+          <sc-if value="{{ editingName }}">
+            <input value="{{ nameDraft }}" onChange="{{ onNameDraft }}" onKeyDown="{{ onNameKey }}" onBlur="{{ saveName }}" autoFocus="{{ true }}" style="width:100%;max-width:420px;background:#15171c;border:1px solid rgba(111,123,240,0.5);border-radius:7px;padding:5px 9px;font-family:inherit;font-size:15px;font-weight:600;color:#e7e9ec;outline:none">
+          </sc-if>
+          <sc-if value="{{ notEditing }}">
+            <div style="display:flex;align-items:center;gap:8px;min-width:0">
+              <span style="font-size:15px;font-weight:600;color:#e7e9ec;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ chatName }}</span>
+              <button onClick="{{ startRename }}" title="Rename chat" style-hover="color:#c9cdd4;background:rgba(255,255,255,0.05)" style="flex:none;width:22px;height:22px;border-radius:6px;border:none;background:transparent;color:#565c65;cursor:pointer;font-size:11px;transition:all .12s">✎</button>
+              <span style="flex:none;font-size:10px;font-weight:500;letter-spacing:0.04em;color:#9aa2f5;background:rgba(111,123,240,0.14);border:1px solid rgba(111,123,240,0.24);padding:2px 9px;border-radius:20px">{{ chatFocusLabel }}</span>
+            </div>
+          </sc-if>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#565c65;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ companyName }} · {{ activeName }} · {{ activeTypeLabel }}</span>
+        </div>
+
+        <sc-if value="{{ rightOpen }}">
+          <button onClick="{{ toggleRight }}" title="Hide context panel" style-hover="color:#c9cdd4;border-color:rgba(255,255,255,0.16)" style="flex:none;display:flex;align-items:center;gap:6px;height:30px;padding:0 11px;border-radius:8px;border:1px solid rgba(255,255,255,0.09);background:transparent;color:#9096a0;font-family:inherit;font-size:12px;cursor:pointer;transition:all .12s">Context <span style="font-size:14px;line-height:0">›</span></button>
+        </sc-if>
+      </div>
+    </header>
+
+    <!-- CHAT SCROLL -->
+    <div ref="{{ setChatRef }}" style="flex:1;overflow-y:auto;padding:26px 20px 30px;background:#0a0b0d" data-comment-anchor="da8dbeadef-div">
+      <div style="max-width:800px;margin:0 auto;display:flex;flex-direction:column;gap:20px">
+        <sc-for list="{{ messages }}" as="m" hint-placeholder-count="4">
+          <div>
+            <sc-if value="{{ m.isText }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;gap:12px;align-items:flex-start">
+                <span style="flex:none;width:26px;height:26px;border-radius:7px;background:rgba(111,123,240,0.16);color:#9aa2f5;display:flex;align-items:center;justify-content:center;font-size:12px;margin-top:1px">◆</span>
+                <div style="font-size:14px;line-height:1.65;color:#c9cdd4;white-space:pre-wrap;max-width:700px;padding-top:3px">{{ m.text }}</div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ m.isUser }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;justify-content:flex-end">
+                <div style="max-width:560px;background:#15171c;border:1px solid rgba(255,255,255,0.08);border-radius:11px;padding:10px 14px;font-size:14px;line-height:1.55;color:#e7e9ec;white-space:pre-wrap">{{ m.text }}</div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ m.isTool }}" hint-placeholder-val="{{ true }}">
+              <div style="margin-left:38px;max-width:720px">
+                <sc-if value="{{ m.running }}">
+                  <div style="border:1px solid rgba(255,255,255,0.09);border-radius:10px;background:#101216;display:flex;align-items:center;gap:10px;padding:11px 13px">
+                    <span style="flex:none;width:13px;height:13px;border:2px solid rgba(111,123,240,0.3);border-top-color:#6f7bf0;border-radius:50%;animation:spin .7s linear infinite"></span>
+                    <span style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#c9cdd4;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ m.command }}</span>
+                    <span style="font-size:11px;color:#9aa2f5;font-weight:500;animation:pulse 1.4s ease-in-out infinite">Running</span>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ m.success }}">
+                  <div style="border:1px solid rgba(255,255,255,0.09);border-radius:10px;background:#101216;overflow:hidden">
+                    <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid rgba(255,255,255,0.06)">
+                      <span style="flex:none;width:16px;height:16px;border-radius:5px;background:rgba(70,196,127,0.16);color:#5bd493;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">✓</span>
+                      <span style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#c9cdd4;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ m.command }}</span>
+                      <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#565c65">{{ m.duration }}</span>
+                    </div>
+                    <pre style="margin:0;padding:11px 13px;font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.55;color:#8b929c;white-space:pre-wrap;max-height:230px;overflow:auto;background:#0c0d10">{{ m.output }}</pre>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ m.unavailable }}">
+                  <div style="border:1px solid rgba(230,162,60,0.36);border-radius:10px;background:rgba(230,162,60,0.055);display:flex;gap:11px;padding:12px 13px">
+                    <span style="flex:none;width:18px;height:18px;border-radius:5px;background:rgba(230,162,60,0.2);color:#e6a23c;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">!</span>
+                    <div style="flex:1;min-width:0">
+                      <div style="font-size:13px;font-weight:600;color:#e7c98a;margin-bottom:4px">Tool not available — <span style="font-family:'IBM Plex Mono',monospace">{{ m.toolName }}</span></div>
+                      <div style="font-size:12.5px;line-height:1.5;color:#ab9d7d">{{ m.reason }}</div>
+                      <div style="display:flex;align-items:center;gap:9px;margin-top:11px;flex-wrap:wrap">
+                        <button onClick="{{ m.onInstall }}" style-hover="background:rgba(230,162,60,0.26)" style="display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:7px;border:1px solid rgba(230,162,60,0.42);background:rgba(230,162,60,0.16);color:#e6a23c;font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;transition:background .12s">↓ Install</button>
+                        <button style-hover="color:#c9cdd4;border-color:rgba(255,255,255,0.16)" style="padding:5px 12px;border-radius:7px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:#9096a0;font-family:inherit;font-size:12px;cursor:pointer;transition:all .12s">Learn more</button>
+                        <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#565c65">{{ m.installCmd }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <!-- COMPOSER -->
+    <div style="flex:none;border-top:1px solid rgba(255,255,255,0.07);padding:14px 20px 18px;background:#0b0c0f">
+      <div style="max-width:800px;margin:0 auto">
+        <div style="display:flex;flex-direction:column;border-radius:20px;border:1px solid rgba(255,255,255,0.1);background:#15171c;padding:14px 14px 10px 18px">
+          <input value="{{ draft }}" onChange="{{ onDraft }}" onKeyDown="{{ onKey }}" placeholder="{{ composerPlaceholder }}" style="width:100%;background:transparent;border:none;outline:none;color:#e7e9ec;font-family:inherit;font-size:15px;padding:4px 2px 14px 0">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <button title="Attach" style-hover="color:#c9cdd4;background:rgba(255,255,255,0.06)" style="flex:none;display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;border:none;background:transparent;color:#9096a0;font-size:19px;cursor:pointer;transition:all .12s">+</button>
+            <div style="display:flex;align-items:center;gap:8px">
+              <button onClick="{{ toggleTerminal }}" title="Open terminal (Ctrl+`) — shared with the agent" style-hover="border-color:rgba(91,212,147,0.4);background:#1b1d23" style="flex:none;display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:#101216;cursor:pointer;transition:all .12s;padding:0">
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#5bd493;letter-spacing:-1px">›_</span>
+              </button>
+              <button onClick="{{ onSend }}" title="Send" style-hover="background:#5866f0" style="flex:none;display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;border:none;background:#6f7bf0;color:#fff;font-size:15px;cursor:pointer;transition:background .12s">↑</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    </sc-if>
+  </main>
+
+  <!-- RIGHT PANEL -->
+  <sc-if value="{{ rightPanelOpen }}">
+    <aside data-screen-label="Context panel" style="width:322px;flex:none;background:#0c0d10;border-left:1px solid rgba(255,255,255,0.07);display:flex;flex-direction:column">
+      <div style="flex:none;display:flex;align-items:center;justify-content:space-between;padding:15px 16px 13px;border-bottom:1px solid rgba(255,255,255,0.06)">
+        <div style="font-size:12px;font-weight:600;letter-spacing:0.06em;color:#c9cdd4">CONTEXT · {{ chatFocusLabel }}</div>
+        <button onClick="{{ toggleRight }}" title="Collapse" style-hover="color:#c9cdd4;background:rgba(255,255,255,0.05)" style="width:24px;height:24px;border-radius:6px;border:none;background:transparent;color:#656b74;cursor:pointer;font-size:14px;transition:all .12s">›</button>
+      </div>
+
+      <div style="flex:1;overflow-y:auto;padding:16px">
+        <!-- SCOPE -->
+        <div style="font-size:10.5px;font-weight:500;letter-spacing:0.1em;color:#565c65;text-transform:uppercase;margin-bottom:10px">Scope</div>
+        <div style="display:flex;flex-direction:column;gap:1px;background:#101216;border:1px solid rgba(255,255,255,0.07);border-radius:9px;overflow:hidden;margin-bottom:24px">
+          <sc-for list="{{ scope }}" as="s" hint-placeholder-count="4">
+            <div style="display:flex;gap:10px;padding:9px 12px;border-bottom:1px solid rgba(255,255,255,0.04)">
+              <span style="flex:none;width:82px;font-size:11.5px;color:#656b74">{{ s.label }}</span>
+              <span style="flex:1;font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:#c9cdd4;word-break:break-word">{{ s.value }}</span>
+            </div>
+          </sc-for>
+        </div>
+
+        <!-- FINDINGS -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <span style="font-size:10.5px;font-weight:500;letter-spacing:0.1em;color:#565c65;text-transform:uppercase">Findings</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#656b74;background:rgba(255,255,255,0.05);padding:1px 7px;border-radius:5px">{{ findingsCount }}</span>
+        </div>
+        <sc-if value="{{ findingsEmpty }}">
+          <div style="padding:16px 12px;border:1px dashed rgba(255,255,255,0.09);border-radius:9px;text-align:center;font-size:12px;color:#565c65;margin-bottom:24px">No findings logged in this chat yet.</div>
+        </sc-if>
+        <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:24px">
+          <sc-for list="{{ findings }}" as="f">
+            <div style="display:flex;gap:10px;padding:10px 12px;background:#101216;border:1px solid rgba(255,255,255,0.07);border-radius:9px">
+              <span style="flex:none;width:8px;height:8px;border-radius:2px;background:{{ f.color }};margin-top:5px"></span>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:12.5px;line-height:1.45;color:#dfe2e6;margin-bottom:5px">{{ f.title }}</div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="font-size:9.5px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:{{ f.color }}">{{ f.sev }}</span>
+                  <span style="font-size:10.5px;color:#565c65">{{ f.phase }} · {{ f.time }}</span>
+                </div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+
+        <!-- TOOLS -->
+        <div style="font-size:10.5px;font-weight:500;letter-spacing:0.1em;color:#565c65;text-transform:uppercase;margin-bottom:10px">Chat Tools</div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <sc-for list="{{ tools }}" as="t" hint-placeholder-count="4">
+            <div style="display:flex;align-items:center;gap:9px;padding:8px 12px;background:#101216;border:1px solid rgba(255,255,255,0.06);border-radius:8px">
+              <span style="flex:none;width:6px;height:6px;border-radius:50%;background:{{ t.color }}"></span>
+              <span style="flex:1;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#c9cdd4">{{ t.name }}</span>
+              <span style="font-size:10.5px;color:{{ t.color }}">{{ t.statusLabel }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </aside>
+  </sc-if>
+
+  <!-- COLLAPSED RAIL -->
+  <sc-if value="{{ railOpen }}">
+    <button onClick="{{ toggleRight }}" title="Show context panel" style-hover="background:#101216" style="width:40px;flex:none;background:#0c0d10;border:none;border-left:1px solid rgba(255,255,255,0.07);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:12px;padding-top:16px;color:#656b74;transition:background .12s">
+      <span style="font-size:14px">‹</span>
+      <span style="writing-mode:vertical-rl;font-size:10.5px;letter-spacing:0.14em;color:#565c65">CONTEXT</span>
+    </button>
+  </sc-if>
+
+</div>
+</sc-if>
+
+<!-- ============ NEW PROJECT MODAL (company) ============ -->
+<sc-if value="{{ newProjectOpen }}">
+  <div onClick="{{ closeNewProject }}" style="position:fixed;inset:0;background:rgba(6,7,9,0.68);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;z-index:50;padding:24px">
+    <div onClick="{{ stop }}" style="width:440px;max-width:100%;background:#111318;border:1px solid rgba(255,255,255,0.1);border-radius:14px;box-shadow:0 24px 70px rgba(0,0,0,0.6)">
+      <div style="padding:20px 22px 4px">
+        <div style="font-size:16px;font-weight:600;color:#e7e9ec">New Project</div>
+        <div style="font-size:12.5px;line-height:1.5;color:#8b929c;margin-top:5px">Create a client workspace. You'll add engagements to it next.</div>
+      </div>
+      <div style="padding:18px 22px 6px">
+        <div style="font-size:10.5px;font-weight:500;letter-spacing:0.08em;color:#565c65;text-transform:uppercase;margin-bottom:7px">Company / client name</div>
+        <input value="{{ newCompanyName }}" onChange="{{ onNewCompanyName }}" onKeyDown="{{ onNewCompanyKey }}" autoFocus="{{ true }}" placeholder="Acme Corp" style="width:100%;background:#15171c;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:9px 12px;font-family:inherit;font-size:13px;color:#e7e9ec;outline:none">
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:9px;padding:14px 22px 20px">
+        <button onClick="{{ closeNewProject }}" style-hover="color:#c9cdd4;border-color:rgba(255,255,255,0.16)" style="padding:8px 15px;border-radius:9px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:#9096a0;font-family:inherit;font-size:12.5px;cursor:pointer;transition:all .12s">Cancel</button>
+        <button onClick="{{ createCompany }}" style-hover="background:#5866f0" style="padding:8px 17px;border-radius:9px;border:none;background:#6f7bf0;color:#fff;font-family:inherit;font-size:12.5px;font-weight:500;cursor:pointer;transition:background .12s">Create project</button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<!-- ============ NEW ENGAGEMENT MODAL ============ -->
+<sc-if value="{{ newOpen }}">
+  <div onClick="{{ closeNew }}" style="position:fixed;inset:0;background:rgba(6,7,9,0.68);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;z-index:50;padding:24px">
+    <div onClick="{{ stop }}" style="width:472px;max-width:100%;max-height:88vh;overflow-y:auto;background:#111318;border:1px solid rgba(255,255,255,0.1);border-radius:14px;box-shadow:0 24px 70px rgba(0,0,0,0.6)">
+      <div style="padding:20px 22px 4px">
+        <div style="font-size:16px;font-weight:600;color:#e7e9ec">New Engagement</div>
+        <div style="font-size:12.5px;line-height:1.5;color:#8b929c;margin-top:5px">For <span style="color:#c9cdd4;font-weight:500">{{ companyName }}</span>. Pick a review type — its phase focuses are fixed by type.</div>
+      </div>
+      <div style="padding:16px 22px 4px;display:flex;flex-direction:column;gap:8px">
+        <sc-for list="{{ reviewTypes }}" as="rt">
+          <button onClick="{{ rt.onSelect }}" style-hover="border-color:rgba(255,255,255,0.16)" style="position:relative;text-align:left;width:100%;display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.09);background:#101216;cursor:pointer;color:inherit;font-family:inherit;transition:border-color .12s">
+            <sc-if value="{{ rt.selected }}"><span style="position:absolute;inset:0;border-radius:10px;border:1.5px solid #6f7bf0;background:rgba(111,123,240,0.08);pointer-events:none"></span></sc-if>
+            <span style="position:relative;z-index:1;flex:none;width:16px;height:16px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.25);margin-top:1px;display:flex;align-items:center;justify-content:center">
+              <sc-if value="{{ rt.selected }}"><span style="width:8px;height:8px;border-radius:50%;background:#6f7bf0"></span></sc-if>
+            </span>
+            <span style="position:relative;z-index:1;flex:1;min-width:0">
+              <span style="display:block;font-size:13.5px;font-weight:500;color:#e7e9ec;margin-bottom:3px">{{ rt.label }}</span>
+              <span style="display:block;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#656b74">{{ rt.desc }}</span>
+            </span>
+          </button>
+        </sc-for>
+      </div>
+      <div style="padding:16px 22px 6px">
+        <div style="font-size:10.5px;font-weight:500;letter-spacing:0.08em;color:#565c65;text-transform:uppercase;margin-bottom:7px">Display name (optional)</div>
+        <input value="{{ newName }}" onChange="{{ onNewName }}" placeholder="{{ selectedTypeLabel }}" style="width:100%;background:#15171c;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:9px 12px;font-family:inherit;font-size:13px;color:#e7e9ec;outline:none">
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:9px;padding:14px 22px 20px">
+        <button onClick="{{ closeNew }}" style-hover="color:#c9cdd4;border-color:rgba(255,255,255,0.16)" style="padding:8px 15px;border-radius:9px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:#9096a0;font-family:inherit;font-size:12.5px;cursor:pointer;transition:all .12s">Cancel</button>
+        <button onClick="{{ createProject }}" style-hover="background:#5866f0" style="padding:8px 17px;border-radius:9px;border:none;background:#6f7bf0;color:#fff;font-family:inherit;font-size:12.5px;font-weight:500;cursor:pointer;transition:background .12s">Create engagement</button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<!-- ============ NEW CHAT MODAL ============ -->
+<sc-if value="{{ newChatOpen }}">
+  <div onClick="{{ closeNewChat }}" style="position:fixed;inset:0;background:rgba(6,7,9,0.68);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;z-index:50;padding:24px">
+    <div onClick="{{ stop }}" style="width:452px;max-width:100%;max-height:88vh;overflow-y:auto;background:#111318;border:1px solid rgba(255,255,255,0.1);border-radius:14px;box-shadow:0 24px 70px rgba(0,0,0,0.6)">
+      <div style="padding:20px 22px 4px">
+        <div style="font-size:16px;font-weight:600;color:#e7e9ec">New Chat</div>
+        <div style="font-size:12.5px;line-height:1.5;color:#8b929c;margin-top:5px">In <span style="color:#c9cdd4;font-weight:500">{{ activeName }}</span>. Each chat is its own context window with its own agent thread.</div>
+      </div>
+
+      <div style="padding:16px 22px 4px">
+        <div style="font-size:10.5px;font-weight:500;letter-spacing:0.08em;color:#565c65;text-transform:uppercase;margin-bottom:8px">Focus</div>
+        <div style="display:flex;flex-wrap:wrap;gap:7px">
+          <sc-for list="{{ chatFocusOptions }}" as="fo">
+            <sc-if value="{{ fo.selected }}">
+              <button onClick="{{ fo.onSelect }}" style="padding:7px 13px;border-radius:8px;border:1px solid rgba(111,123,240,0.45);background:rgba(111,123,240,0.14);color:#aab0f7;font-family:inherit;font-size:12.5px;font-weight:500;cursor:pointer">{{ fo.label }}</button>
+            </sc-if>
+            <sc-if value="{{ fo.notSelected }}">
+              <button onClick="{{ fo.onSelect }}" style-hover="background:rgba(255,255,255,0.04);color:#c9cdd4" style="padding:7px 13px;border-radius:8px;border:1px solid rgba(255,255,255,0.09);background:transparent;color:#9096a0;font-family:inherit;font-size:12.5px;font-weight:500;cursor:pointer;transition:all .12s">{{ fo.label }}</button>
+            </sc-if>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="padding:16px 22px 4px">
+        <div style="font-size:10.5px;font-weight:500;letter-spacing:0.08em;color:#565c65;text-transform:uppercase;margin-bottom:7px">Chat name (optional)</div>
+        <input value="{{ newChatName }}" onChange="{{ onNewChatName }}" onKeyDown="{{ onNewChatKey }}" autoFocus="{{ true }}" placeholder="{{ selectedFocusLabel }}" style="width:100%;background:#15171c;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:9px 12px;font-family:inherit;font-size:13px;color:#e7e9ec;outline:none">
+      </div>
+
+      <div style="padding:16px 22px 6px">
+        <div style="font-size:10.5px;font-weight:500;letter-spacing:0.08em;color:#565c65;text-transform:uppercase;margin-bottom:9px">Background colour</div>
+        <div style="display:flex;gap:10px">
+          <sc-for list="{{ newChatColorOptions }}" as="co">
+            <button onClick="{{ co.onPick }}" title="{{ co.id }}" style="position:relative;width:34px;height:34px;border-radius:9px;background:{{ co.bg }};border:1px solid rgba(255,255,255,0.14);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0">
+              <span style="width:12px;height:12px;border-radius:3px;background:{{ co.dot }}"></span>
+              <sc-if value="{{ co.selected }}"><span style="position:absolute;inset:-3px;border:1.5px solid #6f7bf0;border-radius:12px"></span></sc-if>
+            </button>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;gap:9px;padding:16px 22px 20px">
+        <button onClick="{{ closeNewChat }}" style-hover="color:#c9cdd4;border-color:rgba(255,255,255,0.16)" style="padding:8px 15px;border-radius:9px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:#9096a0;font-family:inherit;font-size:12.5px;cursor:pointer;transition:all .12s">Cancel</button>
+        <button onClick="{{ createChat }}" style-hover="background:#5866f0" style="padding:8px 17px;border-radius:9px;border:none;background:#6f7bf0;color:#fff;font-family:inherit;font-size:12.5px;font-weight:500;cursor:pointer;transition:background .12s">Create chat</button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<!-- ============ CHAT CONTEXT MENU (right-click) ============ -->
+<sc-if value="{{ ctxOpen }}">
+  <div onClick="{{ closeCtx }}" onContextMenu="{{ onCtxBackdrop }}" style="position:fixed;inset:0;z-index:60"></div>
+  <div style="position:fixed;top:{{ ctxY }}px;left:{{ ctxX }}px;z-index:61;width:198px;background:#15171c;border:1px solid rgba(255,255,255,0.12);border-radius:11px;padding:6px;box-shadow:0 18px 46px rgba(0,0,0,0.6)">
+    <button onClick="{{ ctxRename }}" style-hover="background:rgba(255,255,255,0.06)" style="width:100%;text-align:left;display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:7px;border:none;background:transparent;color:#dfe2e6;font-family:inherit;font-size:12.5px;cursor:pointer;transition:background .1s">
+      <span style="flex:none;width:14px;text-align:center;color:#9096a0">✎</span> Rename chat
+    </button>
+    <div style="height:1px;background:rgba(255,255,255,0.07);margin:5px 6px"></div>
+    <div style="font-size:9.5px;font-weight:500;letter-spacing:0.08em;color:#565c65;text-transform:uppercase;padding:2px 10px 7px">Background colour</div>
+    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:7px;padding:0 8px 6px">
+      <sc-for list="{{ ctxColorOptions }}" as="co">
+        <button onClick="{{ co.onPick }}" title="{{ co.id }}" style="position:relative;width:22px;height:22px;border-radius:6px;background:{{ co.bg }};border:1px solid rgba(255,255,255,0.14);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0">
+          <span style="width:9px;height:9px;border-radius:2px;background:{{ co.dot }}"></span>
+          <sc-if value="{{ co.selected }}"><span style="position:absolute;inset:-3px;border:1.5px solid #6f7bf0;border-radius:8px"></span></sc-if>
+        </button>
+      </sc-for>
+    </div>
+    <div style="height:1px;background:rgba(255,255,255,0.07);margin:5px 6px"></div>
+    <button onClick="{{ ctxDelete }}" style-hover="background:rgba(240,97,109,0.12)" style="width:100%;text-align:left;display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:7px;border:none;background:transparent;color:#f0616d;font-family:inherit;font-size:12.5px;cursor:pointer;transition:background .1s">
+      <span style="flex:none;width:14px;text-align:center">🗑</span> Delete chat
+    </button>
+  </div>
+</sc-if>
+<!-- ============ TERMINAL DOCK (shared shell) ============ -->
+<sc-if value="{{ terminalOpen }}">
+  <div style="position:fixed;left:0;right:0;bottom:0;height:{{ terminalHeightPx }};z-index:70;display:flex;flex-direction:column;background:#070809;border-top:1px solid rgba(255,255,255,0.13);box-shadow:0 -20px 60px rgba(0,0,0,0.6)">
+
+    <div onMouseDown="{{ startResize }}" style="flex:none;height:8px;cursor:ns-resize;display:flex;align-items:center;justify-content:center;background:#0c0d10;border-bottom:1px solid rgba(255,255,255,0.05)">
+      <span style="width:40px;height:3px;border-radius:2px;background:rgba(255,255,255,0.2)"></span>
+    </div>
+
+    <div style="flex:none;display:flex;align-items:center;gap:5px;padding:6px 12px;background:#0c0d10;border-bottom:1px solid rgba(255,255,255,0.06)">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#5bd493;letter-spacing:-1px;margin-right:5px">›_</span>
+      <sc-for list="{{ termShellTabs }}" as="t" hint-placeholder-count="3">
+        <button onClick="{{ t.onSelect }}" style="display:flex;align-items:center;gap:7px;padding:6px 13px;border-radius:8px;border:1px solid transparent;background:{{ t.tabBg }};color:{{ t.tabColor }};font-family:inherit;font-size:12px;font-weight:500;cursor:pointer">
+          <span style="width:7px;height:7px;border-radius:50%;background:{{ t.color }}"></span>
+          {{ t.label }}
+        </button>
+      </sc-for>
+      <div style="flex:1"></div>
+      <span style="display:flex;align-items:center;gap:6px;font-size:10.5px;color:#9096a0;padding:3px 10px;border-radius:20px;background:rgba(111,123,240,0.1);border:1px solid rgba(111,123,240,0.22)">
+        <span style="color:#9aa2f5;font-size:9px">◆</span> Shared with agent
+      </span>
+      <button onClick="{{ closeTerminal }}" title="Close terminal" style-hover="color:#c9cdd4;background:rgba(255,255,255,0.06)" style="width:26px;height:26px;border-radius:7px;border:none;background:transparent;color:#7d838c;font-size:13px;cursor:pointer;transition:all .12s">✕</button>
+    </div>
+
+    <div ref="{{ setTermRef }}" onClick="{{ focusTerm }}" style="flex:1;overflow-y:auto;padding:12px 15px 16px;background:#070809;cursor:text">
+      <sc-for list="{{ termLines }}" as="ln" hint-placeholder-count="2">
+        <div style="margin-bottom:2px">
+          <sc-if value="{{ ln.isCmd }}">
+            <div style="display:flex;gap:9px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;line-height:1.55"><span style="color:{{ ln.promptColor }};white-space:pre">{{ ln.prompt }}</span><span style="flex:1;min-width:0;color:#e7e9ec;white-space:pre-wrap;word-break:break-word">{{ ln.text }}</span></div>
+          </sc-if>
+          <sc-if value="{{ ln.isOut }}">
+            <pre style="margin:0;font-family:'IBM Plex Mono',monospace;font-size:12.5px;line-height:1.55;color:#a4abb4;white-space:pre-wrap;word-break:break-word">{{ ln.text }}</pre>
+          </sc-if>
+          <sc-if value="{{ ln.isSys }}">
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;line-height:1.5;color:#565c65;white-space:pre-wrap">{{ ln.text }}</div>
+          </sc-if>
+        </div>
+      </sc-for>
+
+      <div style="margin-top:5px">
+        <sc-if value="{{ termKaliHeader }}">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;line-height:1.55;color:#5bd493">┌──(kali㉿kali)-[~]</div>
+        </sc-if>
+        <div style="display:flex;gap:9px;align-items:baseline">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:{{ termPromptColor }};white-space:pre">{{ termInlinePrompt }}</span>
+          <input ref="{{ setTermInputRef }}" value="{{ terminalInput }}" onChange="{{ onTerminalInput }}" onKeyDown="{{ onTerminalKey }}" autoFocus="{{ true }}" spellcheck="false" placeholder="{{ termPlaceholder }}" style="flex:1;min-width:0;background:transparent;border:none;outline:none;color:#e7e9ec;font-family:'IBM Plex Mono',monospace;font-size:12.5px;padding:0">
+        </div>
+      </div>
+    </div>
+  </div>
+</sc-if></x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  _uid = 0;
+  uid(){ return 'm' + (++this._uid); }
+  chatColors = [
+    {id:'slate',  bg:'#0a0b0d', dot:'#3a3f47'},
+    {id:'indigo', bg:'#0d0e1c', dot:'#5866f0'},
+    {id:'teal',   bg:'#08140f', dot:'#3aa980'},
+    {id:'wine',   bg:'#170a0f', dot:'#d05668'},
+    {id:'amber',  bg:'#16110a', dot:'#d99a4a'},
+    {id:'plum',   bg:'#130a19', dot:'#a765d0'},
+  ];
+  terminalShells = [
+    {id:'pwsh', label:'PowerShell', color:'#9aa2f5'},
+    {id:'cmd',  label:'Command Prompt', color:'#c9cdd4'},
+    {id:'kali', label:'Kali · WSL', color:'#5bd493'},
+  ];
+  types = this.buildTypes();
+  state = this.buildInitial();
+
+  monogram(name){
+    const w = (name||'').trim().split(/\s+/).filter(Boolean);
+    const s = ((w[0]||'')[0]||'') + ((w[1]||'')[0]||'');
+    return (s || (name||'').slice(0,2)).toUpperCase();
+  }
+  colorDot(bg){ return (this.chatColors.find(c => c.bg===bg) || this.chatColors[0]).dot; }
+  phaseLabel(eng, id){ return (eng.phases.find(p => p.id===id) || {}).label || ''; }
+
+  buildTypes(){
+    return {
+      aws: { label:'AWS Config Review', short:'AWS', linear:false,
+        phases:[{id:'iam',label:'IAM'},{id:'storage',label:'Storage (S3)'},{id:'network',label:'Network (VPC)'},{id:'logging',label:'Logging & Monitoring'}],
+        tools:[{name:'prowler',available:true},{name:'scoutsuite',available:true},{name:'aws-cli',available:true},{name:'pmapper',available:false}],
+        scope:[{label:'Account',value:'4821-9930-1174'},{label:'Regions',value:'us-east-1, us-west-2'},{label:'Environment',value:'Production'},{label:'Benchmark',value:'CIS AWS v3.0'}] },
+      azure: { label:'Azure Config Review', short:'AZ', linear:false,
+        phases:[{id:'entra',label:'Entra ID'},{id:'storage',label:'Storage'},{id:'network',label:'Network'},{id:'logging',label:'Logging & Monitoring'}],
+        tools:[{name:'scoutsuite',available:true},{name:'az-cli',available:true},{name:'roadrecon',available:true},{name:'pingcastle',available:false}],
+        scope:[{label:'Tenant',value:'contoso.onmicrosoft.com'},{label:'Subscription',value:'prod-01'},{label:'Regions',value:'eastus, westeu'},{label:'Benchmark',value:'CIS Azure v2.1'}] },
+      m365: { label:'M365 Config Review', short:'M365', linear:false,
+        phases:[{id:'identity',label:'Identity'},{id:'exchange',label:'Exchange'},{id:'sharepoint',label:'SharePoint'},{id:'compliance',label:'Compliance'}],
+        tools:[{name:'scoutsuite',available:true},{name:'msol',available:true},{name:'purview',available:true},{name:'maester',available:true}],
+        scope:[{label:'Tenant',value:'contoso.onmicrosoft.com'},{label:'Licenses',value:'E5 · 1,240 seats'},{label:'Benchmark',value:'CIS M365 v4.0'}] },
+      internal: { label:'Internal Pen Test', short:'INT', linear:true,
+        phases:[{id:'recon',label:'Recon'},{id:'exploit',label:'Exploit'}],
+        tools:[{name:'nmap',available:true},{name:'bloodhound',available:true},{name:'crackmapexec',available:true},{name:'impacket',available:true}],
+        scope:[{label:'Subnet',value:'10.10.0.0/16'},{label:'Domain',value:'CORP.LOCAL'},{label:'DC',value:'10.10.0.5'},{label:'Exclusions',value:'10.10.9.0/24'}] },
+      external: { label:'External Pen Test', short:'EXT', linear:true,
+        phases:[{id:'recon',label:'Recon'},{id:'exploit',label:'Exploit'}],
+        tools:[{name:'nmap',available:true},{name:'nuclei',available:true},{name:'amass',available:true},{name:'burp',available:false}],
+        scope:[{label:'Domains',value:'acme.com, *.acme.io'},{label:'ASN',value:'AS40021'},{label:'Ranges',value:'198.51.100.0/24'},{label:'Rules',value:'No DoS · business hrs'}] },
+    };
+  }
+
+  makeEngagement(type, name, status, updated){
+    const cfg = this.types[type];
+    const eid = 'e' + (++this._uid);
+    return { id:eid, type, name: name || cfg.label, status, updated, linear:cfg.linear, phases:cfg.phases, scope:cfg.scope.map(s=>({...s})), chats:[] };
+  }
+
+  makeChat(eng, phaseId, name, color){
+    const cfg = this.types[eng.type];
+    const ph = cfg.phases.find(p => p.id===phaseId) || cfg.phases[0];
+    return {
+      id:'ch' + (++this._uid), name: (name || ph.label), phaseId: ph.id, color: color || '#0a0b0d',
+      messages:[{id:this.uid(),role:'assistant',kind:'text',content:"I'm the " + ph.label + " agent for this " + cfg.label + ". Ask me to enumerate configuration, run automated checks, or log findings — this chat keeps its own context."}],
+      findings:[], tools: cfg.tools.map(t => ({...t})),
+    };
+  }
+
+  stamp(eng){ eng.chats.forEach(c => c.messages.forEach(m => { if(!m.id) m.id = this.uid(); })); }
+
+  enrichAws(e){
+    const iam = this.makeChat(e,'iam','IAM privilege review');
+    iam.messages = [
+      {role:'user',kind:'text',content:'Review IAM for overly permissive policies and privilege-escalation paths.'},
+      {role:'assistant',kind:'text',content:"Starting the IAM review. I'll run Prowler's IAM checks, enumerate roles with wildcard permissions, then map privilege-escalation paths. I'll log findings to the panel as I go."},
+      {role:'assistant',kind:'tool',toolName:'prowler',command:'prowler aws --service iam --status FAIL --output json',state:'success',duration:'42.3s',output:'[iam_policy_allows_privilege_escalation]  FAIL  role/ci-deployer\n[iam_root_hardware_mfa_enabled]           FAIL  root\n[iam_user_accesskey_unused_90_days]       FAIL  12 users\n[iam_password_policy_reuse_prevention]    FAIL  account\n\n4 failed · 37 passed · 0 errors'},
+      {role:'assistant',kind:'text',content:"Prowler flagged 4 failing controls. The critical one: role ci-deployer has an inline policy granting iam:* on * — effectively account admin reachable from the CI/CD pipeline. Pulling the policy document now."},
+      {role:'assistant',kind:'tool',toolName:'aws-cli',command:'aws iam get-role-policy --role-name ci-deployer --policy-name inline-deploy',state:'success',duration:'1.2s',output:'{\n  "Statement": [{\n    "Effect": "Allow",\n    "Action": "iam:*",\n    "Resource": "*"\n  }]\n}'},
+      {role:'assistant',kind:'text',content:"Confirmed — unrestricted iam:* on all resources. Logged as Critical. To confirm the exploitable escalation path from the pipeline principal I'd normally map reachability with PMapper."},
+      {role:'assistant',kind:'tool',state:'unavailable',toolName:'pmapper',reason:'PMapper (AWS IAM privilege-escalation path finder) is not installed in this environment. Reachability-graph analysis for ci-deployer will be skipped until it is available.',installCmd:'pip install principalmapper'},
+      {role:'assistant',kind:'text',content:"I captured the direct finding from the policy document regardless. Install PMapper for the full escalation graph, or I can move on to the access-key hygiene issues."},
+    ];
+    iam.findings = [
+      {title:'ci-deployer role grants iam:* on *',sev:'Critical',phase:'IAM',time:'2m ago'},
+      {title:'Root account missing hardware MFA',sev:'High',phase:'IAM',time:'3m ago'},
+      {title:'12 users with access keys unused >90d',sev:'Medium',phase:'IAM',time:'4m ago'},
+      {title:'Password policy permits reuse',sev:'Low',phase:'IAM',time:'4m ago'},
+    ];
+    const s3 = this.makeChat(e,'storage','S3 bucket audit','#08140f');
+    s3.messages.push({role:'assistant',kind:'tool',toolName:'scoutsuite',command:'scout aws --services s3 --report-dir ./scout-out',state:'running',output:''});
+    e.chats = [iam, s3];
+    this.stamp(e);
+  }
+
+  enrichInternal(e){
+    const rc = this.makeChat(e,'recon','Recon sweep');
+    rc.messages = [
+      {role:'user',kind:'text',content:'Enumerate live hosts and check SMB signing across 10.10.0.0/16.'},
+      {role:'assistant',kind:'text',content:'Running host discovery plus an SMB signing sweep across the in-scope subnet. This maps our initial attack surface.'},
+      {role:'assistant',kind:'tool',toolName:'nmap',command:'nmap -sn 10.10.0.0/16 -oG live.txt',state:'success',duration:'1m04s',output:'Nmap scan: 65536 addresses, 218 hosts up\nNmap done in 64.11s'},
+      {role:'assistant',kind:'tool',toolName:'crackmapexec',command:'cme smb 10.10.0.0/16 --gen-relay-list relay.txt',state:'success',duration:'38.9s',output:'SMB  10.10.2.14  signing:False  SMBv1:True\nSMB  10.10.2.51  signing:False\nSMB  10.10.4.03  signing:False\n... 14 hosts with signing disabled written to relay.txt'},
+      {role:'assistant',kind:'text',content:'218 live hosts; 14 have SMB signing disabled — solid NTLM-relay candidates. Logged to findings. Spin up a separate chat when you move to exploitation so this context stays clean.'},
+    ];
+    rc.findings = [
+      {title:'SMB signing disabled on 14 hosts',sev:'High',phase:'Recon',time:'54m ago'},
+      {title:'SMBv1 enabled on legacy host',sev:'Medium',phase:'Recon',time:'55m ago'},
+    ];
+    const ex = this.makeChat(e,'exploit','Kerberoast svc-sql','#170a0f');
+    ex.messages = [
+      {role:'assistant',kind:'text',content:'Exploit agent ready. Recon handed off 14 relay candidates and 1 Kerberoastable SPN. Want me to run an NTLM relay chain or start with Kerberoasting?'},
+      {role:'user',kind:'text',content:'Kerberoast svc-sql first.'},
+      {role:'assistant',kind:'tool',toolName:'impacket',command:'GetUserSPNs.py CORP.LOCAL/pentest -request -dc-ip 10.10.0.5',state:'success',duration:'6.1s',output:'ServicePrincipalName   Name     MemberOf\nMSSQL/sql01.corp.local svc-sql  Domain Admins\n\n$krb5tgs$23$*svc-sql$CORP.LOCAL$... (TGS captured)'},
+      {role:'assistant',kind:'tool',state:'unavailable',toolName:'hashcat',reason:'hashcat is not installed on this host — GPU cracking of the captured TGS ticket is unavailable locally.',installCmd:'apt install hashcat'},
+      {role:'assistant',kind:'text',content:"TGS captured for svc-sql (member of Domain Admins). hashcat isn't available to crack it here — install it, or I can hand the hash off to your cracking rig."},
+    ];
+    ex.findings = [{title:'Kerberoastable SPN svc-sql is Domain Admin',sev:'High',phase:'Exploit',time:'40m ago'}];
+    ex.tools = [{name:'nmap',available:true},{name:'bloodhound',available:true},{name:'impacket',available:true},{name:'hashcat',available:false}];
+    e.chats = [rc, ex];
+    this.stamp(e);
+  }
+
+  buildInitial(){
+    const e1 = this.makeEngagement('aws','AWS Config Review','In Progress','2m ago');
+    const e2 = this.makeEngagement('internal','Internal Pen Test','In Progress','1h ago');
+    const e3 = this.makeEngagement('m365','M365 Config Review','Complete','2d ago');
+    const e4 = this.makeEngagement('azure','Azure Config Review','In Progress','6h ago');
+    const e5 = this.makeEngagement('external','External Pen Test','In Progress','5d ago');
+    this.enrichAws(e1);
+    this.enrichInternal(e2);
+    // e3 left empty to demonstrate the "no chats yet" state; seed a starter chat for the others
+    [e4, e5].forEach(e => { const c = this.makeChat(e, e.phases[0].id, null); e.chats = [c]; this.stamp(e); });
+
+    const companies = [
+      { id:'c1', name:'Acme Corp', updated:'2m ago', engagements:[e1, e2] },
+      { id:'c2', name:'Contoso Ltd', updated:'6h ago', engagements:[e3, e4] },
+      { id:'c3', name:'Globex Systems', updated:'5d ago', engagements:[e5] },
+    ];
+
+    const activeChatByEngagement = {};
+    companies.forEach(c => c.engagements.forEach(e => { if(e.chats[0]) activeChatByEngagement[e.id] = e.chats[0].id; }));
+
+    return {
+      companies, view:'home',
+      activeCompanyId:null, activeEngagementId:null, activeChatByEngagement,
+      draft:'', rightOpen:true, editingName:false, nameDraft:'', colorMenuOpen:false,
+      newOpen:false, selectedType:'aws', newName:'',
+      newProjectOpen:false, newCompanyName:'',
+      newChatOpen:false, newChatName:'', newChatFocus:'', newChatColor:'#0a0b0d',
+      ctxMenu:{ open:false, x:0, y:0, engId:null, chatId:null },
+      terminalOpen:false, terminalShell:'pwsh', terminalHeight:346, terminalInput:'',
+      terminalSessions: this.buildTerminalSessions(),
+    };
+  }
+
+  buildTerminalSessions(){
+    return {
+      pwsh:[
+        {kind:'sys',text:'Windows PowerShell 7.4 · PSReadLine'},
+        {kind:'sys',text:'Shared session — the RedCell agent runs its commands in this same shell. You can take over any time. Type `help` for demo commands.'},
+      ],
+      cmd:[
+        {kind:'sys',text:'Microsoft Windows [Version 10.0.22631.4317]'},
+        {kind:'sys',text:'Shared session — agent + operator. Type `help` for demo commands.'},
+      ],
+      kali:[
+        {kind:'sys',text:'Kali GNU/Linux (WSL2) · kernel 6.6.36'},
+        {kind:'sys',text:'Shared session — agent + operator. Type `help` for demo commands.'},
+      ],
+    };
+  }
+  shellColor(shell){ return (this.terminalShells.find(s=>s.id===shell)||{}).color || '#9aa2f5'; }
+  shellPromptStored(shell){
+    if(shell==='kali') return '┌──(kali㉿kali)-[~]\n└─$';
+    if(shell==='cmd')  return 'C:\\Users\\pentester>';
+    return 'PS C:\\Users\\pentester>';
+  }
+  inlinePrompt(shell){
+    if(shell==='kali') return '└─$';
+    if(shell==='cmd')  return 'C:\\Users\\pentester>';
+    return 'PS C:\\Users\\pentester>';
+  }
+  terminalOutput(shell, raw){
+    const parts = raw.split(/\s+/); const cmd = (parts[0]||'').toLowerCase();
+    const out = (text)=>({kind:'out',text});
+    if(cmd==='clear'||cmd==='cls') return '__clear__';
+    if(cmd==='help') return [ out('Demo commands: whoami · pwd · ls / dir · ipconfig / ifconfig · nmap <target> · nikto · clear\nAnything else returns a realistic shell response. This is a UI mock — no real commands execute.') ];
+    if(cmd==='whoami') return [ out(shell==='kali' ? 'kali' : 'desktop-pt01\\pentester') ];
+    if(cmd==='pwd') return [ out(shell==='kali' ? '/home/kali' : 'C:\\Users\\pentester') ];
+    if(cmd==='ls'||cmd==='dir'){
+      if(shell==='kali') return [ out('Desktop   Documents   loot   scans   wordlists') ];
+      return [ out(' Directory: C:\\Users\\pentester\n\nMode    LastWriteTime        Length Name\n----    -------------        ------ ----\nd----   6/28/2026   9:14 AM          loot\nd----   6/28/2026   9:02 AM          scans\n-a---   6/30/2026   4:41 PM    2088  scope.txt') ];
+    }
+    if(cmd==='ipconfig'||cmd==='ifconfig'||cmd==='ip'){
+      if(shell==='kali') return [ out('eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500\n        inet 10.10.14.7  netmask 255.255.0.0  broadcast 10.10.255.255\n        ether 00:15:5d:6a:12:0b  txqueuelen 1000  (Ethernet)') ];
+      return [ out('Windows IP Configuration\n\nEthernet adapter Ethernet:\n   IPv4 Address. . . . . . . : 10.10.14.7\n   Subnet Mask . . . . . . . : 255.255.0.0\n   Default Gateway . . . . . : 10.10.0.1') ];
+    }
+    if(cmd==='nmap'){
+      const tgt = parts.slice(1).find(p=>!p.startsWith('-')) || '10.10.0.5';
+      return [ out('Starting Nmap 7.94 ( https://nmap.org )\nNmap scan report for '+tgt+'\nHost is up (0.0021s latency).\n\nPORT     STATE SERVICE\n22/tcp   open  ssh\n135/tcp  open  msrpc\n445/tcp  open  microsoft-ds\n3389/tcp open  ms-wbt-server\n\nNmap done: 1 IP address (1 host up) scanned in 4.30s') ];
+    }
+    if(cmd==='nikto') return [ out('- Nikto v2.5.0\n+ Target IP:          10.10.14.7\n+ Server: nginx/1.24.0\n+ /admin/: Admin login page identified.\n+ 7 host(s) tested') ];
+    if(cmd==='') return [];
+    if(shell==='kali') return [ out(parts[0]+': command not found') ];
+    if(shell==='cmd')  return [ out("'"+parts[0]+"' is not recognized as an internal or external command,\noperable program or batch file.") ];
+    return [ out(parts[0]+" : The term '"+parts[0]+"' is not recognized as the name of a cmdlet, function, script file, or operable program.") ];
+  }
+  toggleTerminal(){ this.setState(s=>({terminalOpen:!s.terminalOpen}), ()=>{ if(this.state.terminalOpen){ this.scrollTerm(); this.focusTerm(); } }); }
+  closeTerminal(){ this.setState({terminalOpen:false}); }
+  setTerminalShell(id){ this.setState({terminalShell:id}, ()=>{ this.scrollTerm(); this.focusTerm(); }); }
+  onTerminalInput(e){ this.setState({terminalInput:e.target.value}); }
+  onTerminalKey(e){ if(e.key==='Enter'){ e.preventDefault(); this.runTerminal(); } }
+  runTerminal(){
+    const S = this.state; const shell = S.terminalShell; const raw = (S.terminalInput||'').trim();
+    const sessions = {...S.terminalSessions};
+    const lines = (sessions[shell]||[]).slice();
+    lines.push({kind:'cmd', prompt:this.shellPromptStored(shell), promptColor:this.shellColor(shell), text:raw});
+    const res = this.terminalOutput(shell, raw);
+    if(res==='__clear__'){ sessions[shell]=[]; this.setState({terminalSessions:sessions, terminalInput:''}); return; }
+    res.forEach(o => lines.push(o));
+    sessions[shell] = lines;
+    this.setState({terminalSessions:sessions, terminalInput:''}, ()=>this.scrollTerm());
+  }
+  setTermRef(el){ this._term = el; }
+  setTermInputRef(el){ this._termInput = el; }
+  scrollTerm(){ const el=this._term; if(el) requestAnimationFrame(()=>{ el.scrollTop = el.scrollHeight; }); }
+  focusTerm(){ requestAnimationFrame(()=>{ if(this._termInput) this._termInput.focus(); }); }
+  startResize(e){ e.preventDefault(); this._resizing=true; this._startY=e.clientY; this._startH=this.state.terminalHeight; document.body.style.userSelect='none'; }
+  componentWillUnmount(){
+    window.removeEventListener('mousemove', this._onMove);
+    window.removeEventListener('mouseup', this._onUp);
+    window.removeEventListener('keydown', this._onKey);
+  }
+  chatByIds(engId, chatId){ const e = this.engagementById(engId); if(!e) return null; return e.chats.find(c => c.id===chatId) || null; }
+
+  activeCompany(){ return this.state.companies.find(c => c.id===this.state.activeCompanyId) || null; }
+  activeEngagement(){ const c = this.activeCompany(); if(!c) return null; return c.engagements.find(e => e.id===this.state.activeEngagementId) || null; }
+  engagementById(id){ const c = this.activeCompany(); if(!c) return null; return c.engagements.find(e => e.id===id) || null; }
+  activeChat(){ const e = this.activeEngagement(); if(!e) return null; const id = this.state.activeChatByEngagement[e.id]; return e.chats.find(ch => ch.id===id) || null; }
+
+  // navigation
+  openCompany(id){
+    const c = this.state.companies.find(x => x.id===id);
+    const first = c && c.engagements[0];
+    this.setState({ view:'workspace', activeCompanyId:id, activeEngagementId: first ? first.id : null, editingName:false, colorMenuOpen:false }, () => this.scrollChat());
+  }
+  goHome(){ this.setState({ view:'home', editingName:false, colorMenuOpen:false }); }
+  selectEngagement(id){
+    const e = this.engagementById(id);
+    const map = {...this.state.activeChatByEngagement};
+    if(e && !map[e.id] && e.chats[0]) map[e.id] = e.chats[0].id;
+    this.setState({ activeEngagementId:id, activeChatByEngagement:map, editingName:false, colorMenuOpen:false }, () => this.scrollChat());
+  }
+  selectChat(id){
+    const map = {...this.state.activeChatByEngagement}; map[this.state.activeEngagementId] = id;
+    this.setState({ activeChatByEngagement:map, editingName:false, colorMenuOpen:false }, () => this.scrollChat());
+  }
+  toggleRight(){ this.setState(s => ({ rightOpen: !s.rightOpen })); }
+
+  // chat background colour
+  toggleColorMenu(){ this.setState(s => ({ colorMenuOpen: !s.colorMenuOpen })); }
+  closeColorMenu(){ this.setState({ colorMenuOpen:false }); }
+  setChatColor(bg){ const c = this.activeChat(); if(c) c.color = bg; this.setState({ colorMenuOpen:false }); }
+
+  // right-click context menu on a chat
+  onChatContext(ev, engId, chatId){
+    ev.preventDefault(); if(ev.stopPropagation) ev.stopPropagation();
+    const pad = 12, w = 198, h = 240;
+    const x = Math.min(ev.clientX, window.innerWidth - w - pad);
+    const y = Math.min(ev.clientY, window.innerHeight - h - pad);
+    this.setState({ ctxMenu:{ open:true, x, y, engId, chatId }, colorMenuOpen:false });
+  }
+  closeCtx(){ this.setState(s => ({ ctxMenu:{ ...s.ctxMenu, open:false } })); }
+  onCtxBackdrop(ev){ ev.preventDefault(); this.closeCtx(); }
+  ctxRename(){
+    const { engId, chatId } = this.state.ctxMenu; const c = this.chatByIds(engId, chatId); if(!c) return;
+    const map = {...this.state.activeChatByEngagement}; map[engId] = chatId;
+    this.setState(s => ({ activeEngagementId:engId, activeChatByEngagement:map, editingName:true, nameDraft:c.name, ctxMenu:{ ...s.ctxMenu, open:false } }));
+  }
+  ctxSetColor(bg){
+    const { engId, chatId } = this.state.ctxMenu; const c = this.chatByIds(engId, chatId); if(c) c.color = bg;
+    this.setState(s => ({ ctxMenu:{ ...s.ctxMenu, open:false } }));
+  }
+  ctxDelete(){
+    const { engId, chatId } = this.state.ctxMenu; const e = this.engagementById(engId); if(!e) return;
+    e.chats = e.chats.filter(c => c.id !== chatId);
+    const map = {...this.state.activeChatByEngagement};
+    if(map[engId] === chatId){ if(e.chats[0]) map[engId] = e.chats[0].id; else delete map[engId]; }
+    this.setState(s => ({ activeChatByEngagement:map, ctxMenu:{ ...s.ctxMenu, open:false } }));
+  }
+
+  // new project (company)
+  onNewProject(){ this.setState({ newProjectOpen:true, newCompanyName:'' }); }
+  closeNewProject(){ this.setState({ newProjectOpen:false }); }
+  onNewCompanyName(e){ this.setState({ newCompanyName:e.target.value }); }
+  onNewCompanyKey(e){ if(e.key==='Enter'){ e.preventDefault(); this.createCompany(); } if(e.key==='Escape'){ this.closeNewProject(); } }
+  createCompany(){
+    const name = this.state.newCompanyName.trim(); if(!name) return;
+    const id = 'c' + (++this._uid);
+    const c = { id, name, updated:'just now', engagements:[] };
+    this.setState({ companies:[c, ...this.state.companies], newProjectOpen:false, view:'workspace', activeCompanyId:id, activeEngagementId:null, editingName:false });
+  }
+
+  // new engagement (within active company)
+  onNew(){ this.setState({ newOpen:true, selectedType:'aws', newName:'' }); }
+  closeNew(){ this.setState({ newOpen:false }); }
+  onNewName(e){ this.setState({ newName:e.target.value }); }
+  createProject(){
+    const S = this.state;
+    const e = this.makeEngagement(S.selectedType, S.newName.trim(), 'In Progress', 'just now');
+    const companies = S.companies.map(c => c.id===S.activeCompanyId ? {...c, updated:'just now', engagements:[e, ...c.engagements]} : c);
+    this.setState({ companies, activeEngagementId:e.id, newOpen:false, editingName:false });
+  }
+
+  // new chat (within an engagement)
+  onNewChat(engId){
+    const id = engId || this.state.activeEngagementId;
+    const eng = this.engagementById(id);
+    if(!eng) return;
+    this.setState({ activeEngagementId:eng.id, newChatOpen:true, newChatName:'', newChatFocus:eng.phases[0].id, newChatColor:'#0a0b0d' });
+  }
+  closeNewChat(){ this.setState({ newChatOpen:false }); }
+  onNewChatName(e){ this.setState({ newChatName:e.target.value }); }
+  onNewChatKey(e){ if(e.key==='Enter'){ e.preventDefault(); this.createChat(); } if(e.key==='Escape'){ this.closeNewChat(); } }
+  createChat(){
+    const S = this.state; const eng = this.activeEngagement(); if(!eng) return;
+    const chat = this.makeChat(eng, S.newChatFocus, S.newChatName.trim(), S.newChatColor);
+    chat.messages.forEach(m => { if(!m.id) m.id = this.uid(); });
+    eng.chats.unshift(chat); eng.updated = 'just now';
+    const map = {...S.activeChatByEngagement}; map[eng.id] = chat.id;
+    this.setState({ activeChatByEngagement:map, newChatOpen:false, editingName:false }, () => this.scrollChat());
+  }
+
+  // rename active chat
+  startRename(){ const c = this.activeChat(); if(c) this.setState({ editingName:true, nameDraft:c.name, colorMenuOpen:false }); }
+  onNameDraft(e){ this.setState({ nameDraft:e.target.value }); }
+  saveName(){
+    const S = this.state; if(!S.editingName) return;
+    const name = S.nameDraft.trim();
+    const c = this.activeChat();
+    if(c && name) c.name = name;
+    this.setState({ editingName:false });
+  }
+  onNameKey(e){ if(e.key==='Enter'){ e.preventDefault(); this.saveName(); } if(e.key==='Escape'){ this.setState({ editingName:false }); } }
+
+  onDraft(e){ this.setState({ draft:e.target.value }); }
+  onKey(e){ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); this.send(); } }
+
+  setChatRef(el){ this._chat = el; }
+  scrollChat(){ const el = this._chat; if(el) requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; }); }
+  componentDidMount(){
+    this.scrollChat();
+    this._onMove = (e)=>{ if(!this._resizing) return; const dy=this._startY-e.clientY; let h=this._startH+dy; const max=Math.max(200, window.innerHeight-120); h=Math.max(160, Math.min(max, h)); this.setState({terminalHeight:h}); };
+    this._onUp = ()=>{ if(this._resizing){ this._resizing=false; document.body.style.userSelect=''; } };
+    this._onKey = (e)=>{ if((e.ctrlKey||e.metaKey) && (e.key==='`'||e.key==='Backquote')){ e.preventDefault(); this.toggleTerminal(); } };
+    window.addEventListener('mousemove', this._onMove);
+    window.addEventListener('mouseup', this._onUp);
+    window.addEventListener('keydown', this._onKey);
+  }
+
+  send(){
+    const d = this.state.draft.trim(); if(!d) return;
+    const c = this.activeChat(); if(!c) return;
+    const eng = this.activeEngagement();
+    c.messages.push({ id:this.uid(), role:'user', kind:'text', content:d });
+    this.setState({ draft:'' }, () => this.scrollChat());
+    const tool = (c.tools.find(t => t.available) || {name:'shell'}).name;
+    const label = this.phaseLabel(eng, c.phaseId);
+    setTimeout(() => {
+      c.messages.push({ id:this.uid(), role:'assistant', kind:'text', content:'On it — running a targeted check for the ' + label + ' phase.' });
+      const card = { id:this.uid(), role:'assistant', kind:'tool', toolName:tool, command:tool + ' --scope in-scope --profile quick', state:'running', output:'' };
+      c.messages.push(card);
+      this.forceUpdate(); this.scrollChat();
+      setTimeout(() => {
+        card.state = 'success'; card.duration = '7.4s'; card.output = 'Completed 128 checks · 3 notable · 0 errors';
+        this.forceUpdate();
+        setTimeout(() => {
+          c.messages.push({ id:this.uid(), role:'assistant', kind:'text', content:'Done — the notable items are logged in the findings panel on the right. Want me to dig into any of them?' });
+          this.forceUpdate(); this.scrollChat();
+        }, 500);
+      }, 1500);
+    }, 450);
+  }
+
+  install(msgId){
+    const c = this.activeChat(); if(!c) return;
+    const m = c.messages.find(x => x.id===msgId); if(!m) return;
+    const name = m.toolName; const cmd = m.installCmd || ('install ' + name);
+    m.state = 'running'; m.command = cmd;
+    this.forceUpdate();
+    setTimeout(() => {
+      m.state = 'success'; m.duration = '11.2s'; m.output = 'Collecting ' + name + '...\nSuccessfully installed ' + name;
+      const tool = c.tools.find(t => t.name===name); if(tool) tool.available = true;
+      c.messages.push({ id:this.uid(), role:'assistant', kind:'text', content:name + ' installed and now available in this chat. I can re-run the analysis whenever you are ready.' });
+      this.forceUpdate(); this.scrollChat();
+    }, 1400);
+  }
+
+  renderVals(){
+    const S = this.state;
+    const isHome = S.view==='home';
+    const company = this.activeCompany();
+    const eng = this.activeEngagement();
+    const chat = this.activeChat();
+    const sevColor = { Critical:'#f0616d', High:'#f0954a', Medium:'#e6b23f', Low:'#7c828b' };
+    const statusColor = (st) => st==='Complete' ? '#46c47f' : '#e6a23c';
+
+    // HOME cards
+    const companies = S.companies.map(c => ({
+      id:c.id, name:c.name, monogram:this.monogram(c.name),
+      engCountLabel: c.engagements.length + (c.engagements.length===1 ? ' engagement' : ' engagements'),
+      updated:c.updated,
+      empty: c.engagements.length===0,
+      chips: c.engagements.slice(0,5).map(e => ({ short:this.types[e.type].short, color:statusColor(e.status) })),
+      onOpen: () => this.openCompany(c.id),
+    }));
+
+    // WORKSPACE sidebar — engagements with nested chats
+    const engagements = company ? company.engagements.map(e => {
+      const activeChatId = S.activeChatByEngagement[e.id];
+      const isActiveEng = e.id===S.activeEngagementId;
+      return {
+        id:e.id, name:e.name, typeLabel:this.types[e.type].short, updated:e.updated,
+        chatCountLabel: e.chats.length + (e.chats.length===1 ? ' chat' : ' chats'),
+        isActive:isActiveEng, statusColor:statusColor(e.status), noChats:e.chats.length===0,
+        onClick: () => this.selectEngagement(e.id),
+        onNewChat: () => this.onNewChat(e.id),
+        chats: e.chats.map(ch => {
+          const on = isActiveEng && ch.id===activeChatId;
+          return {
+            id:ch.id, name:ch.name, focusLabel:this.phaseLabel(e, ch.phaseId), dot:this.colorDot(ch.color), color:ch.color,
+            isActive:on, nameColor: on ? '#e7e9ec' : '#c4c8cf',
+            onClick: () => this.selectChat(ch.id),
+            onContext: (ev) => this.onChatContext(ev, e.id, ch.id),
+          };
+        }),
+      };
+    }) : [];
+    const companyEngCount = engagements.length + (engagements.length===1 ? ' engagement' : ' engagements');
+
+    // main-pane defaults
+    let ws = {
+      noEngagement:true, engNoChats:false, hasChat:false,
+      activeName:'', activeTypeLabel:'', chatName:'', chatFocusLabel:'', chatBg:'#0a0b0d', chatDot:'#3a3f47',
+      messages:[], findings:[], findingsCount:0, findingsEmpty:true, tools:[], scope:[],
+      composerPlaceholder:'Message the agent…', chatColorOptions:[],
+    };
+    if(eng){
+      ws.noEngagement = false;
+      ws.activeName = eng.name;
+      ws.activeTypeLabel = this.types[eng.type].label;
+      ws.scope = eng.scope;
+      if(!chat){
+        ws.engNoChats = true;
+      } else {
+        ws.hasChat = true;
+        const focus = this.phaseLabel(eng, chat.phaseId);
+        ws.chatName = chat.name;
+        ws.chatFocusLabel = focus;
+        ws.chatBg = chat.color;
+        ws.chatDot = this.colorDot(chat.color);
+        ws.composerPlaceholder = 'Message the ' + focus + ' agent…';
+        ws.messages = chat.messages.map(m => ({
+          id:m.id,
+          isUser: m.role==='user' && m.kind==='text',
+          isText: m.role==='assistant' && m.kind==='text',
+          isTool: m.kind==='tool',
+          text: m.content,
+          toolName:m.toolName, command:m.command, output:m.output, duration:m.duration,
+          reason:m.reason, installCmd:m.installCmd,
+          running: m.state==='running', success: m.state==='success', unavailable: m.state==='unavailable',
+          onInstall: () => this.install(m.id),
+        }));
+        ws.findings = chat.findings.map(f => ({ title:f.title, sev:f.sev, color:sevColor[f.sev], phase:f.phase, time:f.time }));
+        ws.findingsCount = ws.findings.length; ws.findingsEmpty = ws.findings.length===0;
+        ws.tools = chat.tools.map(t => ({ name:t.name, statusLabel: t.available ? 'available' : 'missing', color: t.available ? '#46c47f' : '#e6a23c' }));
+        ws.chatColorOptions = this.chatColors.map(co => ({ id:co.id, bg:co.bg, dot:co.dot, selected: co.bg===chat.color, onPick: () => this.setChatColor(co.bg) }));
+      }
+    }
+
+    const reviewTypes = Object.keys(this.types).map(k => ({
+      id:k, label:this.types[k].label,
+      desc: this.types[k].linear ? 'Recon → Exploit' : this.types[k].phases.map(x=>x.label).join(' · '),
+      selected: k===S.selectedType,
+      onSelect: () => this.setState({ selectedType:k }),
+    }));
+
+    const chatFocusOptions = eng ? eng.phases.map(ph => ({
+      id:ph.id, label:ph.label, selected: ph.id===S.newChatFocus, notSelected: ph.id!==S.newChatFocus,
+      onSelect: () => this.setState({ newChatFocus:ph.id }),
+    })) : [];
+    const selectedFocusLabel = eng ? this.phaseLabel(eng, S.newChatFocus) : '';
+
+    const ctxChat = S.ctxMenu.open ? this.chatByIds(S.ctxMenu.engId, S.ctxMenu.chatId) : null;
+    const ctxColorOptions = this.chatColors.map(co => ({
+      id:co.id, bg:co.bg, dot:co.dot, selected: ctxChat ? co.bg===ctxChat.color : false,
+      onPick: () => this.ctxSetColor(co.bg),
+    }));
+    const newChatColorOptions = this.chatColors.map(co => ({
+      id:co.id, bg:co.bg, dot:co.dot, selected: co.bg===S.newChatColor,
+      onPick: () => this.setState({ newChatColor:co.bg }),
+    }));
+
+    // terminal
+    const tShell = S.terminalShell;
+    const termLines = (S.terminalSessions[tShell] || []).map((l,i)=>({
+      key: tShell+'-'+i,
+      isCmd: l.kind==='cmd', isOut: l.kind==='out', isSys: l.kind==='sys',
+      prompt: l.prompt || '', promptColor: l.promptColor || '#5bd493', text: l.text || '',
+    }));
+    const termShellTabs = this.terminalShells.map(sh => ({
+      id:sh.id, label:sh.label, color:sh.color, active: sh.id===tShell,
+      tabBg: sh.id===tShell ? '#070809' : 'transparent',
+      tabColor: sh.id===tShell ? '#e7e9ec' : '#8b929c',
+      onSelect: ()=>this.setTerminalShell(sh.id),
+    }));
+    const termPromptColor = this.shellColor(tShell);
+
+    return {
+      isHome, isWorkspace:!isHome,
+
+      // home
+      companies, onNewProject: () => this.onNewProject(),
+      newProjectOpen:S.newProjectOpen, newCompanyName:S.newCompanyName,
+      onNewCompanyName:(e)=>this.onNewCompanyName(e), onNewCompanyKey:(e)=>this.onNewCompanyKey(e),
+      createCompany:()=>this.createCompany(), closeNewProject:()=>this.closeNewProject(),
+
+      // workspace shell
+      companyName: company ? company.name : '', companyMonogram: company ? this.monogram(company.name) : '',
+      companyEngCount, onHome:()=>this.goHome(), engagements, onNew:()=>this.onNew(),
+      onNewChat:()=>this.onNewChat(),
+
+      // chat
+      setChatRef:(el)=>this.setChatRef(el),
+      draft:S.draft, onDraft:(e)=>this.onDraft(e), onKey:(e)=>this.onKey(e), onSend:()=>this.send(),
+      rightOpen:S.rightOpen, rightPanelOpen: ws.hasChat && S.rightOpen, railOpen: ws.hasChat && !S.rightOpen,
+      toggleRight:()=>this.toggleRight(),
+
+      // terminal
+      terminalOpen:S.terminalOpen, toggleTerminal:()=>this.toggleTerminal(), closeTerminal:()=>this.closeTerminal(),
+      terminalHeightPx: S.terminalHeight + 'px',
+      termLines, termShellTabs, termPromptColor,
+      termInlinePrompt:this.inlinePrompt(tShell), termKaliHeader: tShell==='kali',
+      termPlaceholder: 'type a command — try `help`',
+      terminalInput:S.terminalInput, onTerminalInput:(e)=>this.onTerminalInput(e), onTerminalKey:(e)=>this.onTerminalKey(e),
+      setTermRef:(el)=>this.setTermRef(el), setTermInputRef:(el)=>this.setTermInputRef(el),
+      startResize:(e)=>this.startResize(e), focusTerm:()=>this.focusTerm(),
+
+      // colour menu
+      colorMenuOpen:S.colorMenuOpen, toggleColorMenu:()=>this.toggleColorMenu(), closeColorMenu:()=>this.closeColorMenu(),
+
+      // right-click context menu
+      ctxOpen:S.ctxMenu.open, ctxX:S.ctxMenu.x, ctxY:S.ctxMenu.y, ctxColorOptions,
+      closeCtx:()=>this.closeCtx(), onCtxBackdrop:(e)=>this.onCtxBackdrop(e),
+      ctxRename:()=>this.ctxRename(), ctxDelete:()=>this.ctxDelete(),
+
+      // rename chat
+      editingName:S.editingName, notEditing:!S.editingName, nameDraft:S.nameDraft,
+      onNameDraft:(e)=>this.onNameDraft(e), onNameKey:(e)=>this.onNameKey(e), saveName:()=>this.saveName(), startRename:()=>this.startRename(),
+
+      // new-engagement modal
+      newOpen:S.newOpen, reviewTypes, newName:S.newName, onNewName:(e)=>this.onNewName(e),
+      createProject:()=>this.createProject(), closeNew:()=>this.closeNew(), stop:(e)=>e.stopPropagation(),
+      selectedTypeLabel:this.types[S.selectedType].label,
+
+      // new-chat modal
+      newChatOpen:S.newChatOpen, newChatName:S.newChatName, onNewChatName:(e)=>this.onNewChatName(e), onNewChatKey:(e)=>this.onNewChatKey(e),
+      chatFocusOptions, selectedFocusLabel, newChatColorOptions,
+      createChat:()=>this.createChat(), closeNewChat:()=>this.closeNewChat(),
+
+      ...ws,
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+appId: com.redcell.app
+productName: Redcell
+directories: { output: release }
+files: [ "dist/**/*", "dist-electron/**/*" ]
+mac: { target: [ { target: dmg, arch: [arm64, x64] } ], category: public.app-category.developer-tools }
+win: { target: [ nsis ] }
