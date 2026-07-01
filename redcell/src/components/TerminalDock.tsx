@@ -102,7 +102,7 @@ export function TerminalDock({ state, dispatch }: { state: AppState; dispatch: D
             <button
               key={t.id}
               onClick={() => setTerminalShell(t.id)}
-              style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '6px 13px', borderRadius: 8, border: '1px solid transparent', background: active ? theme.term : 'transparent', color: active ? theme.text : theme.muted2, fontFamily: 'inherit', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '6px 13px', borderRadius: 8, border: '1px solid transparent', background: active ? theme.term : 'transparent', color: active ? theme.text : theme.muted, fontFamily: 'inherit', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
             >
               <span style={{ width: 7, height: 7, borderRadius: '50%', background: t.color }} />
               {t.label}

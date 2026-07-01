@@ -46,6 +46,7 @@ export function Sidebar({ state, dispatch }: { state: AppState; dispatch: Dispat
   const openNewChat = (engId: string) => dispatch({ t: 'openNewChat', engId })
   const onChatContext = (ev: MouseEvent, engId: string, chatId: string) => {
     ev.preventDefault()
+    if (ev.stopPropagation) ev.stopPropagation()
     const pad = 12, w = 198, h = 240
     const x = Math.min(ev.clientX, window.innerWidth - w - pad)
     const y = Math.min(ev.clientY, window.innerHeight - h - pad)
