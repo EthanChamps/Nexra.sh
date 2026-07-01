@@ -6,7 +6,6 @@ import { ChatPane } from '../components/ChatPane'
 import { ContextPanel } from '../components/ContextPanel'
 import { ContextMenu } from '../components/ContextMenu'
 import { NewEngagementModal } from '../components/modals/NewEngagementModal'
-import { NewChatModal } from '../components/modals/NewChatModal'
 import { TerminalDock } from '../components/TerminalDock'
 import type { AppState } from '../state/selectors'
 import { activeCompany, activeEngagement, activeChat } from '../state/selectors'
@@ -24,7 +23,7 @@ export function Workspace({ state, dispatch }: { state: AppState; dispatch: Disp
   const activeName = eng ? eng.name : ''
 
   const openNew = () => dispatch({ t: 'openNew' })
-  const openNewChat = () => dispatch({ t: 'openNewChat' })
+  const startNewChat = () => dispatch({ t: 'createChat' })
 
   return (
     <Fragment>
@@ -60,7 +59,7 @@ export function Workspace({ state, dispatch }: { state: AppState; dispatch: Disp
             <Hoverable
               as="button"
               type="button"
-              onClick={openNewChat}
+              onClick={startNewChat}
               hoverStyle={{ background: '#5866f0' }}
               baseStyle={{ display: 'flex', alignItems: 'center', gap: 7, height: 38, padding: '0 16px', borderRadius: 10, border: 'none', background: '#6f7bf0', color: '#fff', fontFamily: 'inherit', fontSize: 13, fontWeight: 500, cursor: 'pointer', transition: 'background .12s' }}
             >
@@ -75,7 +74,6 @@ export function Workspace({ state, dispatch }: { state: AppState; dispatch: Disp
       <ContextPanel state={state} dispatch={dispatch} />
 
       {state.ui.newOpen && <NewEngagementModal state={state} dispatch={dispatch} />}
-      {state.ui.newChatOpen && <NewChatModal state={state} dispatch={dispatch} />}
       {state.ui.ctxMenu.open && <ContextMenu state={state} dispatch={dispatch} />}
     </div>
 

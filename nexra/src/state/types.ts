@@ -11,7 +11,6 @@ export interface UIState {
   colorMenuOpen: boolean
   newProjectOpen: boolean; newCompanyName: string
   newOpen: boolean; selectedType: string; newName: string
-  newChatOpen: boolean; newChatName: string; newChatFocus: string; newChatColor: string
   ctxMenu: CtxMenuState
   terminalOpen: boolean; terminalShell: 'pwsh' | 'cmd' | 'kali'; terminalHeight: number; terminalInput: string
   settingsOpen: boolean
