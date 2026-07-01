@@ -54,7 +54,7 @@ export function NewEngagementModal({ state, dispatch }: { state: AppState; dispa
               onClick={() => dispatch({ t: 'setSelectedType', id: rt.id })}
               baseStyle={{
                 position: 'relative', textAlign: 'left', width: '100%', display: 'flex', gap: 12,
-                alignItems: 'flex-start', padding: '12px 14px', borderRadius: 10, border: `1px solid ${theme.border2}`,
+                alignItems: 'flex-start', padding: '12px 14px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.09)',
                 background: theme.card, cursor: 'pointer', color: 'inherit', fontFamily: 'inherit', transition: 'border-color .12s',
               }}
               hoverStyle={{ borderColor: 'rgba(255,255,255,0.16)' }}

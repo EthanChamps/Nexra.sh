@@ -70,7 +70,7 @@ export function NewChatModal({ state, dispatch }: { state: AppState; dispatch: D
                   type="button"
                   onClick={() => dispatch({ t: 'setNewChatFocus', id: fo.id })}
                   baseStyle={{
-                    padding: '7px 13px', borderRadius: 8, border: `1px solid ${theme.border2}`, background: 'transparent',
+                    padding: '7px 13px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.09)', background: 'transparent',
                     color: theme.muted2, fontFamily: 'inherit', fontSize: 12.5, fontWeight: 500, cursor: 'pointer', transition: 'all .12s',
                   }}
                   hoverStyle={{ background: 'rgba(255,255,255,0.04)', color: theme.textDim }}
