@@ -53,7 +53,6 @@ export function Workspace({ state, dispatch }: { state: AppState; dispatch: Disp
 
         {engNoChats && (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: 40, textAlign: 'center' }}>
-            <div style={{ width: 52, height: 52, borderRadius: 13, background: '#101216', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, color: '#565c65' }}>✦</div>
             <div>
               <div style={{ fontSize: 16, fontWeight: 600, color: '#e7e9ec' }}>No chats in {activeName} yet</div>
               <div style={{ marginTop: 6, fontSize: 13, color: '#8b929c', maxWidth: 380 }}>Spin up a focused chat — recon, a single host, or one config area. Each chat keeps its own context so the window never fills up.</div>
