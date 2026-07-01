@@ -3,7 +3,10 @@ const wait = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
 
 export async function runSend(req: AgentSendRequest, emit: (e: AgentEvent) => void): Promise<void> {
   await wait(450)
-  emit({ type: 'text', text: 'On it — running a targeted check for the ' + req.phaseLabel + ' phase.' })
+  // phaseLabel is empty on a brand-new chat's first message (focus not yet
+  // inferred); drop the phase clause rather than emit a doubled space.
+  const scope = req.phaseLabel ? 'for the ' + req.phaseLabel + ' phase' : 'across this engagement'
+  emit({ type: 'text', text: 'On it — running a targeted check ' + scope + '.' })
   emit({ type: 'tool_call', state: 'running', toolName: req.primaryTool, command: req.primaryTool + ' --scope in-scope --profile quick' })
   await wait(1500)
   emit({ type: 'tool_call', state: 'success', toolName: req.primaryTool, command: req.primaryTool + ' --scope in-scope --profile quick', duration: '7.4s', output: 'Completed 128 checks · 3 notable · 0 errors' })
