@@ -1,6 +1,7 @@
 import type { Dispatch } from 'react'
 import { Sidebar } from '../components/Sidebar'
 import { Hoverable } from '../components/Hoverable'
+import { ChatPane } from '../components/ChatPane'
 import type { AppState } from '../state/selectors'
 import { activeCompany, activeEngagement, activeChat } from '../state/selectors'
 import type { Action } from '../state/reducer'
@@ -62,10 +63,7 @@ export function Workspace({ state, dispatch }: { state: AppState; dispatch: Disp
           </div>
         )}
 
-        {hasChat && (
-          // TODO(Task 7): render <ChatPane state={state} dispatch={dispatch} /> here in place of this placeholder.
-          <div style={{ flex: 1 }} />
-        )}
+        {hasChat && <ChatPane state={state} dispatch={dispatch} />}
       </main>
 
       {/* TODO(Task 8): <ContextPanel state={state} dispatch={dispatch} /> renders here as a sibling of <main>, gated on state.ui.rightOpen. */}
