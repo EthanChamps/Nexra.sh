@@ -6,20 +6,26 @@ import { theme } from '../theme'
 import type { AppState } from '../state/selectors'
 import { activeCompany, activeEngagement, activeChat, phaseLabel } from '../state/selectors'
 import type { Action } from '../state/reducer'
+import type { Message } from '../../electron/services/store.types'
+import { sendMessage, installTool } from '../ipc'
 
 export function ChatPane({
   state,
   dispatch,
-  onSend = () => {},
 }: {
   state: AppState
   dispatch: Dispatch<Action>
-  onSend?: () => void
 }) {
   const company = activeCompany(state)
   const eng = activeEngagement(state)
   const chat = activeChat(state)
   if (!eng || !chat) return null
+
+  const onSend = () => {
+    sendMessage(dispatch, chat, eng, state.ui.draft)
+    dispatch({ t: 'setDraft', value: '' })
+  }
+  const onInstall = (msg: Message) => installTool(dispatch, chat, msg)
 
   const companyName = company ? company.name : ''
   const activeName = eng.name
@@ -87,7 +93,7 @@ export function ChatPane({
         </div>
       </header>
 
-      <MessageList chat={chat} onInstall={() => {}} />
+      <MessageList chat={chat} onInstall={onInstall} />
 
       <Composer draft={state.ui.draft} placeholder={composerPlaceholder} dispatch={dispatch} onSend={onSend} />
     </>

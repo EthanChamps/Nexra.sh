@@ -1,14 +1,19 @@
 import { useEffect, useRef } from 'react'
 import { theme } from '../theme'
-import type { Chat } from '../../electron/services/store.types'
+import type { Chat, Message } from '../../electron/services/store.types'
 import { ToolCard } from './ToolCard'
 
-export function MessageList({ chat, onInstall }: { chat: Chat; onInstall?: () => void }) {
+export function MessageList({ chat, onInstall }: { chat: Chat; onInstall?: (msg: Message) => void }) {
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const el = scrollRef.current
-    if (el) el.scrollTop = el.scrollHeight
+    // Read scroll layout after paint (matches the prototype's scrollChat), since messages
+    // (including streamed tool cards) can change the content height right before this runs.
+    const raf = requestAnimationFrame(() => {
+      const el = scrollRef.current
+      if (el) el.scrollTop = el.scrollHeight
+    })
+    return () => cancelAnimationFrame(raf)
   }, [chat.messages])
 
   return (
@@ -38,7 +43,7 @@ export function MessageList({ chat, onInstall }: { chat: Chat; onInstall?: () =>
                 toolName={m.toolName}
                 reason={m.reason}
                 installCmd={m.installCmd}
-                onInstall={onInstall}
+                onInstall={onInstall ? () => onInstall(m) : undefined}
               />
             )}
           </div>

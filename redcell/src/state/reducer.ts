@@ -1,7 +1,7 @@
 import type { AppState } from './selectors'
-import { activeCompany, activeEngagement, engagementById, chatByIds } from './selectors'
+import { activeCompany, activeEngagement, engagementById, chatByIds, chatByGlobalId } from './selectors'
 import type { UIState } from './types'
-import type { Chat, Message } from '../../electron/services/store.types'
+import type { Chat, Message, Finding } from '../../electron/services/store.types'
 import { chatColors } from '../../electron/services/seed'
 
 let _id = 1000
@@ -49,6 +49,11 @@ export type Action =
   | { t: 'toggleTerminal' } | { t: 'closeTerminal' } | { t: 'setTerminalShell'; id: UIState['terminalShell'] } | { t: 'setTerminalInput'; value: string } | { t: 'setTerminalHeight'; h: number }
   | { t: 'openSettings' } | { t: 'closeSettings' }
   | { t: 'replaceData'; data: AppState['data'] }
+  | { t: 'appendUserMessage'; chatId: string; text: string }
+  | { t: 'appendText'; chatId: string; text: string }
+  | { t: 'upsertToolCard'; chatId: string; card: Message }
+  | { t: 'appendFinding'; chatId: string; finding: Finding }
+  | { t: 'markToolAvailable'; chatId: string; toolName: string }
 
 const clone = (s: AppState): AppState => ({ data: { ...s.data, companies: s.data.companies.map(c => ({ ...c, engagements: c.engagements.map(e => ({ ...e, chats: e.chats.map(ch => ({ ...ch, messages: [...ch.messages], findings: [...ch.findings], tools: [...ch.tools] })) })) })) }, ui: { ...s.ui, activeChatByEngagement: { ...s.ui.activeChatByEngagement }, ctxMenu: { ...s.ui.ctxMenu } } })
 
@@ -125,6 +130,34 @@ export function reducer(state: AppState, a: Action): AppState {
     case 'closeSettings': U.settingsOpen = false; return s
     case 'replaceData': case 'hydrate': s.data = a.data; return s
     case 'seedActiveMap': U.activeChatByEngagement = a.map; return s
+    case 'appendUserMessage': {
+      const c = chatByGlobalId(s, a.chatId); if (!c) return state
+      c.messages.push({ id: nextId('m'), role: 'user', kind: 'text', content: a.text })
+      return s
+    }
+    case 'appendText': {
+      const c = chatByGlobalId(s, a.chatId); if (!c) return state
+      c.messages.push({ id: nextId('m'), role: 'assistant', kind: 'text', content: a.text })
+      return s
+    }
+    case 'upsertToolCard': {
+      const c = chatByGlobalId(s, a.chatId); if (!c) return state
+      const idx = c.messages.findIndex(m => m.id === a.card.id)
+      if (idx >= 0) c.messages[idx] = a.card
+      else c.messages.push(a.card)
+      return s
+    }
+    case 'appendFinding': {
+      const c = chatByGlobalId(s, a.chatId); if (!c) return state
+      c.findings.push(a.finding)
+      return s
+    }
+    case 'markToolAvailable': {
+      const c = chatByGlobalId(s, a.chatId); if (!c) return state
+      const tool = c.tools.find(t => t.name === a.toolName)
+      if (tool) tool.available = true
+      return s
+    }
     default: return state
   }
 }

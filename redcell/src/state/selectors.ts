@@ -22,6 +22,17 @@ export const chatByIds = (s: AppState, engId: string, chatId: string): Chat | nu
   const e = engagementById(s, engId); if (!e) return null
   return e.chats.find(c => c.id === chatId) || null
 }
+// Scans every company/engagement/chat — needed because agent events only carry a chatId,
+// not the active company/engagement context (the active-chat helpers above aren't enough).
+export const chatByGlobalId = (s: AppState, chatId: string): Chat | null => {
+  for (const c of s.data.companies) {
+    for (const e of c.engagements) {
+      const ch = e.chats.find(x => x.id === chatId)
+      if (ch) return ch
+    }
+  }
+  return null
+}
 
 export const monogram = (name: string): string => {
   const w = (name || '').trim().split(/\s+/).filter(Boolean)
