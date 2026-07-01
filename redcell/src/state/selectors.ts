@@ -1,5 +1,6 @@
 import type { Snapshot, Company, Engagement, Chat, Severity } from '../../electron/services/store.types'
 import type { UIState } from './types'
+import { chatColors } from '../../electron/services/seed'
 export interface AppState { data: Snapshot; ui: UIState }
 
 export const activeCompany = (s: AppState): Company | null =>
@@ -32,3 +33,4 @@ export const phaseLabel = (eng: Engagement | null, id: string): string =>
 export const statusColor = (st: string): string => (st === 'Complete' ? '#46c47f' : '#e6a23c')
 export const sevColor = (sev: Severity): string =>
   ({ Critical: '#f0616d', High: '#f0954a', Medium: '#e6b23f', Low: '#7c828b' } as const)[sev]
+export const colorDot = (bg: string): string => chatColors.find(c => c.bg === bg)?.dot ?? chatColors[0].dot
