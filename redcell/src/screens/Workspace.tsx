@@ -2,6 +2,7 @@ import type { Dispatch } from 'react'
 import { Sidebar } from '../components/Sidebar'
 import { Hoverable } from '../components/Hoverable'
 import { ChatPane } from '../components/ChatPane'
+import { ContextPanel } from '../components/ContextPanel'
 import type { AppState } from '../state/selectors'
 import { activeCompany, activeEngagement, activeChat } from '../state/selectors'
 import type { Action } from '../state/reducer'
@@ -66,7 +67,7 @@ export function Workspace({ state, dispatch }: { state: AppState; dispatch: Disp
         {hasChat && <ChatPane state={state} dispatch={dispatch} />}
       </main>
 
-      {/* TODO(Task 8): <ContextPanel state={state} dispatch={dispatch} /> renders here as a sibling of <main>, gated on state.ui.rightOpen. */}
+      <ContextPanel state={state} dispatch={dispatch} />
 
       {/* TODO(Task 11): <TerminalDock state={state} dispatch={dispatch} /> renders here (position:fixed overlay), gated on state.ui.terminalOpen. */}
     </div>
