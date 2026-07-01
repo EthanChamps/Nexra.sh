@@ -130,7 +130,7 @@ export function buildTerminalSessions() {
   return {
     pwsh: [
       { kind: 'sys' as const, text: 'Windows PowerShell 7.4 · PSReadLine' },
-      { kind: 'sys' as const, text: 'Shared session — the RedCell agent runs its commands in this same shell. You can take over any time. Type `help` for demo commands.' },
+      { kind: 'sys' as const, text: 'Shared session — the Nexra agent runs its commands in this same shell. You can take over any time. Type `help` for demo commands.' },
     ],
     cmd: [
       { kind: 'sys' as const, text: 'Microsoft Windows [Version 10.0.22631.4317]' },

@@ -5,7 +5,7 @@ import { runShell, shellTabs, shellColor, shellPromptStored, inlinePrompt } from
 import { TerminalDock } from '../src/components/TerminalDock'
 
 beforeEach(() => {
-  ;(window as any).redcell = {
+  ;(window as any).nexra = {
     shell: {
       tabs: async () => shellTabs(),
       run: async (s: any, r: any) => runShell(s, r),

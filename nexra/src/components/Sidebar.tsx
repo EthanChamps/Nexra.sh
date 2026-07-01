@@ -1,7 +1,7 @@
 import type { Dispatch, MouseEvent } from 'react'
 import { Hoverable } from './Hoverable'
 import type { AppState } from '../state/selectors'
-import { activeCompany, monogram, phaseLabel, statusColor, colorDot } from '../state/selectors'
+import { activeCompany, phaseLabel, statusColor, colorDot } from '../state/selectors'
 import type { Action } from '../state/reducer'
 
 export function Sidebar({ state, dispatch }: { state: AppState; dispatch: Dispatch<Action> }) {
@@ -36,7 +36,6 @@ export function Sidebar({ state, dispatch }: { state: AppState; dispatch: Dispat
     : []
 
   const companyName = company ? company.name : ''
-  const companyMonogram = company ? monogram(company.name) : ''
   const companyEngCount = engagements.length + (engagements.length === 1 ? ' engagement' : ' engagements')
 
   const goHome = () => dispatch({ t: 'goHome' })
@@ -71,9 +70,6 @@ export function Sidebar({ state, dispatch }: { state: AppState; dispatch: Dispat
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '6px 16px 14px' }}>
-        <div style={{ flex: 'none', width: 34, height: 34, borderRadius: 9, background: '#181b21', border: '1px solid rgba(255,255,255,0.09)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 600, color: '#aab0f7' }}>
-          {companyMonogram}
-        </div>
         <div style={{ lineHeight: 1.15, minWidth: 0 }}>
           <div style={{ fontSize: 14, fontWeight: 600, color: '#e7e9ec', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{companyName}</div>
           <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10.5, color: '#656b74' }}>{companyEngCount}</div>

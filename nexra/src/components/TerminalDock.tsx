@@ -21,10 +21,10 @@ export function TerminalDock({ state, dispatch }: { state: AppState; dispatch: D
   const startY = useRef(0)
   const startH = useRef(state.ui.terminalHeight)
 
-  useEffect(() => { window.redcell.shell.tabs().then(setTabs) }, [])
+  useEffect(() => { window.nexra.shell.tabs().then(setTabs) }, [])
 
   useEffect(() => {
-    window.redcell.shell.prompt(shell).then(setPromptInfo)
+    window.nexra.shell.prompt(shell).then(setPromptInfo)
     requestAnimationFrame(() => { if (inputRef.current) inputRef.current.focus() })
   }, [shell])
 
@@ -67,9 +67,9 @@ export function TerminalDock({ state, dispatch }: { state: AppState; dispatch: D
 
   const runTerminal = async () => {
     const raw = (state.ui.terminalInput || '').trim()
-    const p = promptInfo || (await window.redcell.shell.prompt(shell))
+    const p = promptInfo || (await window.nexra.shell.prompt(shell))
     const cmdLine: ShellLine = { kind: 'cmd', prompt: p.stored, promptColor: p.color, text: raw }
-    const res = await window.redcell.shell.run(shell, raw)
+    const res = await window.nexra.shell.run(shell, raw)
     if (res.clear) {
       setSessions(s => ({ ...s, [shell]: [] }))
     } else {
