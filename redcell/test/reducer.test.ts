@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { reducer, initialUI } from '../src/state/reducer'
+import { reducer, initialUI, deriveTitle, inferFocus } from '../src/state/reducer'
 import { activeChat, activeEngagement, chatByGlobalId } from '../src/state/selectors'
 import { buildSnapshot } from '../electron/services/store.mock'
 
@@ -65,5 +65,48 @@ describe('reducer', () => {
     const victim = eng.chats[0].id
     s = reducer(s, { t: 'ctxDelete', engId: eng.id, chatId: victim })
     expect(activeEngagement(s)!.chats.find(c => c.id === victim)).toBeUndefined()
+  })
+  it('deriveTitle takes the first six words, capitalized', () => {
+    expect(deriveTitle('check conditional access policies in entra now')).toBe('Check conditional access policies in entra')
+  })
+  it('deriveTitle falls back to "New chat" for empty/punctuation input', () => {
+    expect(deriveTitle('   ')).toBe('New chat')
+    expect(deriveTitle('!!!')).toBe('New chat')
+  })
+  it('inferFocus matches a phase by its leading keyword, else first phase', () => {
+    const phases = [{ id: 'iam', label: 'IAM' }, { id: 'storage', label: 'Storage (S3)' }]
+    expect(inferFocus('audit storage buckets', phases)).toBe('storage')
+    expect(inferFocus('unrelated question', phases)).toBe('iam')
+  })
+  it('titles a provisional chat and infers focus from the first message', () => {
+    let s = reducer(boot(), { t: 'openCompany', id: 'c1' })
+    const engId = activeEngagement(s)!.id
+    s = reducer(s, { t: 'createChat', engId })
+    const chatId = activeChat(s)!.id
+    s = reducer(s, { t: 'appendUserMessage', chatId, text: 'review iam roles for privilege escalation' })
+    const chat = chatByGlobalId(s, chatId)!
+    expect(chat.name).toBe('Review iam roles for privilege escalation')
+    expect(chat.phaseId).toBe('iam')
+  })
+  it('does not retitle a chat the user already renamed', () => {
+    let s = reducer(boot(), { t: 'openCompany', id: 'c1' })
+    const engId = activeEngagement(s)!.id
+    s = reducer(s, { t: 'createChat', engId })
+    const chatId = activeChat(s)!.id
+    s = reducer(s, { t: 'startRename' })
+    s = reducer(s, { t: 'setNameDraft', value: 'My audit' })
+    s = reducer(s, { t: 'saveName' })
+    s = reducer(s, { t: 'appendUserMessage', chatId, text: 'look at storage buckets' })
+    expect(chatByGlobalId(s, chatId)!.name).toBe('My audit')
+  })
+  it('only titles on the first user message', () => {
+    let s = reducer(boot(), { t: 'openCompany', id: 'c1' })
+    const engId = activeEngagement(s)!.id
+    s = reducer(s, { t: 'createChat', engId })
+    const chatId = activeChat(s)!.id
+    s = reducer(s, { t: 'appendUserMessage', chatId, text: 'enumerate iam users' })
+    const first = chatByGlobalId(s, chatId)!.name
+    s = reducer(s, { t: 'appendUserMessage', chatId, text: 'now check storage encryption' })
+    expect(chatByGlobalId(s, chatId)!.name).toBe(first)
   })
 })

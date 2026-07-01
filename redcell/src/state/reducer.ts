@@ -1,11 +1,31 @@
 import type { AppState } from './selectors'
 import { activeCompany, activeEngagement, engagementById, chatByIds, chatByGlobalId } from './selectors'
 import type { UIState } from './types'
-import type { Chat, Message, Finding } from '../../electron/services/store.types'
+import type { Chat, Message, Finding, Phase } from '../../electron/services/store.types'
 import { chatColors } from '../../electron/services/seed'
 
 let _id = 1000
 const nextId = (p: string) => p + (++_id)
+
+// M1 stand-in for the M2 cheapest-model auto-title call: derive a short title
+// from the user's first question. Pure/deterministic (no clock, no randomness).
+export function deriveTitle(text: string): string {
+  const words = text.trim().split(/\s+/).filter(Boolean).slice(0, 6)
+  const cleaned = words.join(' ').replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9]+$/g, '').slice(0, 48).trim()
+  if (!cleaned) return 'New chat'
+  return cleaned.charAt(0).toUpperCase() + cleaned.slice(1)
+}
+
+// M1 stand-in for M2 context focus inference: pick the phase whose leading
+// keyword appears in the first message; fall back to the first phase.
+export function inferFocus(text: string, phases: Phase[]): string {
+  const lower = text.toLowerCase()
+  const match = phases.find(p => {
+    const key = p.label.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean)[0]
+    return key ? lower.includes(key) : false
+  })
+  return (match || phases[0])?.id ?? ''
+}
 
 export const initialUI: UIState = {
   view: 'home', activeCompanyId: null, activeEngagementId: null, activeChatByEngagement: {},
@@ -30,6 +50,13 @@ function makeChat(state: AppState, engId: string): Chat {
   const greeting: Message = { id: nextId('m'), role: 'assistant', kind: 'text',
     content: "I'm the agent for this " + cfg.label + ". Ask me to enumerate configuration, run automated checks, or log findings — this chat keeps its own context." }
   return { id: nextId('ch'), name: 'New chat', phaseId: '', color: '#0a0b0d', messages: [greeting], findings: [], tools: cfg.tools.map(t => ({ ...t })) }
+}
+
+function engagementForChat(state: AppState, chatId: string) {
+  for (const c of state.data.companies)
+    for (const e of c.engagements)
+      if (e.chats.some(ch => ch.id === chatId)) return e
+  return null
 }
 
 export type Action =
@@ -132,7 +159,15 @@ export function reducer(state: AppState, a: Action): AppState {
     case 'seedActiveMap': U.activeChatByEngagement = a.map; return s
     case 'appendUserMessage': {
       const c = chatByGlobalId(s, a.chatId); if (!c) return state
+      const firstUser = !c.messages.some(m => m.role === 'user')
       c.messages.push({ id: nextId('m'), role: 'user', kind: 'text', content: a.text })
+      // First question on a still-provisional chat → title + infer focus.
+      // Never overrides a chat the user already renamed.
+      if (firstUser && c.name === 'New chat') {
+        const eng = engagementForChat(s, a.chatId)
+        c.name = deriveTitle(a.text)
+        if (eng) c.phaseId = inferFocus(a.text, eng.phases)
+      }
       return s
     }
     case 'appendText': {
