@@ -35,6 +35,7 @@ function makeChat(state: AppState, engId: string, phaseId: string, name: string,
 
 export type Action =
   | { t: 'hydrate'; data: AppState['data'] }
+  | { t: 'seedActiveMap'; map: Record<string, string> }
   | { t: 'openCompany'; id: string } | { t: 'goHome' }
   | { t: 'selectEngagement'; id: string } | { t: 'selectChat'; id: string }
   | { t: 'toggleRight' }
@@ -123,6 +124,7 @@ export function reducer(state: AppState, a: Action): AppState {
     case 'openSettings': U.settingsOpen = true; return s
     case 'closeSettings': U.settingsOpen = false; return s
     case 'replaceData': case 'hydrate': s.data = a.data; return s
+    case 'seedActiveMap': U.activeChatByEngagement = a.map; return s
     default: return state
   }
 }
