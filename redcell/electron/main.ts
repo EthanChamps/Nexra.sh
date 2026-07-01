@@ -1,6 +1,7 @@
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, ipcMain } from 'electron'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
+import { buildSnapshot } from './services/store.mock'
 
 const __dirname2 = path.dirname(fileURLToPath(import.meta.url))
 
@@ -20,6 +21,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  ipcMain.handle('store:snapshot', () => buildSnapshot())
   createWindow()
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow() })
 })

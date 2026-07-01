@@ -1,3 +1,6 @@
-import { contextBridge } from 'electron'
-// Filled out in Task 3. Placeholder keeps window.redcell defined.
-contextBridge.exposeInMainWorld('redcell', {})
+import { contextBridge, ipcRenderer } from 'electron'
+
+contextBridge.exposeInMainWorld('redcell', {
+  store: { snapshot: () => ipcRenderer.invoke('store:snapshot') },
+  // agent + shell added in Tasks 11–12
+})
