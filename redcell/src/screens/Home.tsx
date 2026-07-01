@@ -18,6 +18,7 @@ export function Home({ state, dispatch }: { state: AppState; dispatch: Dispatch<
 
   const openCompany = (id: string) => dispatch({ t: 'openCompany', id })
   const openNewProject = () => dispatch({ t: 'openNewProject' })
+  const openSettings = () => dispatch({ t: 'openSettings' })
 
   return (
     <div style={{ height: '100vh', width: '100vw', overflowY: 'auto', background: theme.bg, display: 'flex', flexDirection: 'column' }}>
@@ -36,6 +37,21 @@ export function Home({ state, dispatch }: { state: AppState; dispatch: Dispatch<
             <div style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.14em', color: theme.text }}>REDCELL</div>
             <div style={{ fontSize: 10, color: theme.dim, letterSpacing: '0.04em' }}>Security Assistant</div>
           </div>
+          <div style={{ flex: 1 }} />
+          <Hoverable
+            as="button"
+            type="button"
+            onClick={openSettings}
+            title="Settings"
+            baseStyle={{
+              flex: 'none', width: 32, height: 32, borderRadius: 9, border: `1px solid ${theme.border2}`,
+              background: theme.card, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 15, color: theme.muted2, cursor: 'pointer', transition: 'all .12s',
+            }}
+            hoverStyle={{ color: theme.textDim, borderColor: 'rgba(255,255,255,0.16)', background: theme.card2 }}
+          >
+            ⚙
+          </Hoverable>
         </div>
       </header>
 

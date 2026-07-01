@@ -4,6 +4,7 @@ import type { AppState } from './state/selectors'
 import { getSnapshot } from './ipc'
 import { Home } from './screens/Home'
 import { Workspace } from './screens/Workspace'
+import { Settings } from './components/Settings'
 
 const empty: AppState = { data: { companies: [], types: {} as any }, ui: initialUI }
 
@@ -27,6 +28,10 @@ export default function App() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
-  if (state.ui.view === 'home') return <Home state={state} dispatch={dispatch} />
-  return <Workspace state={state} dispatch={dispatch} />
+  return (
+    <>
+      {state.ui.view === 'home' ? <Home state={state} dispatch={dispatch} /> : <Workspace state={state} dispatch={dispatch} />}
+      {state.ui.settingsOpen && <Settings state={state} dispatch={dispatch} />}
+    </>
+  )
 }
