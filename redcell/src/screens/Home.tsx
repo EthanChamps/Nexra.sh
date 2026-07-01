@@ -106,7 +106,6 @@ export function Home({ state, dispatch }: { state: AppState; dispatch: Dispatch<
                     {c.engCountLabel} · {c.updated}
                   </div>
                 </div>
-                <span style={{ flex: 'none', fontSize: 17, color: theme.dim2, lineHeight: 0 }}>›</span>
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, minHeight: 24 }}>
                 {c.chips.map((ch, i) => (
