@@ -20,7 +20,10 @@ function applyEvent(dispatch: Dispatch<Action>, chatId: string, runningIds: Map<
         break
       case 'tool_call': {
         if (e.state === 'running') {
-          const id = nextCardId()
+          // Reuse a pre-seeded id (e.g. installTool seeds the clicked card's own
+          // id) so the card is transformed in place instead of duplicated; when
+          // there is no seed (e.g. sendMessage's fresh, empty map) mint a new one.
+          const id = runningIds.get(e.toolName) || nextCardId()
           runningIds.set(e.toolName, id)
           dispatch({
             t: 'upsertToolCard', chatId,
@@ -58,7 +61,9 @@ export function sendMessage(dispatch: Dispatch<Action>, chat: Chat, eng: Engagem
 
 export function installTool(dispatch: Dispatch<Action>, chat: Chat, msg: Message): void {
   if (!msg.toolName) return
-  const runningIds = new Map<string, string>()
+  // Seed with the clicked card's own id so the install stream's running/success
+  // events replace THIS card in place instead of minting a new one alongside it.
+  const runningIds = new Map<string, string>([[msg.toolName, msg.id]])
   window.redcell.agent.install(
     { chatId: chat.id, toolName: msg.toolName, installCmd: msg.installCmd },
     e => {

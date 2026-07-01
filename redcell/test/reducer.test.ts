@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { reducer, initialUI } from '../src/state/reducer'
-import { activeChat, activeEngagement } from '../src/state/selectors'
+import { activeChat, activeEngagement, chatByGlobalId } from '../src/state/selectors'
 import { buildSnapshot } from '../electron/services/store.mock'
 
 const boot = () => ({ data: buildSnapshot(), ui: initialUI })
@@ -36,6 +36,29 @@ describe('reducer', () => {
     s = reducer(s, { t: 'setNameDraft', value: 'Renamed' })
     s = reducer(s, { t: 'saveName' })
     expect(activeChat(s)!.name).toBe('Renamed')
+  })
+  it('upsertToolCard replaces a card in place by id (no duplicate on install)', () => {
+    let s = reducer(boot(), { t: 'openCompany', id: 'c1' })
+    const chatId = activeEngagement(s)!.chats[0].id
+    const before = chatByGlobalId(s, chatId)!.messages.length
+
+    // Simulate clicking "Install" on an existing unavailable tool card: the
+    // running event reuses the clicked card's own id...
+    s = reducer(s, {
+      t: 'upsertToolCard', chatId,
+      card: { id: 'X', role: 'assistant', kind: 'tool', toolName: 'pmapper', command: 'install pmapper', state: 'running' },
+    })
+    // ...and the subsequent success event replaces that same id again.
+    s = reducer(s, {
+      t: 'upsertToolCard', chatId,
+      card: { id: 'X', role: 'assistant', kind: 'tool', toolName: 'pmapper', command: 'install pmapper', state: 'success', output: 'installed', duration: '1.1s' },
+    })
+
+    const chat = chatByGlobalId(s, chatId)!
+    const matches = chat.messages.filter(m => m.id === 'X')
+    expect(matches).toHaveLength(1)
+    expect(matches[0].state).toBe('success')
+    expect(chat.messages).toHaveLength(before + 1)
   })
   it('deletes a chat and reassigns the active one', () => {
     let s = reducer(boot(), { t: 'openCompany', id: 'c1' })
