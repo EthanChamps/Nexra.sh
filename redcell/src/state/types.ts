@@ -1,0 +1,18 @@
+export interface CtxMenuState { open: boolean; x: number; y: number; engId: string | null; chatId: string | null }
+
+export interface UIState {
+  view: 'home' | 'workspace'
+  activeCompanyId: string | null
+  activeEngagementId: string | null
+  activeChatByEngagement: Record<string, string>
+  draft: string
+  rightOpen: boolean
+  editingName: boolean; nameDraft: string
+  colorMenuOpen: boolean
+  newProjectOpen: boolean; newCompanyName: string
+  newOpen: boolean; selectedType: string; newName: string
+  newChatOpen: boolean; newChatName: string; newChatFocus: string; newChatColor: string
+  ctxMenu: CtxMenuState
+  terminalOpen: boolean; terminalShell: 'pwsh' | 'cmd' | 'kali'; terminalHeight: number; terminalInput: string
+  settingsOpen: boolean
+}
