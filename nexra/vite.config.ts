@@ -16,5 +16,8 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: './test/setup.ts',
+    environmentMatchGlobs: [
+      ['test/**/*.native.test.ts', 'node'],
+    ],
   },
 })
