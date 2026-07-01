@@ -1,4 +1,4 @@
-# Redcell
+# Nexra.sh
 
 A cross-platform (macOS + Windows) Electron desktop console for AI security engagements. This is the **M1 UI shell** — a fully functional UI prototype with mock backends, no real command execution, no live LLM integration, and no disk persistence.
 
@@ -18,7 +18,7 @@ npm run dist     # Build production installers (macOS dmg + Windows nsis)
 
 ## Architecture
 
-Redcell separates the UI from backend services via an **IPC boundary** — all React components communicate with Electron services through a `contextBridge` preload that exposes `window.redcell.*`. This design ensures real backends can be dropped in without UI changes.
+Nexra.sh separates the UI from backend services via an **IPC boundary** — all React components communicate with Electron services through a `contextBridge` preload that exposes `window.nexra.*`. This design ensures real backends can be dropped in without UI changes.
 
 ### Three Mock Services
 
@@ -40,16 +40,16 @@ All services live in `electron/services/` and are currently mocked:
 
 ### Service Interface Boundary
 
-React components **never import services directly**. All access goes through `window.redcell.*`:
+React components **never import services directly**. All access goes through `window.nexra.*`:
 
 ```typescript
 // Preload (electron/preload.ts) exposes services via contextBridge:
-window.redcell.store.snapshot()
-window.redcell.agent.send(request, onEvent)
-window.redcell.agent.install(request, onEvent)
-window.redcell.shell.tabs()
-window.redcell.shell.run(shellId, command)
-window.redcell.shell.prompt(shellId)
+window.nexra.store.snapshot()
+window.nexra.agent.send(request, onEvent)
+window.nexra.agent.install(request, onEvent)
+window.nexra.shell.tabs()
+window.nexra.shell.run(shellId, command)
+window.nexra.shell.prompt(shellId)
 ```
 
 Main process (`electron/main.ts`) wires up IPC handlers to invoke the mock services and stream responses back to the renderer.
@@ -59,7 +59,7 @@ Main process (`electron/main.ts`) wires up IPC handlers to invoke the mock servi
 - ✓ **Full UI shell:** Home, Workspace/Sidebar, ChatPane, Context panel, Terminal dock, Settings, Modals
 - ✓ **State management:** Redux-like reducer + selectors
 - ✓ **Test coverage:** 20 Vitest tests across components, services, and reducer
-- ✓ **Design fidelity:** Styled per `design-reference/Redcell.dc.html` (vendored prototype)
+- ✓ **Design fidelity:** Styled per `design-reference/Nexra.dc.html` (vendored prototype)
 - ✓ **Multi-OS:** Electron builder scaffolded for macOS (dmg, arm64 + x64) and Windows (nsis)
 
 ## M1 Non-Goals

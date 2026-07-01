@@ -1,4 +1,4 @@
-# Redcell
+# Nexra.sh
 
 Cross-platform (macOS + Windows) Electron desktop app: an AI-agent console
 for security consultants. Hierarchy: Project (client) → Engagement (5 fixed
@@ -9,11 +9,11 @@ context: `docs/superpowers/HANDOVER.md`.
 ## Status
 
 **M1 (UI shell) complete** and merged to `master`. Electron + React/Vite app
-in `redcell/`, mock backends only (no real execution, no live LLM, no
+in `nexra/`, mock backends only (no real execution, no live LLM, no
 persistence). 20/20 tests passing.
 
 ```bash
-cd redcell && npm install && npm run dev   # launch (needs a display)
+cd nexra && npm install && npm run dev   # launch (needs a display)
 npm test                                    # 20 tests
 npm run build                               # tsc + vite build
 ```
@@ -26,11 +26,11 @@ npm run build                               # tsc + vite build
 - Target execution model: **real, ungated** (no per-command approval) — not
   yet implemented, M1 is UI-only.
 - Service boundary: `electron/services/{store,agent,shell}.mock.ts`, exposed
-  via `contextBridge` as `window.redcell.*`. **No renderer component may
-  import a service directly** — always go through `window.redcell.*` so real
+  via `contextBridge` as `window.nexra.*`. **No renderer component may
+  import a service directly** — always go through `window.nexra.*` so real
   backends swap in without UI changes.
 - Styling source of truth: vendored prototype at
-  `redcell/design-reference/Redcell.dc.html` — match hex/px exactly when
+  `nexra/design-reference/Nexra.dc.html` — match hex/px exactly when
   porting any UI; do not snap rgba alphas to the nearest `theme.ts` token if
   it doesn't match exactly (recurring bug source in M1). This does not mean
   porting every decorative glyph — see icon usage below.
