@@ -3,6 +3,9 @@ import { Sidebar } from '../components/Sidebar'
 import { Hoverable } from '../components/Hoverable'
 import { ChatPane } from '../components/ChatPane'
 import { ContextPanel } from '../components/ContextPanel'
+import { ContextMenu } from '../components/ContextMenu'
+import { NewEngagementModal } from '../components/modals/NewEngagementModal'
+import { NewChatModal } from '../components/modals/NewChatModal'
 import type { AppState } from '../state/selectors'
 import { activeCompany, activeEngagement, activeChat } from '../state/selectors'
 import type { Action } from '../state/reducer'
@@ -68,6 +71,10 @@ export function Workspace({ state, dispatch }: { state: AppState; dispatch: Disp
       </main>
 
       <ContextPanel state={state} dispatch={dispatch} />
+
+      {state.ui.newOpen && <NewEngagementModal state={state} dispatch={dispatch} />}
+      {state.ui.newChatOpen && <NewChatModal state={state} dispatch={dispatch} />}
+      {state.ui.ctxMenu.open && <ContextMenu state={state} dispatch={dispatch} />}
 
       {/* TODO(Task 11): <TerminalDock state={state} dispatch={dispatch} /> renders here (position:fixed overlay), gated on state.ui.terminalOpen. */}
     </div>
