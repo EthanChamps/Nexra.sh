@@ -3,7 +3,7 @@ import { reducer, initialUI, initialActiveMap } from './state/reducer'
 import type { AppState } from './state/selectors'
 import { getSnapshot } from './ipc'
 import { Home } from './screens/Home'
-import { Workspace } from './screens/Workspace' // added in Task 7
+import { Workspace } from './screens/Workspace'
 
 const empty: AppState = { data: { companies: [], types: {} as any }, ui: initialUI }
 

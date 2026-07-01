@@ -71,7 +71,7 @@ export function Home({ state, dispatch }: { state: AppState; dispatch: Dispatch<
               onClick={() => openCompany(c.id)}
               baseStyle={{
                 textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 14, padding: '17px 17px 15px',
-                borderRadius: 13, border: `1px solid ${theme.border2}`, background: theme.card, cursor: 'pointer',
+                borderRadius: 13, border: '1px solid rgba(255,255,255,0.08)', background: theme.card, cursor: 'pointer',
                 color: 'inherit', fontFamily: 'inherit', transition: 'border-color .14s,background .14s',
               }}
               hoverStyle={{ borderColor: 'rgba(111,123,240,0.4)', background: theme.card2 }}
@@ -98,7 +98,7 @@ export function Home({ state, dispatch }: { state: AppState; dispatch: Dispatch<
                     key={i}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 6, padding: '3px 9px 3px 8px', borderRadius: 6,
-                      background: theme.input, border: `1px solid ${theme.border}`,
+                      background: theme.input, border: '1px solid rgba(255,255,255,0.06)',
                     }}
                   >
                     <span style={{ flex: 'none', width: 6, height: 6, borderRadius: '50%', background: ch.color }} />
