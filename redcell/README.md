@@ -1,0 +1,83 @@
+# Redcell
+
+A cross-platform (macOS + Windows) Electron desktop console for AI security engagements. This is the **M1 UI shell** — a fully functional UI prototype with mock backends, no real command execution, no live LLM integration, and no disk persistence.
+
+## Prerequisites
+
+- **Node 20+**
+
+## Quick Start
+
+```bash
+npm install
+npm run dev      # Launch Electron app in dev mode (requires display/GUI)
+npm test         # Run Vitest suite (20 tests)
+npm run build    # TypeScript typecheck + Vite build
+npm run dist     # Build production installers (macOS dmg + Windows nsis)
+```
+
+## Architecture
+
+Redcell separates the UI from backend services via an **IPC boundary** — all React components communicate with Electron services through a `contextBridge` preload that exposes `window.redcell.*`. This design ensures real backends can be dropped in without UI changes.
+
+### Three Mock Services
+
+All services live in `electron/services/` and are currently mocked:
+
+1. **StoreService** (`store.mock.ts`)
+   - In-memory seed data: companies, engagements, chats, findings
+   - Future: `better-sqlite3` for persistent local storage
+
+2. **AgentService** (`agent.mock.ts`)
+   - Scripted, streaming responses to user commands (`runSend`, `runInstall`)
+   - Simulates AI analysis and tool installation workflows
+   - Future: Vercel AI SDK + Claude for real agent execution
+
+3. **ShellService** (`shell.mock.ts`)
+   - Canned shell output for demo commands (whoami, nmap, nikto, etc.)
+   - Multi-shell support: bash (Kali), cmd, PowerShell
+   - Future: `node-pty` for real terminal spawning (PowerShell, cmd, WSL, bash)
+
+### Service Interface Boundary
+
+React components **never import services directly**. All access goes through `window.redcell.*`:
+
+```typescript
+// Preload (electron/preload.ts) exposes services via contextBridge:
+window.redcell.store.snapshot()
+window.redcell.agent.send(request, onEvent)
+window.redcell.agent.install(request, onEvent)
+window.redcell.shell.tabs()
+window.redcell.shell.run(shellId, command)
+window.redcell.shell.prompt(shellId)
+```
+
+Main process (`electron/main.ts`) wires up IPC handlers to invoke the mock services and stream responses back to the renderer.
+
+## What's Included
+
+- ✓ **Full UI shell:** Home, Workspace/Sidebar, ChatPane, Context panel, Terminal dock, Settings, Modals
+- ✓ **State management:** Redux-like reducer + selectors
+- ✓ **Test coverage:** 20 Vitest tests across components, services, and reducer
+- ✓ **Design fidelity:** Styled per `design-reference/Redcell.dc.html` (vendored prototype)
+- ✓ **Multi-OS:** Electron builder scaffolded for macOS (dmg, arm64 + x64) and Windows (nsis)
+
+## M1 Non-Goals
+
+The following are explicitly out of scope for this milestone:
+
+- ❌ Real command execution (shell commands execute locally, not mocked)
+- ❌ Live LLM/AI integration (agent responses are scripted)
+- ❌ Disk persistence beyond the session (in-memory only)
+- ❌ Real tool detection or installation
+- ❌ Findings extraction or reporting
+- ❌ Signed/notarized installers
+
+These features will be added when their respective backends are integrated.
+
+## Development Notes
+
+- **Dev mode** (`npm run dev`) runs Vite dev server and Electron in watch mode — requires a display/GUI
+- **Testing** uses Vitest with React Testing Library; run `npm test` or `npm run test:watch`
+- **Build output:** `dist/` (web bundle) + `dist-electron/` (preload + main compiled JS)
+- **Type safety:** Full TypeScript coverage; `npm run build` includes `tsc` typecheck
