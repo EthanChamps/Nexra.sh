@@ -34,11 +34,6 @@ export const chatByGlobalId = (s: AppState, chatId: string): Chat | null => {
   return null
 }
 
-export const monogram = (name: string): string => {
-  const w = (name || '').trim().split(/\s+/).filter(Boolean)
-  const str = ((w[0] || '')[0] || '') + ((w[1] || '')[0] || '')
-  return (str || (name || '').slice(0, 2)).toUpperCase()
-}
 export const phaseLabel = (eng: Engagement | null, id: string): string =>
   (eng?.phases.find(p => p.id === id) || { label: '' }).label
 export const statusColor = (st: string): string => (st === 'Complete' ? '#46c47f' : '#e6a23c')
