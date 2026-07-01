@@ -34,7 +34,7 @@ export function Home({ state, dispatch }: { state: AppState; dispatch: Dispatch<
             ◆
           </div>
           <div style={{ lineHeight: 1.1 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.14em', color: theme.text }}>REDCELL</div>
+            <div style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.14em', color: theme.text }}>NEXRA.SH</div>
             <div style={{ fontSize: 10, color: theme.dim, letterSpacing: '0.04em' }}>Security Assistant</div>
           </div>
           <div style={{ flex: 1 }} />

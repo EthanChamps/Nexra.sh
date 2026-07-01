@@ -1,5 +1,5 @@
-appId: com.redcell.app
-productName: Redcell
+appId: com.nexra.app
+productName: Nexra.sh
 directories: { output: release }
 files: [ "dist/**/*", "dist-electron/**/*" ]
 mac: { target: [ { target: dmg, arch: [arm64, x64] } ], category: public.app-category.developer-tools }

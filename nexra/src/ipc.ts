@@ -4,7 +4,7 @@ import type { AgentEvent } from '../electron/services/agent.types'
 import type { Action } from './state/reducer'
 import { phaseLabel } from './state/selectors'
 
-export const getSnapshot = (): Promise<Snapshot> => window.redcell.store.snapshot()
+export const getSnapshot = (): Promise<Snapshot> => window.nexra.store.snapshot()
 
 let _cid = 0
 const nextCardId = () => 'tc' + Date.now() + '-' + (++_cid)
@@ -53,7 +53,7 @@ export function sendMessage(dispatch: Dispatch<Action>, chat: Chat, eng: Engagem
   dispatch({ t: 'appendUserMessage', chatId: chat.id, text: trimmed })
   const primaryTool = chat.tools.find(t => t.available)?.name ?? 'shell'
   const runningIds = new Map<string, string>()
-  window.redcell.agent.send(
+  window.nexra.agent.send(
     { chatId: chat.id, engagementType: eng.type, phaseLabel: phaseLabel(eng, chat.phaseId), primaryTool, text: trimmed },
     applyEvent(dispatch, chat.id, runningIds),
   )
@@ -64,7 +64,7 @@ export function installTool(dispatch: Dispatch<Action>, chat: Chat, msg: Message
   // Seed with the clicked card's own id so the install stream's running/success
   // events replace THIS card in place instead of minting a new one alongside it.
   const runningIds = new Map<string, string>([[msg.toolName, msg.id]])
-  window.redcell.agent.install(
+  window.nexra.agent.install(
     { chatId: chat.id, toolName: msg.toolName, installCmd: msg.installCmd },
     e => {
       applyEvent(dispatch, chat.id, runningIds)(e)
