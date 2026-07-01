@@ -135,7 +135,7 @@ export function Sidebar({ state, dispatch }: { state: AppState; dispatch: Dispat
                     <span style={{ position: 'relative', zIndex: 1, flex: 'none', width: 7, height: 7, borderRadius: 2, background: ch.dot }} />
                     <span style={{ position: 'relative', zIndex: 1, flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
                       <span style={{ fontSize: 12, fontWeight: 500, color: ch.nameColor, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ch.name}</span>
-                      <span style={{ fontSize: 10, color: '#565c65' }}>{ch.focusLabel}</span>
+                      {ch.focusLabel && <span style={{ fontSize: 10, color: '#565c65' }}>{ch.focusLabel}</span>}
                     </span>
                   </Hoverable>
                 ))}

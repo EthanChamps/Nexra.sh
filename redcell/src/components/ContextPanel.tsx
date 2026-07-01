@@ -44,7 +44,7 @@ export function ContextPanel({ state, dispatch }: { state: AppState; dispatch: D
   return (
     <aside data-screen-label="Context panel" style={{ width: 322, flex: 'none', background: theme.panel, borderLeft: `1px solid ${theme.border}`, display: 'flex', flexDirection: 'column' }}>
       <div style={{ flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 16px 13px', borderBottom: `1px solid rgba(255,255,255,0.06)` }}>
-        <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.06em', color: theme.textDim }}>CONTEXT · {chatFocusLabel}</div>
+        <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.06em', color: theme.textDim }}>{chatFocusLabel ? 'CONTEXT · ' + chatFocusLabel : 'CONTEXT'}</div>
         <Hoverable
           as="button"
           type="button"
