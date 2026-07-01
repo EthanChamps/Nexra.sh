@@ -2,7 +2,7 @@ import type { Snapshot } from '../electron/services/store.types'
 import type { AgentEvent, AgentSendRequest, AgentInstallRequest } from '../electron/services/agent.types'
 import type { ShellId, ShellTab, ShellRunResult } from '../electron/services/shell.types'
 
-export interface RedcellApi {
+export interface NexraApi {
   store: { snapshot(): Promise<Snapshot> }
   agent: {
     send(req: AgentSendRequest, onEvent: (e: AgentEvent) => void): Promise<void>
@@ -10,4 +10,4 @@ export interface RedcellApi {
   }
   shell: { tabs(): Promise<ShellTab[]>; run(shell: ShellId, raw: string): Promise<ShellRunResult>; prompt(shell: ShellId): Promise<{ stored: string; inline: string; color: string }> }
 }
-declare global { interface Window { redcell: RedcellApi } }
+declare global { interface Window { nexra: NexraApi } }

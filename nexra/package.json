@@ -1,7 +1,7 @@
 {
-  "name": "redcell",
+  "name": "nexra",
   "version": "0.1.0",
-  "description": "Redcell — AI security engagement console",
+  "description": "Nexra.sh — AI security engagement console",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
