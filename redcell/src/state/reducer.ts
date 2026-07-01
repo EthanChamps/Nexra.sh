@@ -24,13 +24,12 @@ export function initialActiveMap(s: AppState): Record<string, string> {
   return map
 }
 
-function makeChat(state: AppState, engId: string, phaseId: string, name: string, color: string): Chat {
+function makeChat(state: AppState, engId: string): Chat {
   const eng = engagementById(state, engId)!
   const cfg = state.data.types[eng.type]
-  const ph = cfg.phases.find(p => p.id === phaseId) || cfg.phases[0]
   const greeting: Message = { id: nextId('m'), role: 'assistant', kind: 'text',
-    content: "I'm the " + ph.label + " agent for this " + cfg.label + ". Ask me to enumerate configuration, run automated checks, or log findings — this chat keeps its own context." }
-  return { id: nextId('ch'), name: name || ph.label, phaseId: ph.id, color: color || '#0a0b0d', messages: [greeting], findings: [], tools: cfg.tools.map(t => ({ ...t })) }
+    content: "I'm the agent for this " + cfg.label + ". Ask me to enumerate configuration, run automated checks, or log findings — this chat keeps its own context." }
+  return { id: nextId('ch'), name: 'New chat', phaseId: '', color: '#0a0b0d', messages: [greeting], findings: [], tools: cfg.tools.map(t => ({ ...t })) }
 }
 
 export type Action =
@@ -41,7 +40,7 @@ export type Action =
   | { t: 'toggleRight' }
   | { t: 'openNewProject' } | { t: 'closeNewProject' } | { t: 'setNewCompanyName'; value: string } | { t: 'createCompany' }
   | { t: 'openNew' } | { t: 'closeNew' } | { t: 'setSelectedType'; id: string } | { t: 'setNewName'; value: string } | { t: 'createProject' }
-  | { t: 'openNewChat'; engId?: string } | { t: 'closeNewChat' } | { t: 'setNewChatName'; value: string } | { t: 'setNewChatFocus'; id: string } | { t: 'setNewChatColor'; bg: string } | { t: 'createChat' }
+  | { t: 'openNewChat'; engId?: string } | { t: 'closeNewChat' } | { t: 'setNewChatName'; value: string } | { t: 'setNewChatFocus'; id: string } | { t: 'setNewChatColor'; bg: string } | { t: 'createChat'; engId?: string }
   | { t: 'startRename' } | { t: 'setNameDraft'; value: string } | { t: 'saveName' } | { t: 'cancelRename' }
   | { t: 'setChatColor'; bg: string }
   | { t: 'openCtx'; x: number; y: number; engId: string; chatId: string } | { t: 'closeCtx' } | { t: 'ctxRename' } | { t: 'ctxSetColor'; bg: string } | { t: 'ctxDelete'; engId: string; chatId: string }
@@ -105,10 +104,11 @@ export function reducer(state: AppState, a: Action): AppState {
     case 'setNewChatFocus': U.newChatFocus = a.id; return s
     case 'setNewChatColor': U.newChatColor = a.bg; return s
     case 'createChat': {
-      const eng = activeEngagement(s); if (!eng) return state
-      const chat = makeChat(s, eng.id, U.newChatFocus, U.newChatName.trim(), U.newChatColor)
+      const id = a.engId || U.activeEngagementId; const eng = id ? engagementById(s, id) : null; if (!eng) return state
+      U.activeEngagementId = eng.id
+      const chat = makeChat(s, eng.id)
       eng.chats = [chat, ...eng.chats]; eng.updated = 'just now'
-      U.activeChatByEngagement[eng.id] = chat.id; U.newChatOpen = false; U.editingName = false; return s
+      U.activeChatByEngagement[eng.id] = chat.id; U.editingName = false; return s
     }
     case 'startRename': { const c = chatByIds(s, U.activeEngagementId!, U.activeChatByEngagement[U.activeEngagementId!]); if (c) { U.editingName = true; U.nameDraft = c.name; U.colorMenuOpen = false } return s }
     case 'setNameDraft': U.nameDraft = a.value; return s

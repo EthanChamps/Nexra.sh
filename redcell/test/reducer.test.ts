@@ -19,15 +19,14 @@ describe('reducer', () => {
     expect(s.data.companies[0].name).toBe('Initech')
     expect(s.data.companies[0].engagements).toHaveLength(0)
   })
-  it('creates a chat, makes it active, seeds a greeting', () => {
+  it('creates a provisional chat, makes it active, seeds a greeting', () => {
     let s = reducer(boot(), { t: 'openCompany', id: 'c1' })
-    s = reducer(s, { t: 'selectEngagement', id: activeEngagement(s)!.id })
-    const engId = s.ui.activeEngagementId!
-    s = reducer(s, { t: 'openNewChat', engId })
-    s = reducer(s, { t: 'setNewChatFocus', id: 'iam' })
-    s = reducer(s, { t: 'createChat' })
+    const engId = activeEngagement(s)!.id
+    s = reducer(s, { t: 'createChat', engId })
     const chat = activeChat(s)!
-    expect(chat.phaseId).toBe('iam')
+    expect(chat.name).toBe('New chat')
+    expect(chat.phaseId).toBe('')
+    expect(chat.color).toBe('#0a0b0d')
     expect(chat.messages[0].role).toBe('assistant')
   })
   it('renames the active chat', () => {
