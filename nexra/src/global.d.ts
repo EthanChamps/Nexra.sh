@@ -1,6 +1,6 @@
 import type { Snapshot } from '../electron/services/store.types'
 import type { AgentEvent, AgentSendRequest, AgentInstallRequest } from '../electron/services/agent.types'
-import type { ShellId, ShellTab, ShellRunResult, ShellCreateResult } from '../electron/services/shell.types'
+import type { ShellId, ShellTab, ShellCreateResult } from '../electron/services/shell.types'
 
 export interface NexraApi {
   store: { snapshot(): Promise<Snapshot> }
@@ -10,8 +10,6 @@ export interface NexraApi {
   }
   shell: {
     tabs(): Promise<ShellTab[]>
-    run(shell: ShellId, raw: string): Promise<ShellRunResult>
-    prompt(shell: ShellId): Promise<{ stored: string; inline: string; color: string }>
     create(shell: ShellId, cols: number, rows: number): Promise<ShellCreateResult>
     write(sessionId: ShellId, data: string): Promise<void>
     resize(sessionId: ShellId, cols: number, rows: number): Promise<void>

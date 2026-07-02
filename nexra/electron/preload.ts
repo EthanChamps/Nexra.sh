@@ -13,8 +13,6 @@ contextBridge.exposeInMainWorld('nexra', {
   },
   shell: {
     tabs: () => ipcRenderer.invoke('shell:tabs'),
-    run: (shell: any, raw: any) => ipcRenderer.invoke('shell:run', { shell, raw }),
-    prompt: (shell: any) => ipcRenderer.invoke('shell:prompt', shell),
     create: (shell: any, cols: number, rows: number) => ipcRenderer.invoke('shell:create', { shell, cols, rows }),
     write: (sessionId: any, data: string) => ipcRenderer.invoke('shell:write', { sessionId, data }),
     resize: (sessionId: any, cols: number, rows: number) => ipcRenderer.invoke('shell:resize', { sessionId, cols, rows }),

@@ -32,7 +32,7 @@ export const initialUI: UIState = {
   draft: '', rightOpen: true, editingName: false, nameDraft: '', colorMenuOpen: false,
   newProjectOpen: false, newCompanyName: '', newOpen: false, selectedType: 'aws', newName: '',
   ctxMenu: { open: false, x: 0, y: 0, engId: null, chatId: null },
-  terminalOpen: false, terminalShell: 'pwsh', terminalHeight: 346, terminalInput: '',
+  terminalOpen: false, terminalShell: 'pwsh', terminalHeight: 346,
   settingsOpen: false,
 }
 
@@ -71,7 +71,7 @@ export type Action =
   | { t: 'setChatColor'; bg: string }
   | { t: 'openCtx'; x: number; y: number; engId: string; chatId: string } | { t: 'closeCtx' } | { t: 'ctxRename' } | { t: 'ctxSetColor'; bg: string } | { t: 'ctxDelete'; engId: string; chatId: string }
   | { t: 'setDraft'; value: string }
-  | { t: 'toggleTerminal' } | { t: 'closeTerminal' } | { t: 'setTerminalShell'; id: UIState['terminalShell'] } | { t: 'setTerminalInput'; value: string } | { t: 'setTerminalHeight'; h: number }
+  | { t: 'toggleTerminal' } | { t: 'closeTerminal' } | { t: 'setTerminalShell'; id: UIState['terminalShell'] } | { t: 'setTerminalHeight'; h: number }
   | { t: 'openSettings' } | { t: 'closeSettings' }
   | { t: 'replaceData'; data: AppState['data'] }
   | { t: 'appendUserMessage'; chatId: string; text: string }
@@ -142,7 +142,6 @@ export function reducer(state: AppState, a: Action): AppState {
     case 'toggleTerminal': U.terminalOpen = !U.terminalOpen; return s
     case 'closeTerminal': U.terminalOpen = false; return s
     case 'setTerminalShell': U.terminalShell = a.id; return s
-    case 'setTerminalInput': U.terminalInput = a.value; return s
     case 'setTerminalHeight': U.terminalHeight = a.h; return s
     case 'openSettings': U.settingsOpen = true; return s
     case 'closeSettings': U.settingsOpen = false; return s
