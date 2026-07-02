@@ -1,7 +1,8 @@
 import type { AppState } from './selectors'
 import { activeCompany, engagementById, chatByIds, chatByGlobalId } from './selectors'
 import type { UIState } from './types'
-import type { Chat, Message, Finding, Phase } from '../../electron/services/store.types'
+import type { Chat, Message, Finding, Phase, EngagementScope } from '../../electron/services/store.types'
+import type { AgentEvent } from '../../electron/services/agent.types'
 import { chatColors } from '../../electron/services/seed'
 
 let _id = 1000
@@ -90,6 +91,9 @@ export type Action =
   | { t: 'markToolAvailable'; chatId: string; toolName: string }
   | { t: 'appendTextDelta'; chatId: string; delta: string }
   | { t: 'appendError'; chatId: string; message: string }
+  | { t: 'appendSkillEvent'; chatId: string; skillEvent: AgentEvent }
+  | { t: 'fulfillSecretRequest'; chatId: string; secretId: string; values: Record<string, string> }
+  | { t: 'fulfillScopeRequest'; engagementId: string; scope: EngagementScope }
   | { t: 'setStreaming'; chatId: string; on: boolean }
 
 const clone = (s: AppState): AppState => ({ data: { ...s.data, companies: s.data.companies.map(c => ({ ...c, engagements: c.engagements.map(e => ({ ...e, chats: e.chats.map(ch => ({ ...ch, messages: [...ch.messages], findings: [...ch.findings], tools: [...ch.tools] })) })) })) }, ui: { ...s.ui, activeChatByEngagement: { ...s.ui.activeChatByEngagement }, ctxMenu: { ...s.ui.ctxMenu }, companyCtxMenu: { ...s.ui.companyCtxMenu }, streamingChats: { ...s.ui.streamingChats } } })
@@ -229,6 +233,33 @@ export function reducer(state: AppState, a: Action): AppState {
     case 'appendError': {
       const c = chatByGlobalId(s, a.chatId); if (!c) return state
       c.messages.push({ id: nextId('m'), role: 'assistant', kind: 'text', content: '⚠ ' + a.message })
+      return s
+    }
+    case 'appendSkillEvent': {
+      const c = chatByGlobalId(s, a.chatId); if (!c) return state
+      const e = a.skillEvent as any
+      if (e.type === 'skill') {
+        const existing = c.messages.find(m => m.kind === 'tool' && (m as any).id === e.id)
+        if (existing) {
+          Object.assign(existing, { state: e.state, output: e.chunk || (existing as any).output || '', reason: e.message })
+          return s
+        }
+        const card: Message = {
+          id: e.id, role: 'assistant', kind: 'tool',
+          toolName: e.skill, state: e.state as any,
+          output: e.chunk || '', reason: e.message
+        }
+        c.messages.push(card)
+      }
+      return s
+    }
+    case 'fulfillSecretRequest': {
+      // Actual fulfillment is IPC-driven; this just validates state exists
+      const c = chatByGlobalId(s, a.chatId); if (!c) return state
+      return s
+    }
+    case 'fulfillScopeRequest': {
+      // Actual fulfillment is IPC-driven; local state mirrors via snapshot
       return s
     }
     case 'setStreaming': {
