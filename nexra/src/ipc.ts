@@ -1,7 +1,7 @@
 import type { Dispatch } from 'react'
 import type { Snapshot, Chat, Engagement, Message } from '../electron/services/store.types'
 import type { AgentEvent } from '../electron/services/agent.types'
-import type { Action } from './state/reducer'
+import { deriveTitle, type Action } from './state/reducer'
 import { phaseLabel } from './state/selectors'
 
 export const getSnapshot = (): Promise<Snapshot> => window.nexra.store.snapshot()
@@ -61,6 +61,8 @@ export function sendMessage(dispatch: Dispatch<Action>, chat: Chat, eng: Engagem
   const history = chat.messages
     .filter(m => m.kind === 'text' && typeof m.content === 'string')
     .map(m => ({ role: m.role, content: m.content as string }))
+  const isFirstUserMessage = !chat.messages.some(m => m.role === 'user')
+  const isProvisional = chat.name === 'New chat'
   dispatch({ t: 'appendUserMessage', chatId: chat.id, text: trimmed })
   dispatch({ t: 'setStreaming', chatId: chat.id, on: true })
   const primaryTool = chat.tools.find(t => t.available)?.name ?? 'shell'
@@ -77,6 +79,14 @@ export function sendMessage(dispatch: Dispatch<Action>, chat: Chat, eng: Engagem
     dispatch({ t: 'appendError', chatId: chat.id, message: err instanceof Error ? err.message : 'Request failed to start' })
     dispatch({ t: 'setStreaming', chatId: chat.id, on: false })
   })
+  // Fire-and-forget: runs concurrently with the reply above, never blocks or
+  // delays it. Falls back to the deterministic heuristic on any failure (no
+  // key, network error, provider error) so the chat is never stuck untitled.
+  if (isFirstUserMessage && isProvisional) {
+    window.nexra.agent.title({ engagementType: eng.type, text: trimmed })
+      .then(title => dispatch({ t: 'setChatTitle', chatId: chat.id, title }))
+      .catch(() => dispatch({ t: 'setChatTitle', chatId: chat.id, title: deriveTitle(trimmed) }))
+  }
 }
 
 export function cancelStream(chatId: string): void {
