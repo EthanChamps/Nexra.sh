@@ -41,4 +41,47 @@ describe('Home project card menu', () => {
     expect(screen.getByText('Projects')).toBeInTheDocument()
     expect(screen.getAllByTestId('project-card').length).toBeGreaterThan(0)
   })
+  it('renames a project via the menu + inline input', () => {
+    render(<Harness />)
+    const card = screen.getAllByTestId('project-card')[0]
+    fireEvent.mouseEnter(card)
+    fireEvent.click(screen.getByTitle('Project actions'))
+    fireEvent.click(screen.getByText('Rename project'))
+
+    const input = screen.getByDisplayValue(/./) as HTMLInputElement
+    fireEvent.change(input, { target: { value: 'Acme Renamed' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+
+    expect(screen.getByText('Acme Renamed')).toBeInTheDocument()
+  })
+  it('cancels an inline rename on Escape, leaving the name unchanged', () => {
+    render(<Harness />)
+    const card = screen.getAllByTestId('project-card')[0]
+    const originalName = screen.getAllByTestId('project-name')[0].textContent
+    fireEvent.mouseEnter(card)
+    fireEvent.click(screen.getByTitle('Project actions'))
+    fireEvent.click(screen.getByText('Rename project'))
+
+    const input = screen.getByDisplayValue(/./) as HTMLInputElement
+    fireEvent.change(input, { target: { value: 'Should not stick' } })
+    fireEvent.keyDown(input, { key: 'Escape' })
+
+    expect(screen.queryByText('Should not stick')).not.toBeInTheDocument()
+    expect(screen.getByText(originalName!)).toBeInTheDocument()
+  })
+  it('does not navigate into the project when Enter is pressed to save an inline rename', () => {
+    render(<NavHarness />)
+    const card = screen.getAllByTestId('project-card')[0]
+    fireEvent.mouseEnter(card)
+    fireEvent.click(screen.getByTitle('Project actions'))
+    fireEvent.click(screen.getByText('Rename project'))
+
+    const input = screen.getByDisplayValue(/./) as HTMLInputElement
+    fireEvent.change(input, { target: { value: 'Acme Renamed' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+
+    expect(screen.getByText('Projects')).toBeInTheDocument()
+    expect(screen.getAllByTestId('project-card').length).toBeGreaterThan(0)
+    expect(screen.getByText('Acme Renamed')).toBeInTheDocument()
+  })
 })
