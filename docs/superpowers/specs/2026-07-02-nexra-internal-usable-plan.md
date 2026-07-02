@@ -54,6 +54,53 @@ the per-chat `agent:event:<chatId>` channel scheme, and the renderer translator
 `src/ipc.ts:applyEvent` can all stay — the mock already emits exactly the events
 the renderer consumes.
 
+## Competitive-requirements coverage
+
+This plan is checked requirement-by-requirement against
+`2026-07-02-competitive-requirements.md`. The bar that document sets is met for
+the AWS vertical as follows; every deferred item is deferred deliberately, not
+overlooked.
+
+| # | Requirement | v1 (AWS) | Where |
+|---|---|---|---|
+| 1 | Real multi-phase tool execution | Met | M3b — Prowler/ScoutSuite/PMapper across all four AWS phases, each actually executing before the phase is claimed |
+| 2 | Orchestration + persistent memory | Met (scoped) | Typed tool/skill layer (M3b) + phase-coverage tracker + external memory (M4). Attack-tree planning & multi-agent deferred — see below |
+| 3 | Validation before a finding | Met | M3c — evidence artifact required before a finding surfaces |
+| 4 | Scope enforcement + prompt-injection defense | Met | M3b — account/region allowlist enforced below the LLM by the typed-tool layer; tool output treated as untrusted data; cleanup registered before actions |
+| 5 | Tool depth per engagement type | Met for AWS | AWS pack wired end-to-end; other four types deferred (not claimed until real, per Req 8) |
+| 6 | Supervised autonomy | Met | M3b — phase checkpoints, mid-run interrupt, live dock mirror |
+| 7 | Findings → client report | Met | Phase 5 — report export |
+| 8 | Independently checkable claims | Met | Phase 6 — real run against a known AWS account before the vertical is called done |
+
+**Decisions taken (2026-07-02):**
+
+- **Typed tool/skill layer, not freeform shell, for the agent (Req 2a).** The
+  agent's execution path is a defined set of skills (`run_prowler`,
+  `run_scoutsuite`, `run_pmapper`, …) with typed arguments — still *ungated*
+  (no per-command approval prompt, consistent with the locked model). This is
+  what makes below-the-LLM scope enforcement (Req 4) tractable: an
+  account/region argument can be validated and denied at the tool boundary,
+  whereas an arbitrary shell command cannot. The operator keeps unrestricted
+  freeform shell in the dock; the *agent* does not.
+- **Attack-tree planning module + multi-agent orchestration deferred to the
+  pentest verticals (Req 2b).** AWS config review is coverage-driven (fixed
+  phases, fixed tools), so its planning analog is a lightweight **phase-coverage
+  tracker** (which checks/phases are done, what's outstanding) built on M4's
+  memory — not an attack-tree planner or an agent swarm. Those land with
+  internal/external pentest, where escalation and chaining actually need them.
+
+**Standing guardrail (competitive non-requirements).** Nexra makes no "zero
+false positives" or "fully autonomous across all phases" claims — the research
+shows both are untrue industry-wide and are a specific reputational risk. Every
+capability claim is tied to a real run (Req 8); the AWS vertical is the only one
+claimed for the first internal release.
+
+**AWS-specific nuance:** the AWS pack (Prowler/ScoutSuite) is read-oriented
+against the cloud control plane, so Req 4's cleanup/rollback is mostly about the
+*operator's* environment (killing runaway scans, disposing of temporary
+credentials), not mutating a target — another reason AWS is the safe first
+vertical.
+
 ## The critical path
 
 Ordered milestones. Each is one development branch built with the locked
@@ -93,10 +140,15 @@ Can begin as soon as M3a settles the message shape; overlaps M3b/M3c.
   IPC path** (mutations persist, not just the boot snapshot).
 - Load real data on boot; keep the seed for first-run/dev only.
 - Schema-migration test (old data loads into new schema).
-- **External per-chat memory** (competitive Req 2): a queryable structure for
+- **External per-chat memory** (competitive Req 2c): a queryable structure for
   "targets tried / dead ends / findings", retrievable across an engagement's
   chats (recon feeding exploitation) — designed as structure, not a longer
   transcript. Schema designed now even if fully populated during M3b.
+- **Phase-coverage tracker** (the config-review analog of competitive Req 2b's
+  planning module): a lightweight record of which phases/checks are done and
+  what's outstanding, built on the memory above. This is what a coverage-driven
+  engagement needs instead of an attack-tree planner — which, with multi-agent
+  orchestration, is deferred to the pentest verticals.
 
 *Done when:* engagements survive restart and a long phase doesn't degrade as
 its transcript grows.
@@ -105,8 +157,12 @@ its transcript grows.
 
 The agent drives real tools, ungated, with safety designed in from the start.
 
-- Define the **tool-calling contract**: agent tools that execute commands in the
-  exec layer and stream output back as `tool_call` events.
+- Define the **typed tool/skill layer** (competitive Req 2a): the agent's
+  execution path is a defined set of skills (`run_prowler`, `run_scoutsuite`,
+  `run_pmapper`, …) with typed arguments, each streaming output back as
+  `tool_call` events. Still ungated (no approval prompts); the operator keeps
+  freeform shell in the dock, the agent does not get it. The typed arguments are
+  exactly what the scope allowlist below validates.
 - Wire the **AWS tool pack** end-to-end across the four AWS phases (IAM,
   Storage/S3, Network/VPC, Logging): **Prowler, ScoutSuite, PMapper**, actually
   executing against an AWS account (credentials sourced from the keychain, not
@@ -193,6 +249,9 @@ being assumed:
   pentest) — after the AWS vertical proves the architecture. Pentest types carry
   a sharply higher safety bar (live-host exploitation, acute
   prompt-injection-from-target, scope-escape) and should not be first.
+- **Attack-tree/task-difficulty planning module and multi-agent orchestration**
+  (competitive Req 2b) — deferred to the pentest verticals; v1 config review
+  uses a single agent + the phase-coverage tracker (M4) instead.
 - Public code signing / Apple notarization / distributable installers.
 - Multi-user / shared engagement data / sync.
 - Any custom or fine-tuned model, and any benchmarked marketing claims
