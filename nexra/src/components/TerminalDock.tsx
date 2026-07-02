@@ -76,9 +76,18 @@ export function TerminalDock({ state, dispatch }: { state: AppState; dispatch: D
     window.nexra.shell.create(shell, term.cols, term.rows).then(({ sessionId, scrollback }) => {
       if (cancelled) return
       sessionIdRef.current = sessionId
-      writeRef.current = data => window.nexra.shell.write(sessionId, data)
+      // Stored scrollback can contain cursor-position-report queries the shell
+      // wrote (e.g. PSReadLine's `ESC[6n`). Replaying them into a fresh xterm
+      // makes it auto-answer via onData exactly as if the user typed the reply
+      // (xterm.js InputHandler.deviceStatus). Keep the pty write a no-op until
+      // this write is fully flushed so those synthetic replies don't get sent
+      // into the live, already-running shell and garble its prompt.
+      writeRef.current = () => {}
       term.reset()
-      term.write(scrollback)
+      term.write(scrollback, () => {
+        if (cancelled) return
+        writeRef.current = data => window.nexra.shell.write(sessionId, data)
+      })
       unsubscribe = window.nexra.shell.onData(sessionId, data => term.write(data))
     })
 
