@@ -12,12 +12,6 @@ export const chatColors = [
   { id: 'plum', bg: '#130a19', dot: '#a765d0' },
 ]
 
-export const terminalShells = [
-  { id: 'pwsh' as const, label: 'PowerShell', color: '#9aa2f5' },
-  { id: 'cmd' as const, label: 'Command Prompt', color: '#c9cdd4' },
-  { id: 'kali' as const, label: 'Kali · WSL', color: '#5bd493' },
-]
-
 export function buildTypes(): Record<ReviewTypeId, ReviewTypeConfig> {
   return {
     aws: { label: 'AWS Config Review', short: 'AWS', linear: false,
@@ -124,21 +118,4 @@ export function buildCompanies(): Company[] {
     { id: 'c2', name: 'Contoso Ltd', updated: '6h ago', engagements: [e3, e4] },
     { id: 'c3', name: 'Globex Systems', updated: '5d ago', engagements: [e5] },
   ]
-}
-
-export function buildTerminalSessions() {
-  return {
-    pwsh: [
-      { kind: 'sys' as const, text: 'Windows PowerShell 7.4 · PSReadLine' },
-      { kind: 'sys' as const, text: 'Shared session — the Nexra agent runs its commands in this same shell. You can take over any time. Type `help` for demo commands.' },
-    ],
-    cmd: [
-      { kind: 'sys' as const, text: 'Microsoft Windows [Version 10.0.22631.4317]' },
-      { kind: 'sys' as const, text: 'Shared session — agent + operator. Type `help` for demo commands.' },
-    ],
-    kali: [
-      { kind: 'sys' as const, text: 'Kali GNU/Linux (WSL2) · kernel 6.6.36' },
-      { kind: 'sys' as const, text: 'Shared session — agent + operator. Type `help` for demo commands.' },
-    ],
-  }
 }

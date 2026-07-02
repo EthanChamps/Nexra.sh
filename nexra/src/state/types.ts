@@ -14,6 +14,6 @@ export interface UIState {
   newProjectOpen: boolean; newCompanyName: string
   newOpen: boolean; selectedType: string; newName: string
   ctxMenu: CtxMenuState
-  terminalOpen: boolean; terminalShell: ShellId; terminalHeight: number; terminalInput: string
+  terminalOpen: boolean; terminalShell: ShellId; terminalHeight: number
   settingsOpen: boolean
 }
