@@ -1,5 +1,5 @@
 import type { CSSProperties, Dispatch } from 'react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Hoverable } from './Hoverable'
 import { theme } from '../theme'
 import type { AppState } from '../state/selectors'
@@ -41,12 +41,23 @@ export function Settings({ state: _state, dispatch }: { state: AppState; dispatc
   const [model, setModel] = useState<string>(PROVIDERS.anthropic.defaultModel)
   const [apiKeys, setApiKeys] = useState<Record<ProviderId, string>>({ anthropic: '', openai: '', google: '', ollama: '' })
   const [baseUrl, setBaseUrl] = useState('http://localhost:11434')
+  const [keySet, setKeySet] = useState(false)
+
+  useEffect(() => {
+    window.nexra.settings.get().then(s => {
+      setProvider(s.provider as ProviderId)
+      setModel(s.model)
+      setBaseUrl(s.baseUrl)
+      setKeySet(s.hasKey)
+    })
+  }, [])
 
   const close = () => dispatch({ t: 'closeSettings' })
 
   const selectProvider = (id: ProviderId) => {
     setProvider(id)
     setModel(PROVIDERS[id].defaultModel)
+    window.nexra.settings.set({ provider: id, model: PROVIDERS[id].defaultModel })
   }
 
   const setApiKey = (value: string) => setApiKeys(prev => ({ ...prev, [provider]: value }))
@@ -93,7 +104,7 @@ export function Settings({ state: _state, dispatch }: { state: AppState; dispatc
           <div style={labelStyle}>Model</div>
           <select
             value={model}
-            onChange={e => setModel(e.target.value)}
+            onChange={e => { setModel(e.target.value); window.nexra.settings.set({ model: e.target.value }) }}
             style={fieldStyle}
           >
             {cfg.models.map(m => (
@@ -109,6 +120,7 @@ export function Settings({ state: _state, dispatch }: { state: AppState; dispatc
               <input
                 value={baseUrl}
                 onChange={e => setBaseUrl(e.target.value)}
+                onBlur={e => window.nexra.settings.set({ baseUrl: e.target.value })}
                 placeholder="http://localhost:11434"
                 style={fieldStyle}
               />
@@ -120,7 +132,8 @@ export function Settings({ state: _state, dispatch }: { state: AppState; dispatc
                 type="password"
                 value={apiKeys[provider]}
                 onChange={e => setApiKey(e.target.value)}
-                placeholder="sk-..."
+                onBlur={e => { if (e.target.value) { window.nexra.settings.setKey(provider, e.target.value); setKeySet(true) } }}
+                placeholder={keySet ? '•••••••• (set — type to replace)' : 'sk-...'}
                 autoComplete="off"
                 style={fieldStyle}
               />
@@ -130,7 +143,7 @@ export function Settings({ state: _state, dispatch }: { state: AppState; dispatc
 
         <div style={{ padding: '4px 22px 18px' }}>
           <div style={{ fontSize: 11.5, lineHeight: 1.5, color: theme.dim2 }}>
-            Saved locally. Live model calls arrive in a later build.
+            Saved locally. API key stored in your OS keychain.
           </div>
         </div>
 
