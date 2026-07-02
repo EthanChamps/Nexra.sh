@@ -21,7 +21,7 @@ const PROVIDERS: Record<ProviderId, ProviderConfig> = {
   },
   openai: { label: 'OpenAI', models: ['gpt-5.1'], defaultModel: 'gpt-5.1' },
   google: { label: 'Google', models: ['gemini-3-pro'], defaultModel: 'gemini-3-pro' },
-  ollama: { label: 'Ollama', models: ['llama3.3'], defaultModel: 'llama3.3' },
+  ollama: { label: 'Ollama', models: [], defaultModel: 'llama3.3' },
 }
 
 const PROVIDER_ORDER: ProviderId[] = ['anthropic', 'openai', 'google', 'ollama']
@@ -102,15 +102,25 @@ export function Settings({ state: _state, dispatch }: { state: AppState; dispatc
 
         <div style={{ padding: '16px 22px 4px' }}>
           <div style={labelStyle}>Model</div>
-          <select
-            value={model}
-            onChange={e => { setModel(e.target.value); window.nexra.settings.set({ model: e.target.value }) }}
-            style={fieldStyle}
-          >
-            {cfg.models.map(m => (
-              <option key={m} value={m}>{m}</option>
-            ))}
-          </select>
+          {isOllama ? (
+            <input
+              value={model}
+              onChange={e => setModel(e.target.value)}
+              onBlur={e => { if (e.target.value) window.nexra.settings.set({ model: e.target.value }) }}
+              placeholder="gemma4:e4b"
+              style={fieldStyle}
+            />
+          ) : (
+            <select
+              value={model}
+              onChange={e => { setModel(e.target.value); window.nexra.settings.set({ model: e.target.value }) }}
+              style={fieldStyle}
+            >
+              {cfg.models.map(m => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+          )}
         </div>
 
         <div style={{ padding: '16px 22px 6px' }}>
