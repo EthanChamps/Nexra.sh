@@ -1,6 +1,7 @@
-import type { Dispatch } from 'react'
+import type { Dispatch, MouseEvent, KeyboardEvent } from 'react'
 import { Hoverable } from '../components/Hoverable'
 import { NewProjectModal } from '../components/modals/NewProjectModal'
+import { ProjectContextMenu } from '../components/ProjectContextMenu'
 import { theme } from '../theme'
 import type { AppState } from '../state/selectors'
 import { statusColor } from '../state/selectors'
@@ -19,6 +20,14 @@ export function Home({ state, dispatch }: { state: AppState; dispatch: Dispatch<
   const openCompany = (id: string) => dispatch({ t: 'openCompany', id })
   const openNewProject = () => dispatch({ t: 'openNewProject' })
   const openSettings = () => dispatch({ t: 'openSettings' })
+  const onCompanyContext = (ev: MouseEvent, companyId: string) => {
+    ev.preventDefault()
+    if (ev.stopPropagation) ev.stopPropagation()
+    const pad = 12, w = 198, h = 100
+    const x = Math.min(ev.clientX, window.innerWidth - w - pad)
+    const y = Math.min(ev.clientY, window.innerHeight - h - pad)
+    dispatch({ t: 'openCompanyCtx', x, y, companyId })
+  }
 
   return (
     <div style={{ height: '100vh', width: '100vw', overflowY: 'auto', background: theme.bg, display: 'flex', flexDirection: 'column' }}>
@@ -82,48 +91,76 @@ export function Home({ state, dispatch }: { state: AppState; dispatch: Dispatch<
           {companies.map(c => (
             <Hoverable
               key={c.id}
-              as="button"
-              type="button"
+              as="div"
+              role="button"
+              tabIndex={0}
+              data-testid="project-card"
               onClick={() => openCompany(c.id)}
+              onKeyDown={(e: KeyboardEvent) => {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openCompany(c.id) }
+              }}
+              onContextMenu={(ev: MouseEvent) => onCompanyContext(ev, c.id)}
               baseStyle={{
-                textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 14, padding: '17px 17px 15px',
+                position: 'relative', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 14, padding: '17px 17px 15px',
                 borderRadius: 13, border: '1px solid rgba(255,255,255,0.08)', background: theme.card, cursor: 'pointer',
                 color: 'inherit', fontFamily: 'inherit', transition: 'border-color .14s,background .14s',
               }}
               hoverStyle={{ borderColor: 'rgba(111,123,240,0.4)', background: theme.card2 }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 13 }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div
-                    style={{
-                      fontSize: 15.5, fontWeight: 600, color: theme.text, whiteSpace: 'nowrap',
-                      overflow: 'hidden', textOverflow: 'ellipsis',
-                    }}
-                  >
-                    {c.name}
+              {(hovered: boolean) => (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 13 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        data-testid="project-name"
+                        style={{
+                          fontSize: 15.5, fontWeight: 600, color: theme.text, whiteSpace: 'nowrap',
+                          overflow: 'hidden', textOverflow: 'ellipsis',
+                        }}
+                      >
+                        {c.name}
+                      </div>
+                      <div style={{ marginTop: 3, fontFamily: theme.mono, fontSize: 11, color: theme.dim }}>
+                        {c.engCountLabel} · {c.updated}
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ marginTop: 3, fontFamily: theme.mono, fontSize: 11, color: theme.dim }}>
-                    {c.engCountLabel} · {c.updated}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, minHeight: 24 }}>
+                    {c.chips.map((ch, i) => (
+                      <span
+                        key={i}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 6, padding: '3px 9px 3px 8px', borderRadius: 6,
+                          background: theme.input, border: '1px solid rgba(255,255,255,0.06)',
+                        }}
+                      >
+                        <span style={{ flex: 'none', width: 6, height: 6, borderRadius: '50%', background: ch.color }} />
+                        <span style={{ fontFamily: theme.mono, fontSize: 10.5, color: theme.muted2 }}>{ch.short}</span>
+                      </span>
+                    ))}
+                    {c.empty && (
+                      <span style={{ fontSize: 11.5, color: theme.dim2, alignSelf: 'center' }}>No engagements yet</span>
+                    )}
                   </div>
-                </div>
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, minHeight: 24 }}>
-                {c.chips.map((ch, i) => (
-                  <span
-                    key={i}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 6, padding: '3px 9px 3px 8px', borderRadius: 6,
-                      background: theme.input, border: '1px solid rgba(255,255,255,0.06)',
-                    }}
-                  >
-                    <span style={{ flex: 'none', width: 6, height: 6, borderRadius: '50%', background: ch.color }} />
-                    <span style={{ fontFamily: theme.mono, fontSize: 10.5, color: theme.muted2 }}>{ch.short}</span>
-                  </span>
-                ))}
-                {c.empty && (
-                  <span style={{ fontSize: 11.5, color: theme.dim2, alignSelf: 'center' }}>No engagements yet</span>
-                )}
-              </div>
+                  {hovered && (
+                    <Hoverable
+                      as="button"
+                      type="button"
+                      title="Project actions"
+                      onClick={(ev: MouseEvent) => { ev.stopPropagation(); onCompanyContext(ev, c.id) }}
+                      baseStyle={{
+                        position: 'absolute', top: 10, right: 10, width: 26, height: 26, borderRadius: 7,
+                        border: `1px solid ${theme.border2}`, background: theme.card2, display: 'flex',
+                        alignItems: 'center', justifyContent: 'center', color: theme.muted2, fontSize: 14,
+                        cursor: 'pointer', transition: 'all .12s', zIndex: 2,
+                      }}
+                      hoverStyle={{ color: theme.textDim, background: theme.card, borderColor: 'rgba(255,255,255,0.16)' }}
+                    >
+                      ⋮
+                    </Hoverable>
+                  )}
+                </>
+              )}
             </Hoverable>
           ))}
 
@@ -145,6 +182,7 @@ export function Home({ state, dispatch }: { state: AppState; dispatch: Dispatch<
       </div>
 
       {state.ui.newProjectOpen && <NewProjectModal state={state} dispatch={dispatch} />}
+      {state.ui.companyCtxMenu.open && <ProjectContextMenu state={state} dispatch={dispatch} />}
     </div>
   )
 }
