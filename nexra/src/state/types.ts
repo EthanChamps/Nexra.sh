@@ -1,3 +1,5 @@
+import type { ShellId } from '../../electron/services/shell.types'
+
 export interface CtxMenuState { open: boolean; x: number; y: number; engId: string | null; chatId: string | null }
 export interface CompanyCtxMenuState { open: boolean; x: number; y: number; companyId: string | null }
 
@@ -16,6 +18,6 @@ export interface UIState {
   renamingCompanyId: string | null; companyNameDraft: string
   companyCtxMenu: CompanyCtxMenuState
   confirmDeleteCompanyId: string | null
-  terminalOpen: boolean; terminalShell: 'pwsh' | 'cmd' | 'kali'; terminalHeight: number; terminalInput: string
+  terminalOpen: boolean; terminalShell: ShellId; terminalHeight: number
   settingsOpen: boolean
 }

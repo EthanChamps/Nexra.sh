@@ -1,5 +1,10 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
+const shellDataListeners = new Map<string, Set<(data: string) => void>>()
+ipcRenderer.on('shell:data', (_e, payload: { sessionId: string; data: string }) => {
+  shellDataListeners.get(payload.sessionId)?.forEach(cb => cb(payload.data))
+})
+
 contextBridge.exposeInMainWorld('nexra', {
   store: { snapshot: () => ipcRenderer.invoke('store:snapshot') },
   agent: {
@@ -8,7 +13,14 @@ contextBridge.exposeInMainWorld('nexra', {
   },
   shell: {
     tabs: () => ipcRenderer.invoke('shell:tabs'),
-    run: (shell: any, raw: any) => ipcRenderer.invoke('shell:run', { shell, raw }),
-    prompt: (shell: any) => ipcRenderer.invoke('shell:prompt', shell),
+    create: (shell: any, cols: number, rows: number) => ipcRenderer.invoke('shell:create', { shell, cols, rows }),
+    write: (sessionId: any, data: string) => ipcRenderer.invoke('shell:write', { sessionId, data }),
+    resize: (sessionId: any, cols: number, rows: number) => ipcRenderer.invoke('shell:resize', { sessionId, cols, rows }),
+    kill: (sessionId: any) => ipcRenderer.invoke('shell:kill', sessionId),
+    onData: (sessionId: string, cb: (data: string) => void) => {
+      if (!shellDataListeners.has(sessionId)) shellDataListeners.set(sessionId, new Set())
+      shellDataListeners.get(sessionId)!.add(cb)
+      return () => shellDataListeners.get(sessionId)?.delete(cb)
+    },
   },
 })

@@ -1,28 +1,28 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useState } from 'react'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { runShell, shellTabs, shellColor, shellPromptStored, inlinePrompt } from '../electron/services/shell.mock'
 import { TerminalDock } from '../src/components/TerminalDock'
 
-beforeEach(() => {
-  ;(window as any).nexra = {
-    shell: {
-      tabs: async () => shellTabs(),
-      run: async (s: any, r: any) => runShell(s, r),
-      prompt: async (s: any) => ({ stored: shellPromptStored(s), inline: inlinePrompt(s), color: shellColor(s) }),
-    },
-  }
-})
+const fakeTerm = {
+  cols: 80, rows: 24,
+  loadAddon: vi.fn(),
+  open: vi.fn(),
+  onData: vi.fn(),
+  write: vi.fn(),
+  reset: vi.fn(),
+  focus: vi.fn(),
+  dispose: vi.fn(),
+}
 
-// TerminalDock reads/writes its command buffer through state.ui.terminalInput and the
-// setTerminalInput dispatch action rather than local state, so the harness needs a tiny
-// reducer-backed wrapper to make typing actually round-trip into the rendered input.
+vi.mock('@xterm/xterm', () => ({ Terminal: vi.fn(() => fakeTerm) }))
+vi.mock('@xterm/addon-fit', () => ({ FitAddon: vi.fn(() => ({ fit: vi.fn() })) }))
+vi.mock('@xterm/xterm/css/xterm.css', () => ({}))
+
 function Harness() {
-  const [ui, setUi] = useState<any>({ terminalOpen: true, terminalShell: 'pwsh', terminalHeight: 346, terminalInput: '' })
+  const [ui, setUi] = useState<any>({ terminalOpen: true, terminalShell: 'pwsh', terminalHeight: 346 })
   const dispatch = (action: any) => {
     setUi((prev: any) => {
       switch (action.t) {
-        case 'setTerminalInput': return { ...prev, terminalInput: action.value }
         case 'setTerminalShell': return { ...prev, terminalShell: action.id }
         case 'setTerminalHeight': return { ...prev, terminalHeight: action.h }
         case 'closeTerminal': return { ...prev, terminalOpen: false }
@@ -33,26 +33,44 @@ function Harness() {
   return <TerminalDock state={{ ui } as any} dispatch={dispatch} />
 }
 
+beforeEach(() => {
+  vi.clearAllMocks()
+  ;(window as any).nexra = {
+    shell: {
+      tabs: vi.fn(async () => [
+        { id: 'pwsh', label: 'PowerShell', color: '#9aa2f5' },
+        { id: 'cmd', label: 'Command Prompt', color: '#c9cdd4' },
+      ]),
+      create: vi.fn(async (s: string) => ({ sessionId: s, scrollback: 'PS C:\\Users\\pentester> ' })),
+      write: vi.fn(async () => {}),
+      resize: vi.fn(async () => {}),
+      kill: vi.fn(async () => {}),
+      onData: vi.fn(() => () => {}),
+    },
+  }
+})
+
 describe('TerminalDock', () => {
-  it('runs a command through the real shell mock, then clears the buffer on `cls`', async () => {
+  it('creates a session for the active tab and replays its scrollback into xterm', async () => {
     render(<Harness />)
-    const input = await screen.findByPlaceholderText(/type a command/i)
+    await screen.findByText('PowerShell')
+    await waitFor(() => expect((window as any).nexra.shell.create).toHaveBeenCalledWith('pwsh', 80, 24))
+    await waitFor(() => expect(fakeTerm.write).toHaveBeenCalledWith('PS C:\\Users\\pentester> '))
+    expect((window as any).nexra.shell.onData).toHaveBeenCalledWith('pwsh', expect.any(Function))
+  })
 
-    fireEvent.change(input, { target: { value: 'whoami' } })
-    fireEvent.keyDown(input, { key: 'Enter' })
+  it('forwards keystrokes from xterm straight to the pty session', async () => {
+    render(<Harness />)
+    await waitFor(() => expect((window as any).nexra.shell.create).toHaveBeenCalled())
+    const onDataHandler = fakeTerm.onData.mock.calls[0][0]
+    onDataHandler('ls\r')
+    await waitFor(() => expect((window as any).nexra.shell.write).toHaveBeenCalledWith('pwsh', 'ls\r'))
+  })
 
-    // the literal whoami output, not just the inline prompt (which also contains
-    // "pentester" as part of "PS C:\Users\pentester>")
-    await screen.findByText('desktop-pt01\\pentester')
-    expect(screen.getByText('whoami')).toBeInTheDocument()
-    expect((input as HTMLInputElement).value).toBe('')
-
-    fireEvent.change(input, { target: { value: 'cls' } })
-    fireEvent.keyDown(input, { key: 'Enter' })
-
-    await waitFor(() => {
-      expect(screen.queryByText('desktop-pt01\\pentester')).not.toBeInTheDocument()
-      expect(screen.queryByText('whoami')).not.toBeInTheDocument()
-    })
+  it('switches tabs on click, attaching xterm to the newly selected shell', async () => {
+    render(<Harness />)
+    await waitFor(() => expect((window as any).nexra.shell.create).toHaveBeenCalledWith('pwsh', 80, 24))
+    fireEvent.click(screen.getByText('Command Prompt'))
+    await waitFor(() => expect((window as any).nexra.shell.create).toHaveBeenCalledWith('cmd', 80, 24))
   })
 })

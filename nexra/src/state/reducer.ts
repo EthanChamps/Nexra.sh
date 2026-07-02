@@ -1,5 +1,5 @@
 import type { AppState } from './selectors'
-import { activeCompany, activeEngagement, engagementById, chatByIds, chatByGlobalId } from './selectors'
+import { activeCompany, engagementById, chatByIds, chatByGlobalId } from './selectors'
 import type { UIState } from './types'
 import type { Chat, Message, Finding, Phase } from '../../electron/services/store.types'
 import { chatColors } from '../../electron/services/seed'
@@ -35,7 +35,7 @@ export const initialUI: UIState = {
   renamingCompanyId: null, companyNameDraft: '',
   companyCtxMenu: { open: false, x: 0, y: 0, companyId: null },
   confirmDeleteCompanyId: null,
-  terminalOpen: false, terminalShell: 'pwsh', terminalHeight: 346, terminalInput: '',
+  terminalOpen: false, terminalShell: 'pwsh', terminalHeight: 346,
   settingsOpen: false,
 }
 
@@ -77,7 +77,7 @@ export type Action =
   | { t: 'openCompanyCtx'; x: number; y: number; companyId: string } | { t: 'closeCompanyCtx' }
   | { t: 'requestDeleteCompany'; id: string } | { t: 'cancelDeleteCompany' } | { t: 'confirmDeleteCompany' }
   | { t: 'setDraft'; value: string }
-  | { t: 'toggleTerminal' } | { t: 'closeTerminal' } | { t: 'setTerminalShell'; id: UIState['terminalShell'] } | { t: 'setTerminalInput'; value: string } | { t: 'setTerminalHeight'; h: number }
+  | { t: 'toggleTerminal' } | { t: 'closeTerminal' } | { t: 'setTerminalShell'; id: UIState['terminalShell'] } | { t: 'setTerminalHeight'; h: number }
   | { t: 'openSettings' } | { t: 'closeSettings' }
   | { t: 'replaceData'; data: AppState['data'] }
   | { t: 'appendUserMessage'; chatId: string; text: string }
@@ -164,7 +164,6 @@ export function reducer(state: AppState, a: Action): AppState {
     case 'toggleTerminal': U.terminalOpen = !U.terminalOpen; return s
     case 'closeTerminal': U.terminalOpen = false; return s
     case 'setTerminalShell': U.terminalShell = a.id; return s
-    case 'setTerminalInput': U.terminalInput = a.value; return s
     case 'setTerminalHeight': U.terminalHeight = a.h; return s
     case 'openSettings': U.settingsOpen = true; return s
     case 'closeSettings': U.settingsOpen = false; return s
