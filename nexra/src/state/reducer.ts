@@ -1,5 +1,5 @@
 import type { AppState } from './selectors'
-import { activeCompany, activeEngagement, engagementById, chatByIds, chatByGlobalId } from './selectors'
+import { activeCompany, engagementById, chatByIds, chatByGlobalId } from './selectors'
 import type { UIState } from './types'
 import type { Chat, Message, Finding, Phase } from '../../electron/services/store.types'
 import { chatColors } from '../../electron/services/seed'
