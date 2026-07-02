@@ -53,8 +53,10 @@ describe('sendMessage', () => {
 })
 
 describe('cancelStream', () => {
-  it('calls agent.cancel', () => {
-    cancelStream('c1')
+  it('calls agent.cancel and immediately clears busy state, without waiting on the IPC round trip', () => {
+    const dispatched: any[] = []
+    cancelStream((a: any) => dispatched.push(a), 'c1')
     expect((window as any).nexra.agent.cancel).toHaveBeenCalledWith('c1')
+    expect(dispatched).toContainEqual({ t: 'setStreaming', chatId: 'c1', on: false })
   })
 })
