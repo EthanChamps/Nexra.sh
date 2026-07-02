@@ -32,6 +32,9 @@ export const initialUI: UIState = {
   draft: '', rightOpen: true, editingName: false, nameDraft: '', colorMenuOpen: false,
   newProjectOpen: false, newCompanyName: '', newOpen: false, selectedType: 'aws', newName: '',
   ctxMenu: { open: false, x: 0, y: 0, engId: null, chatId: null },
+  renamingCompanyId: null, companyNameDraft: '',
+  companyCtxMenu: { open: false, x: 0, y: 0, companyId: null },
+  confirmDeleteCompanyId: null,
   terminalOpen: false, terminalShell: 'pwsh', terminalHeight: 346,
   settingsOpen: false,
 }
@@ -70,6 +73,9 @@ export type Action =
   | { t: 'startRename' } | { t: 'setNameDraft'; value: string } | { t: 'saveName' } | { t: 'cancelRename' }
   | { t: 'setChatColor'; bg: string }
   | { t: 'openCtx'; x: number; y: number; engId: string; chatId: string } | { t: 'closeCtx' } | { t: 'ctxRename' } | { t: 'ctxSetColor'; bg: string } | { t: 'ctxDelete'; engId: string; chatId: string }
+  | { t: 'startRenameCompany'; id: string } | { t: 'setCompanyNameDraft'; value: string } | { t: 'saveCompanyName' } | { t: 'cancelRenameCompany' }
+  | { t: 'openCompanyCtx'; x: number; y: number; companyId: string } | { t: 'closeCompanyCtx' }
+  | { t: 'requestDeleteCompany'; id: string } | { t: 'cancelDeleteCompany' } | { t: 'confirmDeleteCompany' }
   | { t: 'setDraft'; value: string }
   | { t: 'toggleTerminal' } | { t: 'closeTerminal' } | { t: 'setTerminalShell'; id: UIState['terminalShell'] } | { t: 'setTerminalHeight'; h: number }
   | { t: 'openSettings' } | { t: 'closeSettings' }
@@ -80,7 +86,7 @@ export type Action =
   | { t: 'appendFinding'; chatId: string; finding: Finding }
   | { t: 'markToolAvailable'; chatId: string; toolName: string }
 
-const clone = (s: AppState): AppState => ({ data: { ...s.data, companies: s.data.companies.map(c => ({ ...c, engagements: c.engagements.map(e => ({ ...e, chats: e.chats.map(ch => ({ ...ch, messages: [...ch.messages], findings: [...ch.findings], tools: [...ch.tools] })) })) })) }, ui: { ...s.ui, activeChatByEngagement: { ...s.ui.activeChatByEngagement }, ctxMenu: { ...s.ui.ctxMenu } } })
+const clone = (s: AppState): AppState => ({ data: { ...s.data, companies: s.data.companies.map(c => ({ ...c, engagements: c.engagements.map(e => ({ ...e, chats: e.chats.map(ch => ({ ...ch, messages: [...ch.messages], findings: [...ch.findings], tools: [...ch.tools] })) })) })) }, ui: { ...s.ui, activeChatByEngagement: { ...s.ui.activeChatByEngagement }, ctxMenu: { ...s.ui.ctxMenu }, companyCtxMenu: { ...s.ui.companyCtxMenu } } })
 
 export function reducer(state: AppState, a: Action): AppState {
   const s = clone(state)
@@ -138,6 +144,22 @@ export function reducer(state: AppState, a: Action): AppState {
     case 'ctxRename': { const { engId, chatId } = U.ctxMenu; const c = chatByIds(s, engId!, chatId!); if (!c) return state; U.activeEngagementId = engId; U.activeChatByEngagement[engId!] = chatId!; U.editingName = true; U.nameDraft = c.name; U.ctxMenu = { ...U.ctxMenu, open: false }; return s }
     case 'ctxSetColor': { const { engId, chatId } = U.ctxMenu; const c = chatByIds(s, engId!, chatId!); if (c) c.color = a.bg; U.ctxMenu = { ...U.ctxMenu, open: false }; return s }
     case 'ctxDelete': { const e = engagementById(s, a.engId); if (!e) return state; e.chats = e.chats.filter(c => c.id !== a.chatId); if (U.activeChatByEngagement[a.engId] === a.chatId) { if (e.chats[0]) U.activeChatByEngagement[a.engId] = e.chats[0].id; else delete U.activeChatByEngagement[a.engId] } U.ctxMenu = { ...U.ctxMenu, open: false }; return s }
+    case 'startRenameCompany': { const c = s.data.companies.find(x => x.id === a.id); if (!c) return state; U.renamingCompanyId = a.id; U.companyNameDraft = c.name; U.companyCtxMenu = { ...U.companyCtxMenu, open: false }; return s }
+    case 'setCompanyNameDraft': U.companyNameDraft = a.value; return s
+    case 'saveCompanyName': { if (!U.renamingCompanyId) return state; const name = U.companyNameDraft.trim(); const c = s.data.companies.find(x => x.id === U.renamingCompanyId); if (c && name) c.name = name; U.renamingCompanyId = null; return s }
+    case 'cancelRenameCompany': U.renamingCompanyId = null; return s
+    case 'openCompanyCtx': U.companyCtxMenu = { open: true, x: a.x, y: a.y, companyId: a.companyId }; return s
+    case 'closeCompanyCtx': U.companyCtxMenu = { ...U.companyCtxMenu, open: false }; return s
+    case 'requestDeleteCompany': U.confirmDeleteCompanyId = a.id; U.companyCtxMenu = { ...U.companyCtxMenu, open: false }; return s
+    case 'cancelDeleteCompany': U.confirmDeleteCompanyId = null; return s
+    case 'confirmDeleteCompany': {
+      if (!U.confirmDeleteCompanyId) return state
+      const id = U.confirmDeleteCompanyId
+      s.data.companies = s.data.companies.filter(c => c.id !== id)
+      if (U.activeCompanyId === id) { U.activeCompanyId = null; U.activeEngagementId = null; U.view = 'home' }
+      U.confirmDeleteCompanyId = null
+      return s
+    }
     case 'setDraft': U.draft = a.value; return s
     case 'toggleTerminal': U.terminalOpen = !U.terminalOpen; return s
     case 'closeTerminal': U.terminalOpen = false; return s

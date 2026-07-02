@@ -66,6 +66,50 @@ describe('reducer', () => {
     s = reducer(s, { t: 'ctxDelete', engId: eng.id, chatId: victim })
     expect(activeEngagement(s)!.chats.find(c => c.id === victim)).toBeUndefined()
   })
+  it('renames a company', () => {
+    let s = reducer(boot(), { t: 'startRenameCompany', id: 'c1' })
+    expect(s.ui.renamingCompanyId).toBe('c1')
+    expect(s.ui.companyNameDraft).toBe(s.data.companies.find(c => c.id === 'c1')!.name)
+    s = reducer(s, { t: 'setCompanyNameDraft', value: 'Renamed Co' })
+    s = reducer(s, { t: 'saveCompanyName' })
+    expect(s.data.companies.find(c => c.id === 'c1')!.name).toBe('Renamed Co')
+    expect(s.ui.renamingCompanyId).toBeNull()
+  })
+  it('reverts to the previous name when saving an empty rename', () => {
+    let s = reducer(boot(), { t: 'startRenameCompany', id: 'c1' })
+    const original = s.data.companies.find(c => c.id === 'c1')!.name
+    s = reducer(s, { t: 'setCompanyNameDraft', value: '   ' })
+    s = reducer(s, { t: 'saveCompanyName' })
+    expect(s.data.companies.find(c => c.id === 'c1')!.name).toBe(original)
+  })
+  it('cancels a company rename without changing the name', () => {
+    let s = reducer(boot(), { t: 'startRenameCompany', id: 'c1' })
+    const original = s.data.companies.find(c => c.id === 'c1')!.name
+    s = reducer(s, { t: 'setCompanyNameDraft', value: 'Should not stick' })
+    s = reducer(s, { t: 'cancelRenameCompany' })
+    expect(s.data.companies.find(c => c.id === 'c1')!.name).toBe(original)
+    expect(s.ui.renamingCompanyId).toBeNull()
+  })
+  it('deletes a company and cascades its engagements', () => {
+    let s = reducer(boot(), { t: 'requestDeleteCompany', id: 'c1' })
+    expect(s.ui.confirmDeleteCompanyId).toBe('c1')
+    s = reducer(s, { t: 'confirmDeleteCompany' })
+    expect(s.data.companies.find(c => c.id === 'c1')).toBeUndefined()
+    expect(s.ui.confirmDeleteCompanyId).toBeNull()
+  })
+  it('cancels a company delete without removing it', () => {
+    let s = reducer(boot(), { t: 'requestDeleteCompany', id: 'c1' })
+    s = reducer(s, { t: 'cancelDeleteCompany' })
+    expect(s.data.companies.find(c => c.id === 'c1')).toBeDefined()
+    expect(s.ui.confirmDeleteCompanyId).toBeNull()
+  })
+  it('clears the active company/view when deleting the currently open company', () => {
+    let s = reducer(boot(), { t: 'openCompany', id: 'c1' })
+    s = reducer(s, { t: 'requestDeleteCompany', id: 'c1' })
+    s = reducer(s, { t: 'confirmDeleteCompany' })
+    expect(s.ui.activeCompanyId).toBeNull()
+    expect(s.ui.view).toBe('home')
+  })
   it('deriveTitle takes the first six words, capitalized', () => {
     expect(deriveTitle('check conditional access policies in entra now')).toBe('Check conditional access policies in entra')
   })
