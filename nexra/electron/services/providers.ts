@@ -14,11 +14,11 @@ export interface ProviderConfig {
 export function resolveModel(cfg: ProviderConfig): LanguageModel {
   if (cfg.provider === 'anthropic') {
     if (!cfg.apiKey) throw new Error('No API key set for Anthropic')
-    return createAnthropic({ apiKey: cfg.apiKey })(cfg.model) as unknown as LanguageModel
+    return createAnthropic({ apiKey: cfg.apiKey })(cfg.model)
   }
   if (cfg.provider === 'ollama') {
     const baseURL = (cfg.baseUrl ?? 'http://localhost:11434') + '/v1'
-    return createOpenAICompatible({ name: 'ollama', baseURL })(cfg.model) as unknown as LanguageModel
+    return createOpenAICompatible({ name: 'ollama', baseURL })(cfg.model)
   }
   throw new Error(`Provider "${cfg.provider}" is not wired in M3a`)
 }
