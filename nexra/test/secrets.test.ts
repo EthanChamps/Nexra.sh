@@ -24,4 +24,8 @@ describe('secrets', () => {
     state.available = false
     expect(() => encryptSecret('sk-x')).toThrow(/unavailable/i)
   })
+  it('decryptSecret throws when encryption is unavailable', () => {
+    state.available = false
+    expect(() => decryptSecret('anyblob')).toThrow(/unavailable/i)
+  })
 })
