@@ -19,9 +19,22 @@ contextBridge.exposeInMainWorld('nexra', {
     set: (partial: any) => ipcRenderer.invoke('settings:set', partial),
     setKey: (provider: string, plaintext: string) => ipcRenderer.invoke('settings:setKey', { provider, plaintext }),
   },
+  // Credential vault — list/create/delete deal in METADATA only; fill/tie send
+  // plaintext renderer→main once and it is never returned (mirrors setKey).
+  secrets: {
+    list: (companyId: string) => ipcRenderer.invoke('secrets:list', companyId),
+    create: (input: any) => ipcRenderer.invoke('secrets:create', input),
+    fill: (id: string, values: Record<string, string>) => ipcRenderer.invoke('secrets:fill', { id, values }),
+    tie: (id: string, aliasOf: string) => ipcRenderer.invoke('secrets:tie', { id, aliasOf }),
+    delete: (id: string) => ipcRenderer.invoke('secrets:delete', id),
+  },
+  scope: {
+    get: (engagementId: string) => ipcRenderer.invoke('scope:get', engagementId),
+    set: (engagementId: string, scope: any) => ipcRenderer.invoke('scope:set', { engagementId, scope }),
+  },
   shell: {
     tabs: () => ipcRenderer.invoke('shell:tabs'),
-    create: (shell: any, cols: number, rows: number) => ipcRenderer.invoke('shell:create', { shell, cols, rows }),
+    create: (shell: any, cols: number, rows: number, companyId?: string) => ipcRenderer.invoke('shell:create', { shell, cols, rows, companyId }),
     write: (sessionId: any, data: string) => ipcRenderer.invoke('shell:write', { sessionId, data }),
     resize: (sessionId: any, cols: number, rows: number) => ipcRenderer.invoke('shell:resize', { sessionId, cols, rows }),
     kill: (sessionId: any) => ipcRenderer.invoke('shell:kill', sessionId),
