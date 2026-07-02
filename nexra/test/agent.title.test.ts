@@ -46,4 +46,10 @@ describe('runTitle', () => {
     generateText.mockRejectedValue(new Error('401 unauthorized'))
     await expect(runTitle(req, cfg)).rejects.toThrow('401 unauthorized')
   })
+
+  it('rejects when the model returns nothing usable (e.g. a bare "hi")', async () => {
+    generateText.mockClear()
+    generateText.mockResolvedValue({ text: '   ""   ' })
+    await expect(runTitle(req, cfg)).rejects.toThrow()
+  })
 })
