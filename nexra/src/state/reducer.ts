@@ -7,8 +7,8 @@ import { chatColors } from '../../electron/services/seed'
 let _id = 1000
 const nextId = (p: string) => p + (++_id)
 
-// M1 stand-in for the M2 cheapest-model auto-title call: derive a short title
-// from the user's first question. Pure/deterministic (no clock, no randomness).
+// Fallback title when the live cheap-model call (see agent.title.ts) fails —
+// derives a short title from the user's first question. Pure/deterministic.
 export function deriveTitle(text: string): string {
   const words = text.trim().split(/\s+/).filter(Boolean).slice(0, 6)
   const cleaned = words.join(' ').replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9]+$/g, '').slice(0, 48).trim()
@@ -82,6 +82,7 @@ export type Action =
   | { t: 'openSettings' } | { t: 'closeSettings' }
   | { t: 'replaceData'; data: AppState['data'] }
   | { t: 'appendUserMessage'; chatId: string; text: string }
+  | { t: 'setChatTitle'; chatId: string; title: string }
   | { t: 'appendText'; chatId: string; text: string }
   | { t: 'upsertToolCard'; chatId: string; card: Message }
   | { t: 'appendFinding'; chatId: string; finding: Finding }
@@ -177,13 +178,18 @@ export function reducer(state: AppState, a: Action): AppState {
       const c = chatByGlobalId(s, a.chatId); if (!c) return state
       const firstUser = !c.messages.some(m => m.role === 'user')
       c.messages.push({ id: nextId('m'), role: 'user', kind: 'text', content: a.text })
-      // First question on a still-provisional chat → title + infer focus.
-      // Never overrides a chat the user already renamed.
+      // First question on a still-provisional chat → infer focus. The title
+      // itself arrives asynchronously via 'setChatTitle' once the live
+      // cheap-model call resolves (see ipc.ts sendMessage).
       if (firstUser && c.name === 'New chat') {
         const eng = engagementForChat(s, a.chatId)
-        c.name = deriveTitle(a.text)
         if (eng) c.phaseId = inferFocus(a.text, eng.phases)
       }
+      return s
+    }
+    case 'setChatTitle': {
+      const c = chatByGlobalId(s, a.chatId); if (!c) return state
+      if (c.name === 'New chat') c.name = a.title
       return s
     }
     case 'appendText': {
