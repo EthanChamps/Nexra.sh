@@ -3,6 +3,7 @@ import { theme } from '../theme'
 import type { Chat, Message } from '../../electron/services/store.types'
 import { ToolCard } from './ToolCard'
 import { MarkdownMessage } from './MarkdownMessage'
+import { TypingIndicator } from './TypingIndicator'
 
 export function MessageList({ chat, streaming, onInstall }: { chat: Chat; streaming: boolean; onInstall?: (msg: Message) => void }) {
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -15,7 +16,10 @@ export function MessageList({ chat, streaming, onInstall }: { chat: Chat; stream
       if (el) el.scrollTop = el.scrollHeight
     })
     return () => cancelAnimationFrame(raf)
-  }, [chat.messages])
+  }, [chat.messages, streaming])
+
+  const lastMessage = chat.messages[chat.messages.length - 1]
+  const showTyping = streaming && lastMessage?.role === 'user'
 
   return (
     <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '26px 20px 30px', background: theme.bg }}>
@@ -51,6 +55,7 @@ export function MessageList({ chat, streaming, onInstall }: { chat: Chat; stream
             )}
           </div>
         ))}
+        {showTyping && <TypingIndicator />}
       </div>
     </div>
   )
