@@ -63,7 +63,7 @@ describe('TerminalDock', () => {
     // Simulates xterm.js's real behavior: parsing a stored `ESC[6n` query from
     // scrollback triggers its own onData handler synchronously, before the
     // write() callback signals the replay is flushed.
-    fakeTerm.write.mockImplementation((data: string, cb?: () => void) => {
+    fakeTerm.write.mockImplementation((_data: string, cb?: () => void) => {
       const onDataHandler = fakeTerm.onData.mock.calls[0][0]
       onDataHandler('\x1b[24;1R')
       cb?.()
