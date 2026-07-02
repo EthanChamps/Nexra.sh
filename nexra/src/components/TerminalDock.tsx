@@ -66,6 +66,13 @@ export function TerminalDock({ state, dispatch }: { state: AppState; dispatch: D
     let unsubscribe: (() => void) | null = null
 
     fitAddon.fit()
+    // Small accepted race: there's a brief window between the main process
+    // snapshotting `scrollback` here and `onData` actually registering below,
+    // during which live output could be pushed to the session's buffer but
+    // arrive at a not-yet-subscribed listener. Nothing is lost from the
+    // session's buffer (a later reattach will show it) — it's only possibly
+    // missing from this view for a moment. Not fixed structurally; would need
+    // a larger atomic-handoff redesign not justified at this milestone's scope.
     window.nexra.shell.create(shell, term.cols, term.rows).then(({ sessionId, scrollback }) => {
       if (cancelled) return
       sessionIdRef.current = sessionId

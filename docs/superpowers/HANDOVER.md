@@ -148,7 +148,12 @@ automated integration tests exercise the same lifecycle claims
 programmatically (real spawn, real echo, real resize, real kill verified via
 `process.kill(pid, 0)`, `before-quit` wired to `killAllSessions()`), but a
 human should still walk through the manual checklist in the M2 design spec
-on both macOS and Windows before fully closing out this milestone.
+on both macOS and Windows before fully closing out this milestone. On macOS
+specifically, the manual check should include closing the app window itself
+(the red traffic-light button, not just the terminal dock) and reopening it
+via the dock icon, then confirming a previously-running session's live
+output still streams — this exercises the window/webContents-swap path that
+the automated suite can't cover (no `BrowserWindow` lifecycle test).
 
 ## How to run it
 
