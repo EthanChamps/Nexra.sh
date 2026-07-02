@@ -79,8 +79,12 @@ export function sendMessage(dispatch: Dispatch<Action>, chat: Chat, eng: Engagem
   })
 }
 
-export function cancelStream(chatId: string): void {
+// Clears busy state immediately instead of waiting on the abort/done IPC
+// round trip — Stop must free up the composer on click, not once the
+// in-flight request has finished unwinding on the main-process side.
+export function cancelStream(dispatch: Dispatch<Action>, chatId: string): void {
   window.nexra.agent.cancel(chatId)
+  dispatch({ t: 'setStreaming', chatId, on: false })
 }
 
 export function installTool(dispatch: Dispatch<Action>, chat: Chat, msg: Message): void {
