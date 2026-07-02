@@ -5,6 +5,7 @@ let db: Database.Database | null = null
 // Opens (creating if needed) the settings DB and ensures the schema exists.
 // Idempotent: safe to call again on an already-initialized path.
 export function initSettingsDb(dbPath: string): void {
+  if (db) db.close()
   db = new Database(dbPath)
   db.pragma('journal_mode = WAL')
   db.exec('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)')
