@@ -17,14 +17,15 @@ export function deriveTitle(text: string): string {
 }
 
 // M1 stand-in for M2 context focus inference: pick the phase whose leading
-// keyword appears in the first message; fall back to the first phase.
+// keyword appears in the first message. No match leaves the chat unfocused
+// (no chip shown) — the chat is free-form, not forced into a phase taxonomy.
 export function inferFocus(text: string, phases: Phase[]): string {
   const lower = text.toLowerCase()
   const match = phases.find(p => {
     const key = p.label.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean)[0]
     return key ? lower.includes(key) : false
   })
-  return (match || phases[0])?.id ?? ''
+  return match?.id ?? ''
 }
 
 export const initialUI: UIState = {

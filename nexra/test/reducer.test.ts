@@ -117,10 +117,11 @@ describe('reducer', () => {
     expect(deriveTitle('   ')).toBe('New chat')
     expect(deriveTitle('!!!')).toBe('New chat')
   })
-  it('inferFocus matches a phase by its leading keyword, else first phase', () => {
+  it('inferFocus matches a phase by its leading keyword, else stays unset', () => {
     const phases = [{ id: 'iam', label: 'IAM' }, { id: 'storage', label: 'Storage (S3)' }]
     expect(inferFocus('audit storage buckets', phases)).toBe('storage')
-    expect(inferFocus('unrelated question', phases)).toBe('iam')
+    expect(inferFocus('unrelated question', phases)).toBe('')
+    expect(inferFocus('conduct a CIS benchmark review against this aws organisation', phases)).toBe('')
   })
   it('titles a provisional chat and infers focus from the first message', () => {
     let s = reducer(boot(), { t: 'openCompany', id: 'c1' })
