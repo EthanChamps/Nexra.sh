@@ -8,7 +8,7 @@ export default defineConfig({
     react(),
     ...(process.env.VITEST ? [] : [
       electron([
-        { entry: 'electron/main.ts', vite: { build: { rollupOptions: { external: ['node-pty'] } } } },
+        { entry: 'electron/main.ts', vite: { build: { rollupOptions: { external: ['node-pty', 'better-sqlite3'] } } } },
         { entry: 'electron/preload.ts', onstart(o) { o.reload() } },
       ]),
       renderer(),

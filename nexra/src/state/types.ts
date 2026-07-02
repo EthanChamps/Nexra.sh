@@ -20,4 +20,5 @@ export interface UIState {
   confirmDeleteCompanyId: string | null
   terminalOpen: boolean; terminalShell: ShellId; terminalHeight: number
   settingsOpen: boolean
+  streamingChats: Record<string, true>
 }

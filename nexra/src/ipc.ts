@@ -18,6 +18,9 @@ function applyEvent(dispatch: Dispatch<Action>, chatId: string, runningIds: Map<
       case 'text':
         dispatch({ t: 'appendText', chatId, text: e.text })
         break
+      case 'text_delta':
+        dispatch({ t: 'appendTextDelta', chatId, delta: e.delta })
+        break
       case 'tool_call': {
         if (e.state === 'running') {
           // Reuse a pre-seeded id (e.g. installTool seeds the clicked card's own
@@ -41,7 +44,12 @@ function applyEvent(dispatch: Dispatch<Action>, chatId: string, runningIds: Map<
       case 'finding':
         dispatch({ t: 'appendFinding', chatId, finding: { title: e.title, sev: e.sev, phase: e.phase, time: e.time } })
         break
+      case 'error':
+        dispatch({ t: 'appendError', chatId, message: e.message })
+        dispatch({ t: 'setStreaming', chatId, on: false })
+        break
       case 'done':
+        dispatch({ t: 'setStreaming', chatId, on: false })
         break
     }
   }
@@ -50,13 +58,29 @@ function applyEvent(dispatch: Dispatch<Action>, chatId: string, runningIds: Map<
 export function sendMessage(dispatch: Dispatch<Action>, chat: Chat, eng: Engagement, text: string): void {
   const trimmed = text.trim()
   if (!trimmed) return
+  const history = chat.messages
+    .filter(m => m.kind === 'text' && typeof m.content === 'string')
+    .map(m => ({ role: m.role, content: m.content as string }))
   dispatch({ t: 'appendUserMessage', chatId: chat.id, text: trimmed })
+  dispatch({ t: 'setStreaming', chatId: chat.id, on: true })
   const primaryTool = chat.tools.find(t => t.available)?.name ?? 'shell'
   const runningIds = new Map<string, string>()
   window.nexra.agent.send(
-    { chatId: chat.id, engagementType: eng.type, phaseLabel: phaseLabel(eng, chat.phaseId), primaryTool, text: trimmed },
+    { chatId: chat.id, engagementType: eng.type, phaseLabel: phaseLabel(eng, chat.phaseId), primaryTool, text: trimmed, history },
     applyEvent(dispatch, chat.id, runningIds),
-  )
+  ).catch((err: unknown) => {
+    // Only fires when the IPC invoke promise genuinely rejects with no terminal
+    // error/done event delivered (e.g. an upstream main-process throw). On the
+    // normal path runSend emits error/done and the promise resolves, so this
+    // does not double-report. Without it a reject would leave the chat stuck
+    // streaming forever with a locked composer and no user recovery.
+    dispatch({ t: 'appendError', chatId: chat.id, message: err instanceof Error ? err.message : 'Request failed to start' })
+    dispatch({ t: 'setStreaming', chatId: chat.id, on: false })
+  })
+}
+
+export function cancelStream(chatId: string): void {
+  window.nexra.agent.cancel(chatId)
 }
 
 export function installTool(dispatch: Dispatch<Action>, chat: Chat, msg: Message): void {

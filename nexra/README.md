@@ -75,6 +75,25 @@ The following are explicitly out of scope for this milestone:
 
 These features will be added when their respective backends are integrated.
 
+## Native modules (better-sqlite3)
+
+`better-sqlite3` is a native module compiled against V8 headers, so its binary
+is ABI-specific (plain Node vs. Electron have different ABIs). We keep the
+plain-Node ABI as the install-time default and rebuild for Electron
+just-in-time at launch:
+
+- A fresh `npm install` leaves `better-sqlite3` at the **plain-Node ABI**, so
+  `npm test` (which runs under Vitest's Node, not Electron) works out of the box.
+- `npm run dev` and `npm run dist` run a `predev` / `predist` hook that rebuilds
+  `better-sqlite3` for **Electron's ABI** just-in-time, right before the app
+  runs or packages.
+- If you run `npm test` immediately after `npm run dev` (binary now at the
+  Electron ABI), run `npm rebuild better-sqlite3` first to flip it back to the
+  Node ABI.
+
+(`node-pty` ships an N-API prebuild, so it is ABI-stable across Node/Electron
+and needs no rebuild.)
+
 ## Development Notes
 
 - **Dev mode** (`npm run dev`) runs Vite dev server and Electron in watch mode — requires a display/GUI

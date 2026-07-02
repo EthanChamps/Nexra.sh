@@ -37,6 +37,7 @@ export const initialUI: UIState = {
   confirmDeleteCompanyId: null,
   terminalOpen: false, terminalShell: 'pwsh', terminalHeight: 346,
   settingsOpen: false,
+  streamingChats: {},
 }
 
 // Build the initial active-chat map from seed (first chat of each engagement).
@@ -85,8 +86,11 @@ export type Action =
   | { t: 'upsertToolCard'; chatId: string; card: Message }
   | { t: 'appendFinding'; chatId: string; finding: Finding }
   | { t: 'markToolAvailable'; chatId: string; toolName: string }
+  | { t: 'appendTextDelta'; chatId: string; delta: string }
+  | { t: 'appendError'; chatId: string; message: string }
+  | { t: 'setStreaming'; chatId: string; on: boolean }
 
-const clone = (s: AppState): AppState => ({ data: { ...s.data, companies: s.data.companies.map(c => ({ ...c, engagements: c.engagements.map(e => ({ ...e, chats: e.chats.map(ch => ({ ...ch, messages: [...ch.messages], findings: [...ch.findings], tools: [...ch.tools] })) })) })) }, ui: { ...s.ui, activeChatByEngagement: { ...s.ui.activeChatByEngagement }, ctxMenu: { ...s.ui.ctxMenu }, companyCtxMenu: { ...s.ui.companyCtxMenu } } })
+const clone = (s: AppState): AppState => ({ data: { ...s.data, companies: s.data.companies.map(c => ({ ...c, engagements: c.engagements.map(e => ({ ...e, chats: e.chats.map(ch => ({ ...ch, messages: [...ch.messages], findings: [...ch.findings], tools: [...ch.tools] })) })) })) }, ui: { ...s.ui, activeChatByEngagement: { ...s.ui.activeChatByEngagement }, ctxMenu: { ...s.ui.ctxMenu }, companyCtxMenu: { ...s.ui.companyCtxMenu }, streamingChats: { ...s.ui.streamingChats } } })
 
 export function reducer(state: AppState, a: Action): AppState {
   const s = clone(state)
@@ -203,6 +207,26 @@ export function reducer(state: AppState, a: Action): AppState {
       const c = chatByGlobalId(s, a.chatId); if (!c) return state
       const tool = c.tools.find(t => t.name === a.toolName)
       if (tool) tool.available = true
+      return s
+    }
+    case 'appendTextDelta': {
+      const c = chatByGlobalId(s, a.chatId); if (!c) return state
+      const idx = c.messages.length - 1
+      const last = c.messages[idx]
+      if (last && last.role === 'assistant' && last.kind === 'text')
+        c.messages[idx] = { ...last, content: (last.content ?? '') + a.delta }
+      else
+        c.messages.push({ id: nextId('m'), role: 'assistant', kind: 'text', content: a.delta })
+      return s
+    }
+    case 'appendError': {
+      const c = chatByGlobalId(s, a.chatId); if (!c) return state
+      c.messages.push({ id: nextId('m'), role: 'assistant', kind: 'text', content: '⚠ ' + a.message })
+      return s
+    }
+    case 'setStreaming': {
+      if (a.on) U.streamingChats[a.chatId] = true
+      else delete U.streamingChats[a.chatId]
       return s
     }
     default: return state

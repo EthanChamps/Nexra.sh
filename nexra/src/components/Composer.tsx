@@ -8,17 +8,21 @@ export function Composer({
   placeholder,
   dispatch,
   onSend = () => {},
+  busy = false,
+  onStop = () => {},
 }: {
   draft: string
   placeholder: string
   dispatch: Dispatch<Action>
   onSend?: () => void
+  busy?: boolean
+  onStop?: () => void
 }) {
   const onDraft = (e: React.ChangeEvent<HTMLInputElement>) => dispatch({ t: 'setDraft', value: e.target.value })
   const onKey = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      onSend()
+      if (!busy) onSend()
     }
   }
   const toggleTerminal = () => dispatch({ t: 'toggleTerminal' })
@@ -55,16 +59,29 @@ export function Composer({
               >
                 <span style={{ fontFamily: theme.mono, fontSize: 13, color: theme.ok2, letterSpacing: '-1px' }}>›_</span>
               </Hoverable>
-              <Hoverable
-                as="button"
-                type="button"
-                onClick={onSend}
-                title="Send"
-                hoverStyle={{ background: theme.accentHover }}
-                baseStyle={{ flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: '50%', border: 'none', background: theme.accent, color: '#fff', fontSize: 15, cursor: 'pointer', transition: 'background .12s' }}
-              >
-                ↑
-              </Hoverable>
+              {busy ? (
+                <Hoverable
+                  as="button"
+                  type="button"
+                  onClick={onStop}
+                  title="Stop"
+                  hoverStyle={{ background: theme.accentHover }}
+                  baseStyle={{ flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: '50%', border: 'none', background: theme.accent, color: '#fff', fontSize: 12, cursor: 'pointer', transition: 'background .12s' }}
+                >
+                  ■
+                </Hoverable>
+              ) : (
+                <Hoverable
+                  as="button"
+                  type="button"
+                  onClick={onSend}
+                  title="Send"
+                  hoverStyle={{ background: theme.accentHover }}
+                  baseStyle={{ flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: '50%', border: 'none', background: theme.accent, color: '#fff', fontSize: 15, cursor: 'pointer', transition: 'background .12s' }}
+                >
+                  ↑
+                </Hoverable>
+              )}
             </div>
           </div>
         </div>
