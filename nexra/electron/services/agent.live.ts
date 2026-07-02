@@ -28,7 +28,13 @@ export async function runSend(
     emit({ type: 'error', message: (err as Error).message })
     return
   }
-  const messages = [...req.history, { role: 'user' as const, content: req.text }]
+  // The renderer builds history from all prior chat text messages, which always
+  // starts with the seed greeting (an assistant turn). Anthropic's Messages API
+  // rejects a leading assistant message ("first message must use the 'user'
+  // role"), so drop any leading non-user turns before appending the new user text.
+  const firstUser = req.history.findIndex(m => m.role === 'user')
+  const priorTurns = firstUser === -1 ? [] : req.history.slice(firstUser)
+  const messages = [...priorTurns, { role: 'user' as const, content: req.text }]
   try {
     const result = streamText({ model, system: systemPrompt(req.engagementType, req.phaseLabel), messages, abortSignal: signal })
     for await (const delta of result.textStream) emit({ type: 'text_delta', delta })
