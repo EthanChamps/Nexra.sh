@@ -29,9 +29,33 @@ export interface Chat {
   messages: Message[]; findings: Finding[]; tools: ToolAvailability[]
 }
 
+// Typed, ENFORCED scope for an engagement (distinct from the freeform `scope`
+// display rows below). `mode:'all'` = the agent may touch anything the injected
+// credential can reach; `mode:'allowlist'` = only the listed accounts/regions.
+export interface EngagementScope {
+  mode: 'all' | 'allowlist'
+  accounts: string[]
+  regions: string[]
+}
+
 export interface Engagement {
   id: string; type: ReviewTypeId; name: string; status: EngagementStatus
   updated: string; linear: boolean; phases: Phase[]; scope: ScopeRow[]; chats: Chat[]
+  enforcement?: EngagementScope
+}
+
+// A per-project credential slot. This is the METADATA the renderer/agent may
+// see — it never carries a plaintext value. Values live encrypted, keyed by
+// `${id}:${envVar}`, and are decrypted only in the main process at spawn time.
+export interface SecretField { envVar: string }
+export interface Secret {
+  id: string
+  companyId: string                 // per-project (Company = client)
+  name: string                      // reference the agent uses, e.g. "aws-prod"
+  fields: SecretField[]             // WHICH env vars this secret populates
+  status: 'pending' | 'filled'
+  aliasOf?: string                  // "tie to existing" → id of another Secret
+  createdBy: 'operator' | 'agent'
 }
 
 export interface Company { id: string; name: string; updated: string; engagements: Engagement[] }
