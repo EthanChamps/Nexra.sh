@@ -8,11 +8,14 @@ const chat = { id: 'c1', name: 'New chat', phaseId: '', color: '#000', tools: [{
 const eng = { type: 'aws', phases: [] } as unknown as Engagement
 
 let sent: { req: any; onEvent: (e: AgentEvent) => void } | null
+let titleMock: ReturnType<typeof vi.fn>
 beforeEach(() => {
   sent = null
+  titleMock = vi.fn(() => Promise.resolve('Untitled'))
   ;(globalThis as any).window = { nexra: {
     agent: {
       send: (req: any, onEvent: any) => { sent = { req, onEvent }; return Promise.resolve() },
+      title: (req: any) => titleMock(req),
       cancel: vi.fn(() => Promise.resolve()),
     },
   } }
@@ -49,6 +52,46 @@ describe('sendMessage', () => {
     await Promise.resolve()
     expect(dispatched).toContainEqual({ t: 'appendError', chatId: 'c1', message: 'boom' })
     expect(dispatched).toContainEqual({ t: 'setStreaming', chatId: 'c1', on: false })
+  })
+  it('fires agent.title on the first user message of a provisional chat', () => {
+    titleMock.mockResolvedValue('Review IAM Roles')
+    const dispatched: any[] = []
+    sendMessage((a: any) => dispatched.push(a), chat, eng, 'review iam roles')
+    expect(titleMock).toHaveBeenCalledWith({ engagementType: 'aws', text: 'review iam roles' })
+  })
+  it('dispatches setChatTitle with the resolved title on success', async () => {
+    titleMock.mockResolvedValue('Review IAM Roles')
+    const dispatched: any[] = []
+    sendMessage((a: any) => dispatched.push(a), chat, eng, 'review iam roles')
+    await vi.waitFor(() => {
+      expect(dispatched).toContainEqual({ t: 'setChatTitle', chatId: 'c1', title: 'Review IAM Roles' })
+    })
+  })
+  it('falls back to deriveTitle when the title call rejects', async () => {
+    titleMock.mockRejectedValue(new Error('no api key'))
+    const dispatched: any[] = []
+    sendMessage((a: any) => dispatched.push(a), chat, eng, 'look at storage buckets')
+    await vi.waitFor(() => {
+      expect(dispatched).toContainEqual({ t: 'setChatTitle', chatId: 'c1', title: 'Look at storage buckets' })
+    })
+  })
+  it('does not fire agent.title on a chat the user already renamed', () => {
+    const dispatched: any[] = []
+    sendMessage((a: any) => dispatched.push(a), { ...chat, name: 'My audit' }, eng, 'hello')
+    expect(titleMock).not.toHaveBeenCalled()
+  })
+  it('does not fire agent.title on a second message', () => {
+    const dispatched: any[] = []
+    const secondChat = {
+      ...chat,
+      messages: [
+        { id: 'g', role: 'assistant', kind: 'text', content: 'greeting' },
+        { id: 'u1', role: 'user', kind: 'text', content: 'first' },
+        { id: 'a1', role: 'assistant', kind: 'text', content: 'reply' },
+      ],
+    } as unknown as Chat
+    sendMessage((a: any) => dispatched.push(a), secondChat, eng, 'second message')
+    expect(titleMock).not.toHaveBeenCalled()
   })
 })
 

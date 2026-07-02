@@ -1,5 +1,5 @@
 import type { Snapshot } from '../electron/services/store.types'
-import type { AgentEvent, AgentSendRequest, AgentInstallRequest } from '../electron/services/agent.types'
+import type { AgentEvent, AgentSendRequest, AgentInstallRequest, AgentTitleRequest } from '../electron/services/agent.types'
 import type { ShellId, ShellTab, ShellCreateResult } from '../electron/services/shell.types'
 
 export interface NexraApi {
@@ -7,6 +7,7 @@ export interface NexraApi {
   store: { snapshot(): Promise<Snapshot> }
   agent: {
     send(req: AgentSendRequest, onEvent: (e: AgentEvent) => void): Promise<void>
+    title(req: AgentTitleRequest): Promise<string>
     install(req: AgentInstallRequest, onEvent: (e: AgentEvent) => void): Promise<void>
     cancel(chatId: string): Promise<void>
   }
