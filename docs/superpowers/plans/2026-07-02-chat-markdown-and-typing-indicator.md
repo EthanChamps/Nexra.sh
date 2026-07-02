@@ -223,7 +223,7 @@ Create `nexra/test/MessageList.test.tsx`:
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MessageList } from '../src/components/MessageList'
-import type { Chat } from '../../electron/services/store.types'
+import type { Chat } from '../electron/services/store.types'
 
 const baseChat = { id: 'c1', name: 'Chat', phaseId: '', color: '#000', tools: [], findings: [] } as unknown as Chat
 
