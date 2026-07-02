@@ -22,6 +22,10 @@ function createWindow() {
     width: 1360, height: 900, minWidth: 1080, minHeight: 680,
     backgroundColor: '#0a0b0d', show: false,
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
+    // hiddenInset draws the native traffic lights over the window content with no
+    // reserved space; pin their offset so the renderer can reserve matching space
+    // (see Sidebar.tsx) instead of guessing at the OS default position.
+    trafficLightPosition: process.platform === 'darwin' ? { x: 18, y: 20 } : undefined,
     webPreferences: {
       preload: path.join(__dirname2, 'preload.js'),
       contextIsolation: true, nodeIntegration: false, sandbox: false,

@@ -4,8 +4,15 @@ import type { AppState } from '../state/selectors'
 import { activeCompany, phaseLabel, statusColor, colorDot } from '../state/selectors'
 import type { Action } from '../state/reducer'
 
+// The window uses titleBarStyle 'hiddenInset' on macOS, so the native traffic-light
+// buttons are drawn over the window content (see trafficLightPosition in main.ts)
+// instead of reserving their own title bar row. Without this offset they sit on top
+// of the "All Projects" button below.
+const macTrafficLightClearance = 34
+
 export function Sidebar({ state, dispatch }: { state: AppState; dispatch: Dispatch<Action> }) {
   const company = activeCompany(state)
+  const isMac = window.nexra.platform === 'darwin'
 
   const engagements = company
     ? company.engagements.map(e => {
@@ -57,7 +64,7 @@ export function Sidebar({ state, dispatch }: { state: AppState; dispatch: Dispat
       data-screen-label="Engagements sidebar"
       style={{ width: 274, flex: 'none', background: '#0d0e11', borderRight: '1px solid rgba(255,255,255,0.07)', display: 'flex', flexDirection: 'column' }}
     >
-      <div style={{ padding: '12px 12px 4px' }}>
+      <div style={{ padding: `${isMac ? macTrafficLightClearance : 12}px 12px 4px` }}>
         <Hoverable
           as="button"
           type="button"

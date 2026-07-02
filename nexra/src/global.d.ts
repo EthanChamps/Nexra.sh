@@ -3,6 +3,7 @@ import type { AgentEvent, AgentSendRequest, AgentInstallRequest } from '../elect
 import type { ShellId, ShellTab, ShellCreateResult } from '../electron/services/shell.types'
 
 export interface NexraApi {
+  platform: NodeJS.Platform
   store: { snapshot(): Promise<Snapshot> }
   agent: {
     send(req: AgentSendRequest, onEvent: (e: AgentEvent) => void): Promise<void>
