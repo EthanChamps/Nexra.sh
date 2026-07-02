@@ -101,7 +101,7 @@ export function ChatPane({
         dispatch={dispatch}
         onSend={onSend}
         busy={!!state.ui.streamingChats[chat.id]}
-        onStop={() => cancelStream(chat.id)}
+        onStop={() => cancelStream(dispatch, chat.id)}
       />
     </>
   )
