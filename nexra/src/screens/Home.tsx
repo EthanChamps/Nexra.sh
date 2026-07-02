@@ -95,9 +95,9 @@ export function Home({ state, dispatch }: { state: AppState; dispatch: Dispatch<
               role="button"
               tabIndex={0}
               data-testid="project-card"
-              onClick={() => openCompany(c.id)}
+              onClick={() => { if (state.ui.renamingCompanyId !== c.id) openCompany(c.id) }}
               onKeyDown={(e: KeyboardEvent) => {
-                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openCompany(c.id) }
+                if ((e.key === 'Enter' || e.key === ' ') && state.ui.renamingCompanyId !== c.id) { e.preventDefault(); openCompany(c.id) }
               }}
               onContextMenu={(ev: MouseEvent) => onCompanyContext(ev, c.id)}
               baseStyle={{
@@ -111,15 +111,35 @@ export function Home({ state, dispatch }: { state: AppState; dispatch: Dispatch<
                 <>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 13 }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div
-                        data-testid="project-name"
-                        style={{
-                          fontSize: 15.5, fontWeight: 600, color: theme.text, whiteSpace: 'nowrap',
-                          overflow: 'hidden', textOverflow: 'ellipsis',
-                        }}
-                      >
-                        {c.name}
-                      </div>
+                      {state.ui.renamingCompanyId === c.id ? (
+                        <input
+                          value={state.ui.companyNameDraft}
+                          onChange={e => dispatch({ t: 'setCompanyNameDraft', value: e.target.value })}
+                          onKeyDown={e => {
+                            e.stopPropagation()
+                            if (e.key === 'Enter') { e.preventDefault(); dispatch({ t: 'saveCompanyName' }) }
+                            if (e.key === 'Escape') dispatch({ t: 'cancelRenameCompany' })
+                          }}
+                          onBlur={() => dispatch({ t: 'saveCompanyName' })}
+                          onClick={e => e.stopPropagation()}
+                          autoFocus
+                          style={{
+                            width: '100%', background: theme.input, border: '1px solid rgba(111,123,240,0.5)',
+                            borderRadius: 7, padding: '4px 8px', fontFamily: 'inherit', fontSize: 15.5,
+                            fontWeight: 600, color: theme.text, outline: 'none',
+                          }}
+                        />
+                      ) : (
+                        <div
+                          data-testid="project-name"
+                          style={{
+                            fontSize: 15.5, fontWeight: 600, color: theme.text, whiteSpace: 'nowrap',
+                            overflow: 'hidden', textOverflow: 'ellipsis',
+                          }}
+                        >
+                          {c.name}
+                        </div>
+                      )}
                       <div style={{ marginTop: 3, fontFamily: theme.mono, fontSize: 11, color: theme.dim }}>
                         {c.engCountLabel} · {c.updated}
                       </div>
@@ -142,7 +162,7 @@ export function Home({ state, dispatch }: { state: AppState; dispatch: Dispatch<
                       <span style={{ fontSize: 11.5, color: theme.dim2, alignSelf: 'center' }}>No engagements yet</span>
                     )}
                   </div>
-                  {hovered && (
+                  {hovered && state.ui.renamingCompanyId !== c.id && (
                     <Hoverable
                       as="button"
                       type="button"
