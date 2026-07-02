@@ -18,4 +18,28 @@ describe('MessageList', () => {
     expect(screen.getByText('Hello **world**')).toBeInTheDocument()
     expect(screen.queryByText('world')).not.toBeInTheDocument()
   })
+
+  it('shows the typing indicator while streaming and the last message is the user\'s', () => {
+    const chat = { ...baseChat, messages: [{ id: 'u1', role: 'user', kind: 'text', content: 'hi' }] } as unknown as Chat
+    render(<MessageList chat={chat} streaming />)
+    expect(screen.getByRole('status', { name: /responding/i })).toBeInTheDocument()
+  })
+
+  it('hides the typing indicator once an assistant message has started', () => {
+    const chat = {
+      ...baseChat,
+      messages: [
+        { id: 'u1', role: 'user', kind: 'text', content: 'hi' },
+        { id: 'a1', role: 'assistant', kind: 'text', content: 'Hi there' },
+      ],
+    } as unknown as Chat
+    render(<MessageList chat={chat} streaming />)
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
+
+  it('hides the typing indicator when not streaming', () => {
+    const chat = { ...baseChat, messages: [{ id: 'u1', role: 'user', kind: 'text', content: 'hi' }] } as unknown as Chat
+    render(<MessageList chat={chat} streaming={false} />)
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
 })
