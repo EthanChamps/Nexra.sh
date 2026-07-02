@@ -154,3 +154,35 @@ describe('reducer', () => {
     expect(chatByGlobalId(s, chatId)!.name).toBe(first)
   })
 })
+
+describe('m3a streaming reducer actions', () => {
+  it('appendTextDelta creates an assistant message then appends to it', () => {
+    let s = boot()
+    const id = s.data.companies[0].engagements[0].chats[0].id
+    const startCount = chatByGlobalId(s, id)!.messages.length
+    s = reducer(s, { t: 'appendUserMessage', chatId: id, text: 'hello' })
+    s = reducer(s, { t: 'appendTextDelta', chatId: id, delta: 'Hel' })
+    s = reducer(s, { t: 'appendTextDelta', chatId: id, delta: 'lo' })
+    const msgs = chatByGlobalId(s, id)!.messages
+    const last = msgs[msgs.length - 1]
+    expect(last.role).toBe('assistant')
+    expect(last.content).toBe('Hello')
+    // exactly one assistant message added for the two deltas (+1 user)
+    expect(msgs.length).toBe(startCount + 2)
+  })
+  it('appendError pushes an assistant message prefixed with a warning glyph', () => {
+    let s = boot()
+    const id = s.data.companies[0].engagements[0].chats[0].id
+    s = reducer(s, { t: 'appendError', chatId: id, message: 'boom' })
+    const msgs = chatByGlobalId(s, id)!.messages
+    expect(msgs[msgs.length - 1].content).toContain('boom')
+  })
+  it('setStreaming toggles per-chat busy state', () => {
+    let s = boot()
+    const id = s.data.companies[0].engagements[0].chats[0].id
+    s = reducer(s, { t: 'setStreaming', chatId: id, on: true })
+    expect(s.ui.streamingChats[id]).toBe(true)
+    s = reducer(s, { t: 'setStreaming', chatId: id, on: false })
+    expect(s.ui.streamingChats[id]).toBeUndefined()
+  })
+})
