@@ -148,6 +148,7 @@ export function Home({ state, dispatch }: { state: AppState; dispatch: Dispatch<
                       type="button"
                       title="Project actions"
                       onClick={(ev: MouseEvent) => { ev.stopPropagation(); onCompanyContext(ev, c.id) }}
+                      onKeyDown={(e: KeyboardEvent) => e.stopPropagation()}
                       baseStyle={{
                         position: 'absolute', top: 10, right: 10, width: 26, height: 26, borderRadius: 7,
                         border: `1px solid ${theme.border2}`, background: theme.card2, display: 'flex',
