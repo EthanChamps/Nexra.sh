@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const streamText = vi.fn()
 vi.mock('ai', () => ({ streamText: (o: any) => streamText(o) }))
@@ -16,6 +16,8 @@ function fakeStream(parts: string[]) {
 }
 
 describe('runSend', () => {
+  beforeEach(() => streamText.mockClear())
+
   it('emits a text_delta per chunk then done', async () => {
     streamText.mockReturnValue(fakeStream(['Hel', 'lo']))
     const events: AgentEvent[] = []
@@ -40,5 +42,35 @@ describe('runSend', () => {
     await runSend(req, cfg, e => events.push(e), ctrl.signal)
     expect(events.some(e => e.type === 'error')).toBe(false)
     expect(events[events.length - 1]).toEqual({ type: 'done' })
+  })
+  it('drops the leading assistant greeting but keeps real history', async () => {
+    streamText.mockReturnValue(fakeStream(['ok']))
+    const withHistory: AgentSendRequest = {
+      ...req,
+      text: 'second',
+      history: [
+        { role: 'assistant', content: 'greeting' },
+        { role: 'user', content: 'first' },
+        { role: 'assistant', content: 'reply' },
+      ],
+    }
+    await runSend(withHistory, cfg, () => {}, new AbortController().signal)
+    expect(streamText.mock.calls[0][0].messages).toEqual([
+      { role: 'user', content: 'first' },
+      { role: 'assistant', content: 'reply' },
+      { role: 'user', content: 'second' },
+    ])
+  })
+  it('sends only the current user turn when history is just a greeting', async () => {
+    streamText.mockReturnValue(fakeStream(['ok']))
+    const greetingOnly: AgentSendRequest = {
+      ...req,
+      text: 'hi',
+      history: [{ role: 'assistant', content: 'greeting' }],
+    }
+    await runSend(greetingOnly, cfg, () => {}, new AbortController().signal)
+    expect(streamText.mock.calls[0][0].messages).toEqual([
+      { role: 'user', content: 'hi' },
+    ])
   })
 })
