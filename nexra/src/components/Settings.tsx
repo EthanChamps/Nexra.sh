@@ -41,14 +41,14 @@ export function Settings({ state: _state, dispatch }: { state: AppState; dispatc
   const [model, setModel] = useState<string>(PROVIDERS.anthropic.defaultModel)
   const [apiKeys, setApiKeys] = useState<Record<ProviderId, string>>({ anthropic: '', openai: '', google: '', ollama: '' })
   const [baseUrl, setBaseUrl] = useState('http://localhost:11434')
-  const [keySet, setKeySet] = useState(false)
+  const [keySet, setKeySet] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     window.nexra.settings.get().then(s => {
       setProvider(s.provider as ProviderId)
       setModel(s.model)
       setBaseUrl(s.baseUrl)
-      setKeySet(s.hasKey)
+      setKeySet({ [s.provider]: s.hasKey })
     })
   }, [])
 
@@ -132,8 +132,8 @@ export function Settings({ state: _state, dispatch }: { state: AppState; dispatc
                 type="password"
                 value={apiKeys[provider]}
                 onChange={e => setApiKey(e.target.value)}
-                onBlur={e => { if (e.target.value) { window.nexra.settings.setKey(provider, e.target.value); setKeySet(true) } }}
-                placeholder={keySet ? '•••••••• (set — type to replace)' : 'sk-...'}
+                onBlur={e => { if (e.target.value) { window.nexra.settings.setKey(provider, e.target.value); setKeySet(prev => ({ ...prev, [provider]: true })) } }}
+                placeholder={keySet[provider] ? '•••••••• (set — type to replace)' : 'sk-...'}
                 autoComplete="off"
                 style={fieldStyle}
               />
