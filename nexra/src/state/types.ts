@@ -1,3 +1,5 @@
+import type { ShellId } from '../../electron/services/shell.types'
+
 export interface CtxMenuState { open: boolean; x: number; y: number; engId: string | null; chatId: string | null }
 
 export interface UIState {
@@ -12,6 +14,6 @@ export interface UIState {
   newProjectOpen: boolean; newCompanyName: string
   newOpen: boolean; selectedType: string; newName: string
   ctxMenu: CtxMenuState
-  terminalOpen: boolean; terminalShell: 'pwsh' | 'cmd' | 'kali'; terminalHeight: number; terminalInput: string
+  terminalOpen: boolean; terminalShell: ShellId; terminalHeight: number; terminalInput: string
   settingsOpen: boolean
 }
