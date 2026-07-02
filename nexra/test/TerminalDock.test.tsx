@@ -8,7 +8,7 @@ const fakeTerm = {
   loadAddon: vi.fn(),
   open: vi.fn(),
   onData: vi.fn(),
-  write: vi.fn(),
+  write: vi.fn((_data: string, cb?: () => void) => cb?.()),
   reset: vi.fn(),
   focus: vi.fn(),
   dispose: vi.fn(),
@@ -55,8 +55,22 @@ describe('TerminalDock', () => {
     render(<Harness />)
     await screen.findByText('PowerShell')
     await waitFor(() => expect((window as any).nexra.shell.create).toHaveBeenCalledWith('pwsh', 80, 24))
-    await waitFor(() => expect(fakeTerm.write).toHaveBeenCalledWith('PS C:\\Users\\pentester> '))
+    await waitFor(() => expect(fakeTerm.write).toHaveBeenCalledWith('PS C:\\Users\\pentester> ', expect.any(Function)))
     expect((window as any).nexra.shell.onData).toHaveBeenCalledWith('pwsh', expect.any(Function))
+  })
+
+  it('does not forward cursor-position-report auto-responses fired mid-replay into the live session', async () => {
+    // Simulates xterm.js's real behavior: parsing a stored `ESC[6n` query from
+    // scrollback triggers its own onData handler synchronously, before the
+    // write() callback signals the replay is flushed.
+    fakeTerm.write.mockImplementation((data: string, cb?: () => void) => {
+      const onDataHandler = fakeTerm.onData.mock.calls[0][0]
+      onDataHandler('\x1b[24;1R')
+      cb?.()
+    })
+    render(<Harness />)
+    await waitFor(() => expect(fakeTerm.write).toHaveBeenCalled())
+    expect((window as any).nexra.shell.write).not.toHaveBeenCalled()
   })
 
   it('forwards keystrokes from xterm straight to the pty session', async () => {
