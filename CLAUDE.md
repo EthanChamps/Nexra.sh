@@ -8,13 +8,14 @@ context: `docs/superpowers/HANDOVER.md`.
 
 ## Status
 
-**M1 (UI shell) complete** and merged to `master`. Electron + React/Vite app
-in `nexra/`, mock backends only (no real execution, no live LLM, no
-persistence). 20/20 tests passing.
+**M1 (UI shell) + M2 (real terminals) complete.** Electron + React/Vite app
+in `nexra/`. `ShellService` now runs real `node-pty` sessions (xterm.js
+renderer); `AgentService`/`StoreService` are still mocks (no live LLM, no
+persistence). 37/37 tests passing.
 
 ```bash
 cd nexra && npm install && npm run dev   # launch (needs a display)
-npm test                                    # 20 tests
+npm test                                    # 37 tests
 npm run build                               # tsc + vite build
 ```
 
@@ -22,11 +23,13 @@ npm run build                               # tsc + vite build
 
 - Electron (not Tauri) — needs real interactive PTYs (PowerShell/cmd/WSL) via
   `node-pty`, and provider-agnostic AI via Node.
-- AI: provider-agnostic via Vercel AI SDK v6 (planned), Claude default.
-- Target execution model: **real, ungated** (no per-command approval) — not
-  yet implemented, M1 is UI-only.
-- Service boundary: `electron/services/{store,agent,shell}.mock.ts`, exposed
-  via `contextBridge` as `window.nexra.*`. **No renderer component may
+- AI: provider-agnostic via Vercel AI SDK v6 (planned for M3), Claude default.
+- Target execution model: **real, ungated** (no per-command approval). M2
+  delivered this for the operator's own terminal (`node-pty`, no gate); the
+  agent driving the shell autonomously is still M3.
+- Service boundary: `electron/services/{store,agent}.mock.ts` +
+  `electron/services/shell.pty.ts` (real, since M2), exposed via
+  `contextBridge` as `window.nexra.*`. **No renderer component may
   import a service directly** — always go through `window.nexra.*` so real
   backends swap in without UI changes.
 - Styling source of truth: vendored prototype at
@@ -40,16 +43,16 @@ npm run build                               # tsc + vite build
   to none; when unsure, leave it out and ask rather than filling empty space
   with a symbol.
 
-## Deferred to M2
+## Deferred to M3
 
-Real node-pty execution, live Claude/AI-SDK agent, sqlite persistence,
-terminal-buffer persistence across dock close/reopen, overlapping-stream
+Live Claude/AI-SDK agent (the agent driving the shell — "Shared with agent"
+pill goes from visual to real), sqlite persistence, overlapping-stream
 guard, bump `electron-builder` before building signed installers. Full list
 with reasoning in `docs/superpowers/HANDOVER.md`.
 
 ## Process
 
 Built via `superpowers:brainstorming` → spec → `writing-plans` → plan (14
-tasks) → `subagent-driven-development` (implementer + reviewer subagent per
-task, fix loops on findings, final whole-branch review) →
-`finishing-a-development-branch`. Follow the same process for M2.
+tasks for M1, 8 for M2) → `subagent-driven-development` (implementer +
+reviewer subagent per task, fix loops on findings, final whole-branch
+review) → `finishing-a-development-branch`. Follow the same process for M3.
