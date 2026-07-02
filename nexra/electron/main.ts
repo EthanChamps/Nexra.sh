@@ -2,7 +2,10 @@ import { app, BrowserWindow, ipcMain } from 'electron'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import { buildSnapshot } from './services/store.mock'
-import { runSend, runInstall } from './services/agent.mock'
+import { runSend } from './services/agent.live'
+import { initSettingsDb, getSetting, setSetting } from './services/store.sqlite'
+import { encryptSecret, decryptSecret } from './services/secrets'
+import type { ProviderConfig } from './services/providers'
 import { shellTabs, createSession, writeToSession, resizeSession, killSession, killAllSessions } from './services/shell.pty'
 
 const __dirname2 = path.dirname(fileURLToPath(import.meta.url))
@@ -37,10 +40,52 @@ function createWindow() {
   mainWindow = win
 }
 
+const inflight = new Map<string, AbortController>()
+
+// Reads provider/model/baseUrl and decrypts the stored API key (if any) for
+// the configured provider. The plaintext key lives only in this function's
+// return value, transiently, while the AI SDK client is constructed — it
+// must never be sent to the renderer or placed in process.env (see
+// electron/services/shell.pty.ts:35 for why operator shells stay clean).
+function loadConfig(): ProviderConfig {
+  const provider = (getSetting('provider') ?? 'anthropic') as ProviderConfig['provider']
+  const model = getSetting('model') ?? 'claude-opus-4-8'
+  const baseUrl = (getSetting('baseUrl') || 'http://localhost:11434').replace(/\/+$/, '')
+  const blob = getSetting('secret.apikey.' + provider)
+  let apiKey: string | undefined
+  if (blob) { try { apiKey = decryptSecret(blob) } catch { apiKey = undefined } }
+  return { provider, model, baseUrl, apiKey }
+}
+
 app.whenReady().then(() => {
+  initSettingsDb(path.join(app.getPath('userData'), 'nexra.db'))
+
   ipcMain.handle('store:snapshot', () => buildSnapshot())
-  ipcMain.handle('agent:send', (ev, req) => runSend(req, e => ev.sender.send('agent:event:' + req.chatId, e)))
-  ipcMain.handle('agent:install', (ev, req) => runInstall(req, e => ev.sender.send('agent:event:' + req.chatId, e)))
+  ipcMain.handle('agent:send', async (ev, req) => {
+    const ctrl = new AbortController()
+    inflight.set(req.chatId, ctrl)
+    try {
+      await runSend(req, loadConfig(), e => ev.sender.send('agent:event:' + req.chatId, e), ctrl.signal)
+    } finally {
+      inflight.delete(req.chatId)
+    }
+  })
+  ipcMain.handle('agent:cancel', (_ev, chatId: string) => { inflight.get(chatId)?.abort() })
+  ipcMain.handle('agent:install', (ev, req) =>
+    ev.sender.send('agent:event:' + req.chatId, { type: 'error', message: 'Tool install arrives with agent execution in M3b' }))
+
+  ipcMain.handle('settings:get', () => ({
+    provider: getSetting('provider') ?? 'anthropic',
+    model: getSetting('model') ?? 'claude-opus-4-8',
+    baseUrl: getSetting('baseUrl') ?? 'http://localhost:11434',
+    hasKey: !!getSetting('secret.apikey.' + (getSetting('provider') ?? 'anthropic')),
+  }))
+  ipcMain.handle('settings:set', (_ev, partial: Record<string, string>) => {
+    for (const k of ['provider', 'model', 'baseUrl'] as const) if (partial[k] != null) setSetting(k, partial[k])
+  })
+  ipcMain.handle('settings:setKey', (_ev, { provider, plaintext }: { provider: string; plaintext: string }) =>
+    setSetting('secret.apikey.' + provider, encryptSecret(plaintext)))
+
   ipcMain.handle('shell:tabs', () => shellTabs())
   ipcMain.handle('shell:create', (_ev, { shell, cols, rows }: { shell: any; cols: number; rows: number }) =>
     createSession(shell, cols, rows, data => mainWindow?.webContents.send('shell:data', { sessionId: shell, data })))

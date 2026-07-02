@@ -8,6 +8,12 @@ export interface NexraApi {
   agent: {
     send(req: AgentSendRequest, onEvent: (e: AgentEvent) => void): Promise<void>
     install(req: AgentInstallRequest, onEvent: (e: AgentEvent) => void): Promise<void>
+    cancel(chatId: string): Promise<void>
+  }
+  settings: {
+    get(): Promise<{ provider: string; model: string; baseUrl: string; hasKey: boolean }>
+    set(partial: { provider?: string; model?: string; baseUrl?: string }): Promise<void>
+    setKey(provider: string, plaintext: string): Promise<void>
   }
   shell: {
     tabs(): Promise<ShellTab[]>
