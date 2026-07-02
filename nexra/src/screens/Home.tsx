@@ -1,6 +1,7 @@
 import type { Dispatch, MouseEvent, KeyboardEvent } from 'react'
 import { Hoverable } from '../components/Hoverable'
 import { NewProjectModal } from '../components/modals/NewProjectModal'
+import { DeleteProjectModal } from '../components/modals/DeleteProjectModal'
 import { ProjectContextMenu } from '../components/ProjectContextMenu'
 import { theme } from '../theme'
 import type { AppState } from '../state/selectors'
@@ -204,6 +205,7 @@ export function Home({ state, dispatch }: { state: AppState; dispatch: Dispatch<
 
       {state.ui.newProjectOpen && <NewProjectModal state={state} dispatch={dispatch} />}
       {state.ui.companyCtxMenu.open && <ProjectContextMenu state={state} dispatch={dispatch} />}
+      {state.ui.confirmDeleteCompanyId && <DeleteProjectModal state={state} dispatch={dispatch} />}
     </div>
   )
 }

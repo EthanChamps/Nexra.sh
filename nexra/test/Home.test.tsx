@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { useReducer } from 'react'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, within } from '@testing-library/react'
 import { Home } from '../src/screens/Home'
 import { Workspace } from '../src/screens/Workspace'
 import { reducer, initialUI } from '../src/state/reducer'
@@ -83,5 +83,36 @@ describe('Home project card menu', () => {
     expect(screen.getByText('Projects')).toBeInTheDocument()
     expect(screen.getAllByTestId('project-card').length).toBeGreaterThan(0)
     expect(screen.getByText('Acme Renamed')).toBeInTheDocument()
+  })
+  it('cancelling the delete-confirm modal keeps the project', () => {
+    render(<Harness />)
+    const before = screen.getAllByTestId('project-card').length
+    const card = screen.getAllByTestId('project-card')[0]
+    fireEvent.mouseEnter(card)
+    fireEvent.click(screen.getByTitle('Project actions'))
+    fireEvent.click(screen.getByText('Delete project'))
+
+    expect(screen.getByText(/can't be undone/i)).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Cancel'))
+    expect(screen.queryByText(/can't be undone/i)).not.toBeInTheDocument()
+    expect(screen.getAllByTestId('project-card')).toHaveLength(before)
+  })
+  it('confirming delete removes the project card', () => {
+    render(<Harness />)
+    const before = screen.getAllByTestId('project-card').length
+    const card = screen.getAllByTestId('project-card')[0]
+    fireEvent.mouseEnter(card)
+    fireEvent.click(screen.getByTitle('Project actions'))
+    fireEvent.click(screen.getByText('Delete project'))
+
+    // The modal card div (two levels up from the description) contains both
+    // the "Delete project" heading and the "Delete project" button, so a
+    // plain `getByText` inside it is ambiguous. Scope by role instead: the
+    // button is an actual <button> (via Hoverable as="button"), the heading
+    // is a plain <div>, so `getByRole('button', ...)` resolves uniquely.
+    const dialog = screen.getByText(/can't be undone/i).parentElement!.parentElement!
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete project' }))
+
+    expect(screen.getAllByTestId('project-card')).toHaveLength(before - 1)
   })
 })
