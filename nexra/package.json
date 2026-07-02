@@ -8,7 +8,8 @@
     "build": "tsc -p tsconfig.node.json && vite build",
     "test": "vitest run",
     "test:watch": "vitest",
-    "dist": "npm run build && electron-builder"
+    "dist": "npm run build && electron-builder",
+    "postinstall": "node scripts/fix-native-permissions.cjs"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.4.0",

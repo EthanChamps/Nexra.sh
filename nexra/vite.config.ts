@@ -6,18 +6,17 @@ import renderer from 'vite-plugin-electron-renderer'
 export default defineConfig({
   plugins: [
     react(),
-    electron([
-      { entry: 'electron/main.ts' },
-      { entry: 'electron/preload.ts', onstart(o) { o.reload() } },
+    ...(process.env.VITEST ? [] : [
+      electron([
+        { entry: 'electron/main.ts', vite: { build: { rollupOptions: { external: ['node-pty'] } } } },
+        { entry: 'electron/preload.ts', onstart(o) { o.reload() } },
+      ]),
+      renderer(),
     ]),
-    renderer(),
   ],
   test: {
     globals: true,
     environment: 'jsdom',
     setupFiles: './test/setup.ts',
-    environmentMatchGlobs: [
-      ['test/**/*.native.test.ts', 'node'],
-    ],
   },
 })

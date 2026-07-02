@@ -1,3 +1,5 @@
+// @vitest-environment node
+
 import { describe, it, expect } from 'vitest'
 import * as pty from 'node-pty'
 import os from 'node:os'
