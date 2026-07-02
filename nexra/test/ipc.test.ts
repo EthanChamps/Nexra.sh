@@ -42,6 +42,14 @@ describe('sendMessage', () => {
     expect(dispatched).toContainEqual({ t: 'appendError', chatId: 'c1', message: '401' })
     expect(dispatched).toContainEqual({ t: 'setStreaming', chatId: 'c1', on: false })
   })
+  it('clears streaming and surfaces an error if agent.send rejects', async () => {
+    ;(window as any).nexra.agent.send = () => Promise.reject(new Error('boom'))
+    const dispatched: any[] = []
+    sendMessage((a: any) => dispatched.push(a), chat, eng, 'hi')
+    await Promise.resolve()
+    expect(dispatched).toContainEqual({ t: 'appendError', chatId: 'c1', message: 'boom' })
+    expect(dispatched).toContainEqual({ t: 'setStreaming', chatId: 'c1', on: false })
+  })
 })
 
 describe('cancelStream', () => {

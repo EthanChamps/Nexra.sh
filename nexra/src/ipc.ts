@@ -68,7 +68,15 @@ export function sendMessage(dispatch: Dispatch<Action>, chat: Chat, eng: Engagem
   window.nexra.agent.send(
     { chatId: chat.id, engagementType: eng.type, phaseLabel: phaseLabel(eng, chat.phaseId), primaryTool, text: trimmed, history },
     applyEvent(dispatch, chat.id, runningIds),
-  )
+  ).catch((err: unknown) => {
+    // Only fires when the IPC invoke promise genuinely rejects with no terminal
+    // error/done event delivered (e.g. an upstream main-process throw). On the
+    // normal path runSend emits error/done and the promise resolves, so this
+    // does not double-report. Without it a reject would leave the chat stuck
+    // streaming forever with a locked composer and no user recovery.
+    dispatch({ t: 'appendError', chatId: chat.id, message: err instanceof Error ? err.message : 'Request failed to start' })
+    dispatch({ t: 'setStreaming', chatId: chat.id, on: false })
+  })
 }
 
 export function cancelStream(chatId: string): void {
