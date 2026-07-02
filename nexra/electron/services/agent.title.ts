@@ -12,7 +12,9 @@ function systemPrompt(engagementType: string): string {
 
 // One short completion, not a chat turn — auto-titles a new chat from its
 // first user message. Errors (missing key, network, provider) propagate to
-// the caller, which falls back to a deterministic heuristic (see ipc.ts).
+// the caller, which falls back to a deterministic heuristic (see ipc.ts) —
+// as does an empty/unusable result (e.g. a trivial "hi" can yield nothing
+// after cleanup), so the chat is never left permanently blank.
 export async function runTitle(req: AgentTitleRequest, cfg: ProviderConfig): Promise<string> {
   const model = resolveModel(cfg)
   const { text } = await generateText({
@@ -21,5 +23,7 @@ export async function runTitle(req: AgentTitleRequest, cfg: ProviderConfig): Pro
     messages: [{ role: 'user', content: req.text }],
     maxOutputTokens: 20,
   })
-  return text.trim().replace(/^["']+|["']+$/g, '').slice(0, 48)
+  const cleaned = text.trim().replace(/^["']+|["']+$/g, '').slice(0, 48)
+  if (!cleaned) throw new Error('Model returned an empty title')
+  return cleaned
 }
