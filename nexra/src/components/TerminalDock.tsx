@@ -1,37 +1,109 @@
 import type { Dispatch } from 'react'
 import { useEffect, useRef, useState } from 'react'
+import { Terminal } from '@xterm/xterm'
+import { FitAddon } from '@xterm/addon-fit'
+import '@xterm/xterm/css/xterm.css'
 import type { AppState } from '../state/selectors'
 import type { Action } from '../state/reducer'
-import type { ShellId, ShellLine, ShellTab } from '../../electron/services/shell.types'
-import { buildTerminalSessions } from '../../electron/services/seed'
+import type { ShellId, ShellTab } from '../../electron/services/shell.types'
 import { theme } from '../theme'
-
-type Sessions = Record<ShellId, ShellLine[]>
-type PromptInfo = { stored: string; inline: string; color: string }
 
 export function TerminalDock({ state, dispatch }: { state: AppState; dispatch: Dispatch<Action> }) {
   const shell = state.ui.terminalShell
-  const [sessions, setSessions] = useState<Sessions>(() => buildTerminalSessions() as Sessions)
   const [tabs, setTabs] = useState<ShellTab[]>([])
-  const [promptInfo, setPromptInfo] = useState<PromptInfo | null>(null)
 
-  const termRef = useRef<HTMLDivElement | null>(null)
-  const inputRef = useRef<HTMLInputElement | null>(null)
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const termRef = useRef<Terminal | null>(null)
+  const fitAddonRef = useRef<FitAddon | null>(null)
+  const writeRef = useRef<(data: string) => void>(() => {})
+  const sessionIdRef = useRef<ShellId | null>(null)
+
   const resizing = useRef(false)
   const startY = useRef(0)
   const startH = useRef(state.ui.terminalHeight)
 
-  useEffect(() => { window.nexra.shell.tabs().then(setTabs) }, [])
-
   useEffect(() => {
-    window.nexra.shell.prompt(shell).then(setPromptInfo)
-    requestAnimationFrame(() => { if (inputRef.current) inputRef.current.focus() })
+    window.nexra.shell.tabs().then(ts => {
+      setTabs(ts)
+      if (ts.length && !ts.some(t => t.id === shell)) dispatch({ t: 'setTerminalShell', id: ts[0].id })
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Mounts once: TerminalDock only exists in the DOM while the dock is open
+  // (see Workspace.tsx's `{ui.terminalOpen && <TerminalDock .../>}`), so this
+  // effect's lifetime is exactly "dock is open".
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const term = new Terminal({
+      fontFamily: theme.mono, fontSize: 12.5, lineHeight: 1.4, cursorBlink: true,
+      theme: { background: theme.term, foreground: theme.text, cursor: theme.ok2, selectionBackground: 'rgba(111,123,240,0.35)' },
+    })
+    const fitAddon = new FitAddon()
+    term.loadAddon(fitAddon)
+    term.open(el)
+    fitAddon.fit()
+    term.onData(data => writeRef.current(data))
+    termRef.current = term
+    fitAddonRef.current = fitAddon
+    return () => {
+      term.dispose()
+      termRef.current = null
+      fitAddonRef.current = null
+    }
+  }, [])
+
+  // Attach/detach xterm to the session for the active tab. Sessions live in the
+  // main process and outlive this component (docs/superpowers/specs/2026-07-01-redcell-m0-m2-design.md,
+  // "Buffer persistence") — this only re-points the local view at whichever
+  // session is active, replaying its scrollback and subscribing to live output.
+  useEffect(() => {
+    const term = termRef.current
+    const fitAddon = fitAddonRef.current
+    if (!term || !fitAddon) return
+    let cancelled = false
+    let unsubscribe: (() => void) | null = null
+
+    fitAddon.fit()
+    window.nexra.shell.create(shell, term.cols, term.rows).then(({ sessionId, scrollback }) => {
+      if (cancelled) return
+      sessionIdRef.current = sessionId
+      writeRef.current = data => window.nexra.shell.write(sessionId, data)
+      term.reset()
+      term.write(scrollback)
+      unsubscribe = window.nexra.shell.onData(sessionId, data => term.write(data))
+    })
+
+    return () => {
+      cancelled = true
+      unsubscribe?.()
+    }
   }, [shell])
 
+  // Refit + propagate size on dock resize (drag handle) ...
   useEffect(() => {
-    const el = termRef.current
-    if (el) requestAnimationFrame(() => { el.scrollTop = el.scrollHeight })
-  }, [sessions, shell])
+    const term = termRef.current
+    const fitAddon = fitAddonRef.current
+    const sessionId = sessionIdRef.current
+    if (!term || !fitAddon || !sessionId) return
+    fitAddon.fit()
+    window.nexra.shell.resize(sessionId, term.cols, term.rows)
+  }, [state.ui.terminalHeight])
+
+  // ...and on window resize.
+  useEffect(() => {
+    const onResize = () => {
+      const term = termRef.current
+      const fitAddon = fitAddonRef.current
+      const sessionId = sessionIdRef.current
+      if (!term || !fitAddon || !sessionId) return
+      fitAddon.fit()
+      window.nexra.shell.resize(sessionId, term.cols, term.rows)
+    }
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
@@ -61,31 +133,7 @@ export function TerminalDock({ state, dispatch }: { state: AppState; dispatch: D
 
   const closeTerminal = () => dispatch({ t: 'closeTerminal' })
   const setTerminalShell = (id: ShellId) => dispatch({ t: 'setTerminalShell', id })
-  const focusTerm = () => requestAnimationFrame(() => { if (inputRef.current) inputRef.current.focus() })
-
-  const onTerminalInput = (e: React.ChangeEvent<HTMLInputElement>) => dispatch({ t: 'setTerminalInput', value: e.target.value })
-
-  const runTerminal = async () => {
-    const raw = (state.ui.terminalInput || '').trim()
-    const p = promptInfo || (await window.nexra.shell.prompt(shell))
-    const cmdLine: ShellLine = { kind: 'cmd', prompt: p.stored, promptColor: p.color, text: raw }
-    const res = await window.nexra.shell.run(shell, raw)
-    if (res.clear) {
-      setSessions(s => ({ ...s, [shell]: [] }))
-    } else {
-      setSessions(s => ({ ...s, [shell]: [...(s[shell] || []), cmdLine, ...res.lines] }))
-    }
-    dispatch({ t: 'setTerminalInput', value: '' })
-  }
-
-  const onTerminalKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') { e.preventDefault(); runTerminal() }
-  }
-
-  const termLines = sessions[shell] || []
-  const termPromptColor = promptInfo?.color || '#5bd493'
-  const termInlinePrompt = promptInfo?.inline || ''
-  const termKaliHeader = shell === 'kali'
+  const focusTerm = () => termRef.current?.focus()
 
   return (
     <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, height: state.ui.terminalHeight + 'px', zIndex: 70, display: 'flex', flexDirection: 'column', background: theme.term, borderTop: '1px solid rgba(255,255,255,0.13)', boxShadow: '0 -20px 60px rgba(0,0,0,0.6)' }}>
@@ -124,43 +172,7 @@ export function TerminalDock({ state, dispatch }: { state: AppState; dispatch: D
         </button>
       </div>
 
-      <div ref={termRef} onClick={focusTerm} style={{ flex: 1, overflowY: 'auto', padding: '12px 15px 16px', background: theme.term, cursor: 'text' }}>
-        {termLines.map((ln, i) => (
-          <div key={shell + '-' + i} style={{ marginBottom: 2 }}>
-            {ln.kind === 'cmd' && (
-              <div style={{ display: 'flex', gap: 9, fontFamily: theme.mono, fontSize: 12.5, lineHeight: 1.55 }}>
-                <span style={{ color: ln.promptColor || '#5bd493', whiteSpace: 'pre' }}>{ln.prompt || ''}</span>
-                <span style={{ flex: 1, minWidth: 0, color: theme.text, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{ln.text}</span>
-              </div>
-            )}
-            {ln.kind === 'out' && (
-              <pre style={{ margin: 0, fontFamily: theme.mono, fontSize: 12.5, lineHeight: 1.55, color: '#a4abb4', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{ln.text}</pre>
-            )}
-            {ln.kind === 'sys' && (
-              <div style={{ fontFamily: theme.mono, fontSize: 11.5, lineHeight: 1.5, color: theme.dim2, whiteSpace: 'pre-wrap' }}>{ln.text}</div>
-            )}
-          </div>
-        ))}
-
-        <div style={{ marginTop: 5 }}>
-          {termKaliHeader && (
-            <div style={{ fontFamily: theme.mono, fontSize: 12.5, lineHeight: 1.55, color: theme.ok2 }}>{'┌──(kali㉿kali)-[~]'}</div>
-          )}
-          <div style={{ display: 'flex', gap: 9, alignItems: 'baseline' }}>
-            <span style={{ fontFamily: theme.mono, fontSize: 12.5, color: termPromptColor, whiteSpace: 'pre' }}>{termInlinePrompt}</span>
-            <input
-              ref={inputRef}
-              value={state.ui.terminalInput}
-              onChange={onTerminalInput}
-              onKeyDown={onTerminalKey}
-              autoFocus
-              spellCheck={false}
-              placeholder="type a command — try `help`"
-              style={{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', outline: 'none', color: theme.text, fontFamily: theme.mono, fontSize: 12.5, padding: 0 }}
-            />
-          </div>
-        </div>
-      </div>
+      <div ref={containerRef} onClick={focusTerm} style={{ flex: 1, minHeight: 0, padding: '12px 15px 16px', background: theme.term, cursor: 'text' }} />
     </div>
   )
 }
