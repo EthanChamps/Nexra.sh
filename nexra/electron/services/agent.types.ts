@@ -13,3 +13,4 @@ export interface AgentSendRequest {
   history: { role: 'user' | 'assistant'; content: string }[]
 }
 export interface AgentInstallRequest { chatId: string; toolName: string; installCmd?: string }
+export interface AgentTitleRequest { engagementType: string; text: string }

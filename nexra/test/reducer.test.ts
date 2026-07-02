@@ -123,36 +123,32 @@ describe('reducer', () => {
     expect(inferFocus('unrelated question', phases)).toBe('')
     expect(inferFocus('conduct a CIS benchmark review against this aws organisation', phases)).toBe('')
   })
-  it('titles a provisional chat and infers focus from the first message', () => {
+  it('infers focus from the first message; title stays provisional pending the live call', () => {
     let s = reducer(boot(), { t: 'openCompany', id: 'c1' })
     const engId = activeEngagement(s)!.id
     s = reducer(s, { t: 'createChat', engId })
     const chatId = activeChat(s)!.id
     s = reducer(s, { t: 'appendUserMessage', chatId, text: 'review iam roles for privilege escalation' })
     const chat = chatByGlobalId(s, chatId)!
-    expect(chat.name).toBe('Review iam roles for privilege escalation')
+    expect(chat.name).toBe('New chat')
     expect(chat.phaseId).toBe('iam')
   })
-  it('does not retitle a chat the user already renamed', () => {
+  it('setChatTitle sets the title on a still-provisional chat', () => {
     let s = reducer(boot(), { t: 'openCompany', id: 'c1' })
     const engId = activeEngagement(s)!.id
     s = reducer(s, { t: 'createChat', engId })
     const chatId = activeChat(s)!.id
+    s = reducer(s, { t: 'setChatTitle', chatId, title: 'Review IAM Privilege Escalation' })
+    expect(chatByGlobalId(s, chatId)!.name).toBe('Review IAM Privilege Escalation')
+  })
+  it('setChatTitle does not override a chat the user already renamed', () => {
+    let s = reducer(boot(), { t: 'openCompany', id: 'c1' })
     s = reducer(s, { t: 'startRename' })
     s = reducer(s, { t: 'setNameDraft', value: 'My audit' })
     s = reducer(s, { t: 'saveName' })
-    s = reducer(s, { t: 'appendUserMessage', chatId, text: 'look at storage buckets' })
-    expect(chatByGlobalId(s, chatId)!.name).toBe('My audit')
-  })
-  it('only titles on the first user message', () => {
-    let s = reducer(boot(), { t: 'openCompany', id: 'c1' })
-    const engId = activeEngagement(s)!.id
-    s = reducer(s, { t: 'createChat', engId })
     const chatId = activeChat(s)!.id
-    s = reducer(s, { t: 'appendUserMessage', chatId, text: 'enumerate iam users' })
-    const first = chatByGlobalId(s, chatId)!.name
-    s = reducer(s, { t: 'appendUserMessage', chatId, text: 'now check storage encryption' })
-    expect(chatByGlobalId(s, chatId)!.name).toBe(first)
+    s = reducer(s, { t: 'setChatTitle', chatId, title: 'Some generated title' })
+    expect(chatByGlobalId(s, chatId)!.name).toBe('My audit')
   })
 })
 

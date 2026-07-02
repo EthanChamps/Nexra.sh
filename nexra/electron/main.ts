@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import { buildSnapshot } from './services/store.mock'
 import { runSend } from './services/agent.live'
+import { runTitle } from './services/agent.title'
 import { initSettingsDb, getSetting, setSetting } from './services/store.sqlite'
 import { encryptSecret, decryptSecret } from './services/secrets'
 import type { ProviderConfig } from './services/providers'
@@ -70,6 +71,7 @@ app.whenReady().then(() => {
       inflight.delete(req.chatId)
     }
   })
+  ipcMain.handle('agent:title', (_ev, req) => runTitle(req, loadConfig()))
   ipcMain.handle('agent:cancel', (_ev, chatId: string) => { inflight.get(chatId)?.abort() })
   ipcMain.handle('agent:install', (ev, req) =>
     ev.sender.send('agent:event:' + req.chatId, { type: 'error', message: 'Tool install arrives with agent execution in M3b' }))
