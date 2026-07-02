@@ -170,12 +170,27 @@ describe('m3a streaming reducer actions', () => {
     // exactly one assistant message added for the two deltas (+1 user)
     expect(msgs.length).toBe(startCount + 2)
   })
+  it('appendTextDelta does not mutate the previous state (reducer purity)', () => {
+    let s = boot()
+    const id = s.data.companies[0].engagements[0].chats[0].id
+    s = reducer(s, { t: 'appendUserMessage', chatId: id, text: 'hi' })
+    const s1 = reducer(s, { t: 'appendTextDelta', chatId: id, delta: 'Hel' })
+    const s1msgs = chatByGlobalId(s1, id)!.messages
+    const s1last = s1msgs[s1msgs.length - 1]
+    expect(s1last.content).toBe('Hel')
+    const s2 = reducer(s1, { t: 'appendTextDelta', chatId: id, delta: 'lo' })
+    // dispatching on s1 must NOT have retroactively changed s1's message object
+    expect(s1last.content).toBe('Hel')
+    const s2msgs = chatByGlobalId(s2, id)!.messages
+    expect(s2msgs[s2msgs.length - 1].content).toBe('Hello')
+  })
   it('appendError pushes an assistant message prefixed with a warning glyph', () => {
     let s = boot()
     const id = s.data.companies[0].engagements[0].chats[0].id
     s = reducer(s, { t: 'appendError', chatId: id, message: 'boom' })
     const msgs = chatByGlobalId(s, id)!.messages
-    expect(msgs[msgs.length - 1].content).toContain('boom')
+    expect(msgs[msgs.length - 1].content).toBe('⚠ boom')
+    expect(msgs[msgs.length - 1].role).toBe('assistant')
   })
   it('setStreaming toggles per-chat busy state', () => {
     let s = boot()

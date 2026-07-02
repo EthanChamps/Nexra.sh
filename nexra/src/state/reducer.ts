@@ -211,9 +211,12 @@ export function reducer(state: AppState, a: Action): AppState {
     }
     case 'appendTextDelta': {
       const c = chatByGlobalId(s, a.chatId); if (!c) return state
-      const last = c.messages[c.messages.length - 1]
-      if (last && last.role === 'assistant' && last.kind === 'text') last.content = (last.content ?? '') + a.delta
-      else c.messages.push({ id: nextId('m'), role: 'assistant', kind: 'text', content: a.delta })
+      const idx = c.messages.length - 1
+      const last = c.messages[idx]
+      if (last && last.role === 'assistant' && last.kind === 'text')
+        c.messages[idx] = { ...last, content: (last.content ?? '') + a.delta }
+      else
+        c.messages.push({ id: nextId('m'), role: 'assistant', kind: 'text', content: a.delta })
       return s
     }
     case 'appendError': {
