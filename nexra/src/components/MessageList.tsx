@@ -2,8 +2,9 @@ import { useEffect, useRef } from 'react'
 import { theme } from '../theme'
 import type { Chat, Message } from '../../electron/services/store.types'
 import { ToolCard } from './ToolCard'
+import { MarkdownMessage } from './MarkdownMessage'
 
-export function MessageList({ chat, onInstall }: { chat: Chat; onInstall?: (msg: Message) => void }) {
+export function MessageList({ chat, streaming, onInstall }: { chat: Chat; streaming: boolean; onInstall?: (msg: Message) => void }) {
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -24,7 +25,9 @@ export function MessageList({ chat, onInstall }: { chat: Chat; onInstall?: (msg:
             {m.kind === 'text' && m.role === 'assistant' && (
               <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                 <span style={{ flex: 'none', width: 26, height: 26, borderRadius: 7, background: 'rgba(111,123,240,0.16)', color: '#9aa2f5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, marginTop: 1 }}>◆</span>
-                <div style={{ fontSize: 14, lineHeight: 1.65, color: theme.textDim, whiteSpace: 'pre-wrap', maxWidth: 700, paddingTop: 3 }}>{m.content}</div>
+                <div style={{ maxWidth: 700, paddingTop: 3 }}>
+                  <MarkdownMessage content={m.content ?? ''} />
+                </div>
               </div>
             )}
             {m.kind === 'text' && m.role === 'user' && (
