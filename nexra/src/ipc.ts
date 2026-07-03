@@ -55,6 +55,15 @@ function applyEvent(dispatch: Dispatch<Action>, chatId: string, runningIds: Map<
       case 'finding':
         dispatch({ t: 'upsertFinding', chatId, finding: { id: e.id, title: e.title, sev: e.sev, phase: e.phase, time: e.time, rationale: e.rationale, evidence: e.evidence, verified: e.verified } })
         break
+      case 'input_request':
+        dispatch({ t: 'appendInputRequest', chatId, requestId: e.requestId, items: e.items })
+        break
+      case 'scope_request':
+        dispatch({ t: 'appendScopeRequest', chatId, engagementId: e.engagementId })
+        break
+      case 'skill':
+        dispatch({ t: 'appendSkillEvent', chatId, skillEvent: e })
+        break
       case 'error':
         dispatch({ t: 'appendError', chatId, message: e.message })
         dispatch({ t: 'setStreaming', chatId, on: false })
