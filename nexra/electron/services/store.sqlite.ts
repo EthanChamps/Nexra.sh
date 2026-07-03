@@ -24,6 +24,9 @@ export function initSettingsDb(dbPath: string): void {
     alias_of TEXT,
     created_by TEXT NOT NULL
   )`)
+  // Additive migration (M3d): older DBs created the secrets table without it.
+  // ALTER throws if the column already exists — swallow that one case only.
+  try { db.exec('ALTER TABLE secrets ADD COLUMN sensitive INTEGER') } catch { /* column already present */ }
   // Encrypted value blobs, one row per (secret, env var). Deliberately a
   // SEPARATE table so listing secret metadata can never accidentally SELECT a
   // ciphertext, let alone a plaintext.
@@ -81,7 +84,7 @@ export function setSetting(key: string, value: string): void {
 }
 
 // ── secrets metadata (M3b) ──────────────────────────────────────────────────
-interface SecretMetaRow { id: string; company_id: string; name: string; fields: string; status: string; alias_of: string | null; created_by: string }
+interface SecretMetaRow { id: string; company_id: string; name: string; fields: string; status: string; alias_of: string | null; created_by: string; sensitive: number | null }
 
 function rowToSecret(r: SecretMetaRow): Secret {
   return {
@@ -90,20 +93,22 @@ function rowToSecret(r: SecretMetaRow): Secret {
     status: r.status as Secret['status'],
     aliasOf: r.alias_of ?? undefined,
     createdBy: r.created_by as Secret['createdBy'],
+    sensitive: r.sensitive == null ? undefined : r.sensitive === 1,
   }
 }
 
 export function insertSecretMeta(s: Secret): void {
   requireDb().prepare(
-    `INSERT INTO secrets (id, company_id, name, fields, status, alias_of, created_by)
-     VALUES (@id, @company_id, @name, @fields, @status, @alias_of, @created_by)
+    `INSERT INTO secrets (id, company_id, name, fields, status, alias_of, created_by, sensitive)
+     VALUES (@id, @company_id, @name, @fields, @status, @alias_of, @created_by, @sensitive)
      ON CONFLICT(id) DO UPDATE SET
        name=excluded.name, fields=excluded.fields, status=excluded.status,
-       alias_of=excluded.alias_of, created_by=excluded.created_by`,
+       alias_of=excluded.alias_of, created_by=excluded.created_by, sensitive=excluded.sensitive`,
   ).run({
     id: s.id, company_id: s.companyId, name: s.name,
     fields: JSON.stringify(s.fields), status: s.status,
     alias_of: s.aliasOf ?? null, created_by: s.createdBy,
+    sensitive: s.sensitive == null ? null : (s.sensitive ? 1 : 0),
   })
 }
 
