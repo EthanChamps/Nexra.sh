@@ -69,7 +69,12 @@ function ipv4ToInt(ip: string): number | null {
   const parts = ip.split('.')
   if (parts.length !== 4) return null
   let n = 0
-  for (const p of parts) { const x = Number(p); if (!Number.isInteger(x) || x < 0 || x > 255) return null; n = (n << 8) | x }
+  for (const p of parts) {
+    if (!/^\d{1,3}$/.test(p)) return null
+    const x = Number(p)
+    if (x < 0 || x > 255) return null
+    n = (n << 8) | x
+  }
   return n >>> 0
 }
 
@@ -117,6 +122,7 @@ export function matchesScope(target: Target, scope: ProjectScope): ScopeDecision
   ]
 
   const present = checks.filter(c => c.present)
+  // Nothing on the target to check at all — genuinely nothing to propose.
   if (present.length === 0) return { allowed: false, reason: 'no target to check against scope' }
 
   for (const c of present) {

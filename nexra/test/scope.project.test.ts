@@ -23,6 +23,16 @@ describe('ipInCidr (IPv4)', () => {
     expect(ipInCidr('not-an-ip', '10.0.0.0/8')).toBe(false)
     expect(ipInCidr('10.0.0.1', '10.0.0.0/33')).toBe(false)
   })
+  it('/32 requires an exact match', () => {
+    expect(ipInCidr('10.0.0.5', '10.0.0.5/32')).toBe(true)
+    expect(ipInCidr('10.0.0.6', '10.0.0.5/32')).toBe(false)
+  })
+  it('rejects malformed octets rather than coercing them', () => {
+    expect(ipInCidr('1.2.3.', '1.2.3.0/24')).toBe(false)
+    expect(ipInCidr('0x0a.0.0.1', '10.0.0.0/8')).toBe(false)
+    expect(ipInCidr('1e2.0.0.1', '0.0.0.0/0')).toBe(false)
+    expect(ipInCidr(' 10.0.0.1', '10.0.0.0/8')).toBe(false)
+  })
 })
 
 describe('matchesScope (pure, below the LLM)', () => {
