@@ -219,6 +219,15 @@ export function upsertFinding(chatId: string, f: Finding): void {
   }
 }
 
+// Delete every finding for a chat and its evidence (used by M4 cascade deletes).
+export function deleteFindingsByChat(chatId: string): void {
+  const d = requireDb()
+  const ids = (d.prepare('SELECT id FROM findings WHERE chat_id = ?').all(chatId) as { id: string }[]).map(r => r.id)
+  const delEv = d.prepare('DELETE FROM evidence WHERE finding_id = ?')
+  for (const id of ids) delEv.run(id)
+  d.prepare('DELETE FROM findings WHERE chat_id = ?').run(chatId)
+}
+
 export function listFindingsByChat(chatId: string): Finding[] {
   const d = requireDb()
   const rows = d.prepare('SELECT * FROM findings WHERE chat_id = ? ORDER BY rowid').all(chatId) as FindingRow[]

@@ -1,4 +1,4 @@
-import { getDb, listFindingsByChat } from './store.sqlite'
+import { getDb, listFindingsByChat, deleteFindingsByChat } from './store.sqlite'
 import type { Company, Engagement, Chat, Message, Phase, ScopeRow, ToolAvailability, InputRequestItem } from './store.types'
 
 // Undefined → null for sqlite; empty string is preserved as-is.
@@ -84,6 +84,34 @@ function rowToMessage(r: MsgRow): Message {
   if (r.items != null) m.items = JSON.parse(r.items) as InputRequestItem[]
   if (r.engagement_id != null) m.engagementId = r.engagement_id
   return m
+}
+
+export function deleteChatGraph(chatId: string): void {
+  const db = getDb()
+  const tx = db.transaction((id: string) => {
+    deleteFindingsByChat(id)
+    db.prepare('DELETE FROM messages WHERE chat_id = ?').run(id)
+    db.prepare('DELETE FROM chats WHERE id = ?').run(id)
+  })
+  tx(chatId)
+}
+
+export function deleteCompanyGraph(companyId: string): void {
+  const db = getDb()
+  const tx = db.transaction((cid: string) => {
+    const engIds = (db.prepare('SELECT id FROM engagements WHERE company_id = ?').all(cid) as { id: string }[]).map(r => r.id)
+    for (const eid of engIds) {
+      const chatIds = (db.prepare('SELECT id FROM chats WHERE engagement_id = ?').all(eid) as { id: string }[]).map(r => r.id)
+      for (const chid of chatIds) {
+        deleteFindingsByChat(chid)
+        db.prepare('DELETE FROM messages WHERE chat_id = ?').run(chid)
+      }
+      db.prepare('DELETE FROM chats WHERE engagement_id = ?').run(eid)
+    }
+    db.prepare('DELETE FROM engagements WHERE company_id = ?').run(cid)
+    db.prepare('DELETE FROM companies WHERE id = ?').run(cid)
+  })
+  tx(companyId)
 }
 
 export function readGraph(): Company[] {
