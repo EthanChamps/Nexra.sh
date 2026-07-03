@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { initSettingsDb, upsertFinding } from '../electron/services/store.sqlite'
-import { readSnapshot, saveGraph, readGraph } from '../electron/services/store.graph'
+import { readSnapshot, saveGraph } from '../electron/services/store.graph'
 import type { Company } from '../electron/services/store.types'
 
 let dir: string, dbPath: string
