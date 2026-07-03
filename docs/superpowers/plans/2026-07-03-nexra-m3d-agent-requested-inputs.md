@@ -799,7 +799,7 @@ git commit -m "feat(m3d): dispatch input_request/scope_request/skill into reques
 Create `nexra/test/RequestCard.test.tsx` (follow `MessageList.test.tsx` for the `render` + `window.nexra` mock pattern):
 
 ```tsx
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { it, expect, vi, beforeEach } from 'vitest'   // no describe: tests are bare top-level `it`s, matching this file's flat style
 import { render, screen, fireEvent } from '@testing-library/react'
 import { RequestCard } from '../src/components/RequestCard'
 
@@ -812,7 +812,11 @@ const msg = { id: 'm1', role: 'assistant', kind: 'request', requestKind: 'inputs
 let fulfill: ReturnType<typeof vi.fn>
 beforeEach(() => {
   fulfill = vi.fn(() => Promise.resolve({ success: true }))
-  ;(globalThis as any).window = { nexra: { inputs: { fulfill } } }
+  // Augment jsdom's real `window`, do NOT replace it (`ipc.test.ts` replaces
+  // window wholesale for pure-function tests; here React needs the real
+  // `document` jsdom provides, or rendering fails deep inside react-dom with
+  // "Right-hand side of 'instanceof' is not an object" — found during execution).
+  ;(window as any).nexra = { inputs: { fulfill } }
 })
 
 it('renders a masked input for sensitive items and a plain input for non-secret ones', () => {
