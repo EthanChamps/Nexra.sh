@@ -8,10 +8,10 @@ import { runTitle } from './services/agent.title'
 import { initSettingsDb, getSetting, setSetting, listFindingsByChat } from './services/store.sqlite'
 import { encryptSecret, decryptSecret } from './services/secrets'
 import { createSecret, fillSecret, tieSecret, listSecrets, deleteSecret, upsertFilledInput } from './services/secrets.vault'
-import { getScope, setScope } from './services/scope'
+import { getScope, setScope, getProjectScope, addScopeItem, removeScopeItem, setScopeNotes } from './services/scope'
 import { track, untrack } from './services/inflight'
 import type { ProviderConfig } from './services/providers'
-import type { EngagementScope, SecretField, Company } from './services/store.types'
+import type { EngagementScope, SecretField, Company, ScopeItemType } from './services/store.types'
 import { shellTabs, createSession, writeToSession, resizeSession, killSession, killAllSessions } from './services/shell.pty'
 
 const __dirname2 = path.dirname(fileURLToPath(import.meta.url))
@@ -111,6 +111,12 @@ app.whenReady().then(() => {
   // ── engagement scope (M3b) ──
   ipcMain.handle('scope:get', (_ev, engagementId: string) => getScope(engagementId))
   ipcMain.handle('scope:set', (_ev, { engagementId, scope }: { engagementId: string; scope: EngagementScope }) => setScope(engagementId, scope))
+
+  // ── project scope (company-shared, enforced) ──
+  ipcMain.handle('projectScope:get', (_ev, companyId: string) => getProjectScope(companyId))
+  ipcMain.handle('projectScope:add', (_ev, { companyId, input }: { companyId: string; input: { type: ScopeItemType; value: string; source: 'user' | 'agent' } }) => addScopeItem(companyId, input))
+  ipcMain.handle('projectScope:remove', (_ev, { companyId, id }: { companyId: string; id: string }) => removeScopeItem(companyId, id))
+  ipcMain.handle('projectScope:set-notes', (_ev, { companyId, notes }: { companyId: string; notes: string }) => setScopeNotes(companyId, notes))
 
   // ── findings (M3c) ──
   ipcMain.handle('findings:list', (_ev, chatId: string) => listFindingsByChat(chatId))
