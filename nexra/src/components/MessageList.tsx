@@ -44,7 +44,11 @@ export function MessageList({ chat, streaming, onInstall, companyId, onResume }:
   }, [chat.messages, streaming])
 
   const lastMessage = chat.messages[chat.messages.length - 1]
-  const showTyping = streaming && lastMessage?.role === 'user'
+  // Show the indicator whenever a stream is active and the trailing message
+  // isn't yet in-progress assistant prose — covers the normal user-message
+  // case AND resuming after a request card (which posts no user bubble), so
+  // the operator sees SOMETHING is happening rather than a dead chat.
+  const showTyping = streaming && !(lastMessage?.role === 'assistant' && lastMessage?.kind === 'text')
 
   return (
     <div style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex' }}>
