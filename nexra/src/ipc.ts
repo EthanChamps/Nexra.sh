@@ -42,7 +42,7 @@ function applyEvent(dispatch: Dispatch<Action>, chatId: string, runningIds: Map<
         break
       }
       case 'finding':
-        dispatch({ t: 'appendFinding', chatId, finding: { title: e.title, sev: e.sev, phase: e.phase, time: e.time } })
+        dispatch({ t: 'upsertFinding', chatId, finding: { id: e.id, title: e.title, sev: e.sev, phase: e.phase, time: e.time, rationale: e.rationale, evidence: e.evidence, verified: e.verified } })
         break
       case 'error':
         dispatch({ t: 'appendError', chatId, message: e.message })
