@@ -4,6 +4,7 @@ import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
 import type { AppState } from '../state/selectors'
+import { activeChat } from '../state/selectors'
 import type { Action } from '../state/reducer'
 import type { ShellId, ShellTab } from '../../electron/services/shell.types'
 import { theme } from '../theme'
@@ -122,6 +123,17 @@ export function TerminalDock({ state, dispatch }: { state: AppState; dispatch: D
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [])
+
+  useEffect(() => {
+    const term = termRef.current
+    if (!term) return
+    const chat = activeChat(state)
+    if (!chat) return
+    const skillMessages = chat.messages.filter((m: any) => m.kind === 'tool' && (m as any).state === 'output')
+    if (skillMessages.length === 0) return
+    const output = skillMessages.map((m: any) => (m as any).output).join('\n')
+    if (output) term.write('\r\n' + output + '\r\n')
+  }, [state])
 
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
