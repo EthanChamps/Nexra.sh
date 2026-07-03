@@ -1,15 +1,76 @@
 import { useState } from 'react'
-import type { Secret, EngagementScope, SecretField } from '../../electron/services/store.types'
+import type { EngagementScope, SecretField, InputRequestItem } from '../../electron/services/store.types'
 import { theme } from '../theme'
 
 export interface RequestCardProps {
   message: any
+  companyId?: string
   onFulfill: () => void
 }
 
-export function RequestCard({ message, onFulfill }: RequestCardProps) {
+export function RequestCard({ message, companyId, onFulfill }: RequestCardProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  if (message.requestKind === 'inputs') {
+    const items = (message.items ?? []) as InputRequestItem[]
+    const [values, setValues] = useState<Record<string, string>>({})
+    const [sens, setSens] = useState<Record<string, boolean>>(() => Object.fromEntries(items.map(i => [i.key, i.sensitive])))
+    const [saved, setSaved] = useState<Record<string, boolean>>({})
+    const [resumed, setResumed] = useState(false)
+    const [err, setErr] = useState('')
+
+    const requiredKeys = items.filter(i => i.required).map(i => i.key)
+    const filledCount = requiredKeys.filter(k => saved[k]).length
+
+    const save = async (key: string) => {
+      const value = values[key]
+      if (!value) return
+      try {
+        const res = await window.nexra.inputs.fulfill(companyId!, key, value, sens[key])
+        if (res && res.success === false) { setErr(res.error || 'Save failed'); return }
+        const nextSaved = { ...saved, [key]: true }
+        setSaved(nextSaved)
+        if (!resumed && requiredKeys.every(k => nextSaved[k])) { setResumed(true); onFulfill() }
+      } catch (e) { setErr((e as Error).message) }
+    }
+
+    return (
+      <div style={{ background: theme.card2, border: `1px solid ${theme.accent}`, borderRadius: '6px', padding: '12px', marginTop: '8px' }}>
+        <div style={{ fontWeight: 500, marginBottom: '8px' }}>Inputs requested</div>
+        {err && <div style={{ color: '#e5566a', fontSize: '12px', marginBottom: '8px' }}>{err}</div>}
+        {items.map(it => (
+          <div key={it.key} style={{ marginBottom: '10px' }}>
+            <label htmlFor={`inp-${it.key}`} style={{ display: 'block', fontSize: '12px', color: theme.muted, marginBottom: '4px' }}>
+              {it.label}{it.required ? ' *' : ''}
+            </label>
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+              <input
+                id={`inp-${it.key}`} aria-label={it.label}
+                type={sens[it.key] ? 'password' : 'text'}
+                value={values[it.key] || ''}
+                onChange={e => setValues({ ...values, [it.key]: e.target.value })}
+                onBlur={() => save(it.key)}
+                placeholder="Enter value"
+                style={{ flex: 1, padding: '6px', background: theme.input, border: `1px solid ${theme.border}`, borderRadius: '4px', color: theme.text, fontSize: '12px' }}
+              />
+              <button
+                type="button"
+                onClick={() => setSens({ ...sens, [it.key]: !sens[it.key] })}
+                style={{ padding: '6px 8px', background: theme.border, color: theme.text, border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', whiteSpace: 'nowrap' }}
+              >
+                {sens[it.key] ? 'not a secret' : 'mark secret'}
+              </button>
+              {saved[it.key] && <span style={{ color: theme.accent, fontSize: '12px' }}>saved</span>}
+            </div>
+          </div>
+        ))}
+        <div style={{ fontSize: '12px', color: theme.muted, marginTop: '4px' }}>
+          {filledCount} of {requiredKeys.length} required filled
+        </div>
+      </div>
+    )
+  }
 
   if (message.requestKind === 'secret') {
     const { name, fields } = message as any

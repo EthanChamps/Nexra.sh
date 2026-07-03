@@ -6,7 +6,7 @@ import { runSend } from './services/agent.live'
 import { runTitle } from './services/agent.title'
 import { initSettingsDb, getSetting, setSetting, listFindingsByChat } from './services/store.sqlite'
 import { encryptSecret, decryptSecret } from './services/secrets'
-import { createSecret, fillSecret, tieSecret, listSecrets, deleteSecret } from './services/secrets.vault'
+import { createSecret, fillSecret, tieSecret, listSecrets, deleteSecret, upsertFilledInput } from './services/secrets.vault'
 import { getScope, setScope } from './services/scope'
 import type { ProviderConfig } from './services/providers'
 import type { EngagementScope, SecretField } from './services/store.types'
@@ -110,6 +110,15 @@ app.whenReady().then(() => {
   ipcMain.handle('secrets:fulfill-pending', (_ev, { id, values }: { id: string; values: Record<string, string> }) => {
     try {
       fillSecret(id, values)
+      return { success: true }
+    } catch (err) {
+      return { success: false, error: (err as Error).message }
+    }
+  })
+  // ── fulfillment: operator fills one agent-requested input (M3d) ──
+  ipcMain.handle('inputs:fulfill', (_ev, { companyId, key, value, sensitive }: { companyId: string; key: string; value: string; sensitive: boolean }) => {
+    try {
+      upsertFilledInput(companyId, key, value, sensitive)
       return { success: true }
     } catch (err) {
       return { success: false, error: (err as Error).message }

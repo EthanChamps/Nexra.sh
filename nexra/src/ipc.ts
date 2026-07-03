@@ -55,6 +55,15 @@ function applyEvent(dispatch: Dispatch<Action>, chatId: string, runningIds: Map<
       case 'finding':
         dispatch({ t: 'upsertFinding', chatId, finding: { id: e.id, title: e.title, sev: e.sev, phase: e.phase, time: e.time, rationale: e.rationale, evidence: e.evidence, verified: e.verified } })
         break
+      case 'input_request':
+        dispatch({ t: 'appendInputRequest', chatId, requestId: e.requestId, items: e.items })
+        break
+      case 'scope_request':
+        dispatch({ t: 'appendScopeRequest', chatId, engagementId: e.engagementId })
+        break
+      case 'skill':
+        dispatch({ t: 'appendSkillEvent', chatId, skillEvent: e })
+        break
       case 'error':
         dispatch({ t: 'appendError', chatId, message: e.message })
         dispatch({ t: 'setStreaming', chatId, on: false })
@@ -98,6 +107,26 @@ export function sendMessage(dispatch: Dispatch<Action>, chat: Chat, eng: Engagem
       .then(title => dispatch({ t: 'setChatTitle', chatId: chat.id, title }))
       .catch(() => dispatch({ t: 'setChatTitle', chatId: chat.id, title: deriveTitle(trimmed) }))
   }
+}
+
+// Resume the agent after the operator has filled a requested-input card. Unlike
+// sendMessage this appends NO visible user bubble — it feeds the model a synthetic
+// "continue" turn and streams the reply. The request card message is kind:'request',
+// so it is naturally excluded from the text-only history below.
+export function resumeAfterInputs(dispatch: Dispatch<Action>, chat: Chat, eng: Engagement, companyId?: string): void {
+  const history = chat.messages
+    .filter(m => m.kind === 'text' && typeof m.content === 'string')
+    .map(m => ({ role: m.role, content: m.content as string }))
+  dispatch({ t: 'setStreaming', chatId: chat.id, on: true })
+  const primaryTool = chat.tools.find(t => t.available)?.name ?? 'shell'
+  const runningIds = new Map<string, string>()
+  window.nexra.agent.send(
+    { chatId: chat.id, engagementType: eng.type, phaseLabel: phaseLabel(eng, chat.phaseId), primaryTool, text: 'The requested inputs have been provided. Continue.', history, companyId, engagementId: eng.id },
+    applyEvent(dispatch, chat.id, runningIds),
+  ).catch((err: unknown) => {
+    dispatch({ t: 'appendError', chatId: chat.id, message: err instanceof Error ? err.message : 'Resume failed' })
+    dispatch({ t: 'setStreaming', chatId: chat.id, on: false })
+  })
 }
 
 // Clears busy state immediately instead of waiting on the abort/done IPC
