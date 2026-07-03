@@ -93,8 +93,10 @@ export function initSettingsDb(dbPath: string): void {
     id TEXT PRIMARY KEY, chat_id TEXT NOT NULL, role TEXT NOT NULL, kind TEXT NOT NULL,
     content TEXT, tool_name TEXT, command TEXT, output TEXT, duration TEXT,
     reason TEXT, install_cmd TEXT, state TEXT,
-    request_kind TEXT, request_id TEXT, items TEXT, engagement_id TEXT, ord INTEGER NOT NULL
+    request_kind TEXT, request_id TEXT, items TEXT, engagement_id TEXT, scope_item TEXT, ord INTEGER NOT NULL
   )`)
+  // Additive migration: older DBs created `messages` without scope_item.
+  try { db.exec('ALTER TABLE messages ADD COLUMN scope_item TEXT') } catch { /* column already present */ }
   db.exec(`CREATE TABLE IF NOT EXISTS phase_coverage (
     engagement_id TEXT NOT NULL, phase_id TEXT NOT NULL, status TEXT NOT NULL, updated TEXT NOT NULL,
     PRIMARY KEY (engagement_id, phase_id)

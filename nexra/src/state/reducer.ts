@@ -1,7 +1,7 @@
 import type { AppState } from './selectors'
 import { activeCompany, engagementById, chatByIds, chatByGlobalId } from './selectors'
 import type { UIState } from './types'
-import type { Chat, Message, Finding, Phase, EngagementScope, InputRequestItem } from '../../electron/services/store.types'
+import type { Chat, Message, Finding, Phase, EngagementScope, InputRequestItem, ScopeItemType } from '../../electron/services/store.types'
 import type { AgentEvent } from '../../electron/services/agent.types'
 import { chatColors } from '../../electron/services/seed'
 
@@ -119,6 +119,7 @@ export type Action =
   | { t: 'appendSkillEvent'; chatId: string; skillEvent: AgentEvent }
   | { t: 'appendInputRequest'; chatId: string; requestId: string; items: InputRequestItem[] }
   | { t: 'appendScopeRequest'; chatId: string; engagementId: string }
+  | { t: 'appendScopeProposal'; chatId: string; item: { type: ScopeItemType; value: string }; reason?: string }
   | { t: 'fulfillSecretRequest'; chatId: string; secretId: string; values: Record<string, string> }
   | { t: 'fulfillScopeRequest'; engagementId: string; scope: EngagementScope }
   | { t: 'setStreaming'; chatId: string; on: boolean }
@@ -296,6 +297,11 @@ export function reducer(state: AppState, a: Action): AppState {
     case 'appendScopeRequest': {
       const c = chatByGlobalId(s, a.chatId); if (!c) return state
       c.messages.push({ id: nextId('m'), role: 'assistant', kind: 'request', requestKind: 'scope', engagementId: a.engagementId })
+      return s
+    }
+    case 'appendScopeProposal': {
+      const c = chatByGlobalId(s, a.chatId); if (!c) return state
+      c.messages.push({ id: nextId('m'), role: 'assistant', kind: 'request', requestKind: 'scope_proposal', proposeItem: a.item, reason: a.reason })
       return s
     }
     case 'fulfillSecretRequest': {

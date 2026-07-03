@@ -276,4 +276,16 @@ describe('reducer — request cards (M3d)', () => {
     expect(msg.requestKind).toBe('scope')
     expect(msg.engagementId).toBe('e1')
   })
+
+  it('appendScopeProposal pushes a scope-proposal request message', () => {
+    let s = reducer(boot(), { t: 'openCompany', id: 'c1' })
+    const chatId = activeEngagement(s)!.chats[0].id
+    s = reducer(s, { t: 'appendScopeProposal', chatId, item: { type: 'hostname', value: 'admin.acme.com' }, reason: 'discovered' })
+    const msgs = chatByGlobalId(s, chatId)!.messages
+    const msg = msgs[msgs.length - 1]
+    expect(msg.kind).toBe('request')
+    expect(msg.requestKind).toBe('scope_proposal')
+    expect(msg.proposeItem).toEqual({ type: 'hostname', value: 'admin.acme.com' })
+    expect(msg.reason).toBe('discovered')
+  })
 })

@@ -28,14 +28,14 @@ export function saveGraph(companies: Company[]): void {
        phase_id=excluded.phase_id, color=excluded.color, ord=excluded.ord`)
   const upMsg = db.prepare(
     `INSERT INTO messages (id, chat_id, role, kind, content, tool_name, command, output, duration,
-       reason, install_cmd, state, request_kind, request_id, items, engagement_id, ord)
+       reason, install_cmd, state, request_kind, request_id, items, engagement_id, scope_item, ord)
      VALUES (@id, @chat_id, @role, @kind, @content, @tool_name, @command, @output, @duration,
-       @reason, @install_cmd, @state, @request_kind, @request_id, @items, @engagement_id, @ord)
+       @reason, @install_cmd, @state, @request_kind, @request_id, @items, @engagement_id, @scope_item, @ord)
      ON CONFLICT(id) DO UPDATE SET chat_id=excluded.chat_id, role=excluded.role, kind=excluded.kind,
        content=excluded.content, tool_name=excluded.tool_name, command=excluded.command, output=excluded.output,
        duration=excluded.duration, reason=excluded.reason, install_cmd=excluded.install_cmd, state=excluded.state,
        request_kind=excluded.request_kind, request_id=excluded.request_id, items=excluded.items,
-       engagement_id=excluded.engagement_id, ord=excluded.ord`)
+       engagement_id=excluded.engagement_id, scope_item=excluded.scope_item, ord=excluded.ord`)
 
   const tx = db.transaction((cs: Company[]) => {
     cs.forEach((c, ci) => {
@@ -52,7 +52,8 @@ export function saveGraph(companies: Company[]): void {
               tool_name: n(m.toolName), command: n(m.command), output: n(m.output), duration: n(m.duration),
               reason: n(m.reason), install_cmd: n(m.installCmd), state: n(m.state),
               request_kind: n(m.requestKind), request_id: n(m.requestId),
-              items: m.items ? JSON.stringify(m.items) : null, engagement_id: n(m.engagementId), ord: mi })
+              items: m.items ? JSON.stringify(m.items) : null, engagement_id: n(m.engagementId),
+              scope_item: m.proposeItem ? JSON.stringify(m.proposeItem) : null, ord: mi })
           })
         })
       })
@@ -67,7 +68,7 @@ interface ChatRow { id: string; name: string; phase_id: string; color: string }
 interface MsgRow {
   id: string; role: string; kind: string; content: string | null; tool_name: string | null; command: string | null
   output: string | null; duration: string | null; reason: string | null; install_cmd: string | null; state: string | null
-  request_kind: string | null; request_id: string | null; items: string | null; engagement_id: string | null
+  request_kind: string | null; request_id: string | null; items: string | null; engagement_id: string | null; scope_item: string | null
 }
 
 function rowToMessage(r: MsgRow): Message {
@@ -84,6 +85,7 @@ function rowToMessage(r: MsgRow): Message {
   if (r.request_id != null) m.requestId = r.request_id
   if (r.items != null) m.items = JSON.parse(r.items) as InputRequestItem[]
   if (r.engagement_id != null) m.engagementId = r.engagement_id
+  if (r.scope_item != null) m.proposeItem = JSON.parse(r.scope_item) as Message['proposeItem']
   return m
 }
 

@@ -23,7 +23,8 @@ export interface Message {
   toolName?: string; command?: string; output?: string; duration?: string
   reason?: string; installCmd?: string; state?: ToolState
   // request cards (M3d): the agent asks the operator for inputs or scope
-  requestKind?: 'inputs' | 'scope'; requestId?: string; items?: InputRequestItem[]; engagementId?: string
+  requestKind?: 'inputs' | 'scope' | 'scope_proposal'; requestId?: string; items?: InputRequestItem[]; engagementId?: string
+  proposeItem?: { type: ScopeItemType; value: string }
 }
 
 // A checkable artifact behind a finding (M3c). `tool_output` references a

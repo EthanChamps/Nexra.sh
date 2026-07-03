@@ -50,6 +50,9 @@ function applyEvent(dispatch: Dispatch<Action>, chatId: string, runningIds: Map<
       case 'scope_request':
         dispatch({ t: 'appendScopeRequest', chatId, engagementId: e.engagementId })
         break
+      case 'scope_proposal':
+        dispatch({ t: 'appendScopeProposal', chatId, item: e.item, reason: e.reason })
+        break
       case 'skill':
         dispatch({ t: 'appendSkillEvent', chatId, skillEvent: e })
         break
