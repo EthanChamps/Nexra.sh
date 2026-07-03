@@ -4,7 +4,14 @@ import type { ShellId, ShellTab, ShellCreateResult } from '../electron/services/
 
 export interface NexraApi {
   platform: NodeJS.Platform
-  store: { snapshot(): Promise<Snapshot> }
+  store: {
+    snapshot(): Promise<Snapshot>
+    save(companies: import('../electron/services/store.types').Company[]): Promise<{ success: boolean; error?: string }>
+    deleteCompany(id: string): Promise<void>
+    deleteChat(id: string): Promise<void>
+    coverage(engagementId: string): Promise<{ phaseId: string; status: string }[]>
+    memory(engagementId: string): Promise<{ kind: string; content: string; chatId?: string; time: string }[]>
+  }
   agent: {
     send(req: AgentSendRequest, onEvent: (e: AgentEvent) => void): Promise<void>
     title(req: AgentTitleRequest): Promise<string>
