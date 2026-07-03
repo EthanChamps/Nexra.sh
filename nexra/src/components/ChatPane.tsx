@@ -93,7 +93,7 @@ export function ChatPane({
         </div>
       </header>
 
-      <MessageList chat={chat} onInstall={onInstall} />
+      <MessageList chat={chat} streaming={!!state.ui.streamingChats[chat.id]} onInstall={onInstall} />
 
       <Composer
         draft={state.ui.draft}
