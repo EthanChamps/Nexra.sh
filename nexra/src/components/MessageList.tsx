@@ -1,15 +1,39 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { theme } from '../theme'
 import type { Chat, Message } from '../../electron/services/store.types'
 import { ToolCard } from './ToolCard'
 import { MarkdownMessage } from './MarkdownMessage'
 import { TypingIndicator } from './TypingIndicator'
 import { RequestCard } from './RequestCard'
+import { Hoverable } from './Hoverable'
+
+const BOTTOM_THRESHOLD = 64
 
 export function MessageList({ chat, streaming, onInstall }: { chat: Chat; streaming: boolean; onInstall?: (msg: Message) => void }) {
   const scrollRef = useRef<HTMLDivElement>(null)
+  const atBottomRef = useRef(true)
+  const [showJump, setShowJump] = useState(false)
+
+  const handleScroll = () => {
+    const el = scrollRef.current
+    if (!el) return
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight <= BOTTOM_THRESHOLD
+    atBottomRef.current = atBottom
+    setShowJump(!atBottom)
+  }
+
+  const jumpToBottom = () => {
+    const el = scrollRef.current
+    if (!el) return
+    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
+    atBottomRef.current = true
+    setShowJump(false)
+  }
 
   useEffect(() => {
+    // Only auto-follow if the user was already at the bottom — otherwise a streamed
+    // token would yank them back down every time they try to scroll up to read history.
+    if (!atBottomRef.current) return
     // Read scroll layout after paint (matches the prototype's scrollChat), since messages
     // (including streamed tool cards) can change the content height right before this runs.
     const raf = requestAnimationFrame(() => {
@@ -23,7 +47,8 @@ export function MessageList({ chat, streaming, onInstall }: { chat: Chat; stream
   const showTyping = streaming && lastMessage?.role === 'user'
 
   return (
-    <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '26px 20px 30px', background: theme.bg }}>
+    <div style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex' }}>
+      <div ref={scrollRef} onScroll={handleScroll} data-testid="message-scroll" style={{ flex: 1, overflowY: 'auto', padding: '26px 20px 30px', background: theme.bg }}>
       <div style={{ maxWidth: 800, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
         {chat.messages.map(m => (
           <div key={m.id}>
@@ -61,6 +86,25 @@ export function MessageList({ chat, streaming, onInstall }: { chat: Chat; stream
         ))}
         {showTyping && <TypingIndicator />}
       </div>
+      </div>
+      {showJump && (
+        <Hoverable
+          as="button"
+          type="button"
+          onClick={jumpToBottom}
+          title="Jump to bottom"
+          hoverStyle={{ color: theme.text, background: 'rgba(255,255,255,0.1)' }}
+          baseStyle={{
+            position: 'absolute', left: '50%', bottom: 16, transform: 'translateX(-50%)',
+            display: 'flex', alignItems: 'center', gap: 6, height: 30, padding: '0 13px',
+            borderRadius: 20, border: '1px solid rgba(255,255,255,0.09)', background: theme.panel,
+            color: theme.muted2, fontFamily: 'inherit', fontSize: 12, cursor: 'pointer',
+            boxShadow: '0 4px 14px rgba(0,0,0,0.3)', transition: 'all .12s',
+          }}
+        >
+          ↓ Jump to bottom
+        </Hoverable>
+      )}
     </div>
   )
 }
