@@ -60,6 +60,27 @@ export interface EngagementScope {
   regions: string[]
 }
 
+// Project-level (company-shared) enforced scope. A flat list of authorized
+// targets — everything listed is in scope (there are no out-of-scope
+// exclusions). `source` records whether the operator hand-added it or the
+// agent proposed it and the operator confirmed. Shared by every engagement in
+// the project, exactly like the credential vault.
+export type ScopeItemType =
+  | 'cidr' | 'ip' | 'hostname' | 'url'
+  | 'cloud_account' | 'tenant_id' | 'region' | 'other'
+export interface ScopeItem {
+  id: string
+  type: ScopeItemType
+  value: string
+  source: 'user' | 'agent'
+  addedAt: number
+}
+export interface ProjectScope {
+  companyId: string
+  items: ScopeItem[]
+  notes: string
+}
+
 export interface Engagement {
   id: string; type: ReviewTypeId; name: string; status: EngagementStatus
   updated: string; linear: boolean; phases: Phase[]; scope: ScopeRow[]; chats: Chat[]

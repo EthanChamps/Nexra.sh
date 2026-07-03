@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3'
-import type { Secret, SecretField, EngagementScope, Finding, Evidence } from './store.types'
+import type { Secret, SecretField, EngagementScope, Finding, Evidence, ScopeItem } from './store.types'
 
 let db: Database.Database | null = null
 
@@ -42,6 +42,15 @@ export function initSettingsDb(dbPath: string): void {
     mode TEXT NOT NULL,
     accounts TEXT NOT NULL,
     regions TEXT NOT NULL
+  )`)
+  // Project-level (company-shared) enforced scope. Flat authorized-target list.
+  db.exec(`CREATE TABLE IF NOT EXISTS project_scope (
+    id TEXT PRIMARY KEY,
+    company_id TEXT NOT NULL,
+    type TEXT NOT NULL,
+    value TEXT NOT NULL,
+    source TEXT NOT NULL,
+    added_at INTEGER NOT NULL
   )`)
   // Findings + their evidence artifacts (M3c). Pulled forward from M4; chat_id
   // is a plain column now (companies/engagements/chats live in the mock
@@ -186,6 +195,26 @@ export function getScopeRow(engagementId: string): EngagementScope | undefined {
   const r = requireDb().prepare('SELECT mode, accounts, regions FROM scope WHERE engagement_id = ?').get(engagementId) as { mode: string; accounts: string; regions: string } | undefined
   if (!r) return undefined
   return { mode: r.mode as EngagementScope['mode'], accounts: JSON.parse(r.accounts), regions: JSON.parse(r.regions) }
+}
+
+// ── project scope (company-shared, enforced) ────────────────────────────────
+interface ScopeItemRow { id: string; company_id: string; type: string; value: string; source: string; added_at: number }
+
+export function insertScopeItem(companyId: string, item: ScopeItem): void {
+  requireDb().prepare(
+    `INSERT INTO project_scope (id, company_id, type, value, source, added_at)
+     VALUES (@id, @company_id, @type, @value, @source, @added_at)
+     ON CONFLICT(id) DO UPDATE SET type=excluded.type, value=excluded.value, source=excluded.source`,
+  ).run({ id: item.id, company_id: companyId, type: item.type, value: item.value, source: item.source, added_at: item.addedAt })
+}
+
+export function deleteScopeItem(companyId: string, id: string): void {
+  requireDb().prepare('DELETE FROM project_scope WHERE company_id = ? AND id = ?').run(companyId, id)
+}
+
+export function listScopeItems(companyId: string): ScopeItem[] {
+  const rows = requireDb().prepare('SELECT * FROM project_scope WHERE company_id = ? ORDER BY added_at, rowid').all(companyId) as ScopeItemRow[]
+  return rows.map(r => ({ id: r.id, type: r.type as ScopeItem['type'], value: r.value, source: r.source as ScopeItem['source'], addedAt: r.added_at }))
 }
 
 // ── findings + evidence (M3c) ───────────────────────────────────────────────
