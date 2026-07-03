@@ -1,227 +1,169 @@
-# Redcell — Handover
+# Nexra.sh — Handover
 
-**Date:** 2026-07-02
-**Status:** M1 (UI shell) + M2 (real terminals) complete, reviewed, merged to `master`.
+**Date:** 2026-07-03
+**Status:** M1 + M2 + M3 (a–d) merged to `master`. **M4 complete, in review — draft PR #26** (`worktree-nexra-m4-persistence`), not yet merged.
 
-## What Redcell is
+> The app was renamed **Redcell → Nexra.sh** partway through. App dir is
+> `nexra/`, IPC is `window.nexra.*`, vendored design reference is
+> `nexra/design-reference/Nexra.dc.html`. Some historical sections below use
+> the old name where they describe what was literally built at the time.
 
-A cross-platform (macOS + Windows) desktop app for security consultants: an
-AI-agent console for running security engagements. Hierarchy: **Project**
-(client) → **Engagement** (one of 5 fixed review types, each with fixed
-phases/tools/scope) → **Chat** (a focused agent thread per phase, its own
-context/findings/tools). Each chat streams assistant text, runs tools (shown
-as tool-call cards), logs findings, and shares a bottom terminal dock
-(PowerShell / cmd / Kali-WSL) with the operator.
+## What Nexra.sh is
 
-Source of visual/behavioural truth: the imported Claude Design prototype
-`Redcell.dc.html` (project `3894fbba-5f50-4469-a73a-6c9f110f36d7`), vendored
-verbatim at `redcell/design-reference/Redcell.dc.html`.
+Cross-platform (macOS + Windows) Electron desktop app: an AI-agent console for
+security consultants. Hierarchy: **Project/Company** (client) → **Engagement**
+(one of 5 fixed review types) → **Chat** (a focused agent thread per phase, its
+own context/findings/tools). Each chat streams assistant text, runs typed
+skills (shown as tool-call cards), logs findings backed by evidence, and shares
+a bottom terminal dock (PowerShell / cmd / Kali-WSL) with the operator.
 
-Note: the project was renamed **Redcell → Nexra.sh** partway through (see
-`CLAUDE.md`); the app directory is now `nexra/`, IPC is `window.nexra.*`, and
-the vendored reference is `nexra/design-reference/Nexra.dc.html`. This
-document's historical sections below predate the rename and use the old
-names where they describe what was literally built at the time.
+**First vertical being made fully real: AWS config review.** The other four
+engagement types come after it proves the architecture (see the roadmap doc).
+
+## The plan of record
+
+The single source of truth for sequencing is
+**`docs/superpowers/specs/2026-07-02-nexra-internal-usable-plan.md`** — it
+re-scopes the older shipping roadmap around one goal: running a real AWS
+config-review engagement internally, end-to-end. Read it first.
+
+Critical path (✅ = merged, 🟡 = done but in review, ⬜ = not started):
+
+```
+M3a live agent ✅ ─► M4 persistence 🟡(PR #26) ─► M3b AWS exec+safety ✅
+      └──────────────────────────────────────────► M3c evidence ✅
+        (+ M3d agent-requested inputs ✅)
+                                    Phase 5 report export ⬜
+                                    Phase 6 hardening/dogfood/packaging ⬜ ─► INTERNAL-USABLE
+```
+
+Note the milestone numbering drifted from the plan: git's "m3b" branch was the
+**credential vault**, while the plan's "M3b" is **AWS tool execution** — both
+are done. What matters is the state below, not the labels.
+
+## Verified current state (2026-07-03)
+
+| Service / area | State | Detail |
+|---|---|---|
+| `ShellService` | **real** | node-pty operator terminals + xterm.js (M2). |
+| `AgentService` | **real** | Vercel AI SDK v6 + Claude, streaming, cancel, bounded tool loop (M3a). |
+| Typed skill layer | **real** | `run_prowler`/`run_scoutsuite`/`run_pmapper` in `agent.tools.ts`; scope validated below the LLM; creds injected into the child process (agent never sees them). Actual tools must be installed on the box to run for real. |
+| Credential vault | **real** | encrypted secrets in sqlite; `secrets.vault.ts` / `secrets.ts`. |
+| Findings + evidence | **real** | evidence required before a finding is `verified`; persisted (M3c). |
+| Agent-requested inputs | **real** | input/scope/skill request cards + manual Continue button (M3d). |
+| `StoreService` (graph persistence) | **done, in PR #26** | companies/engagements/chats/messages now persist to sqlite and survive restart; `phase_coverage` + `engagement_memory` substrate. **On `master` this is still the read-only mock seed until #26 merges.** |
+| Settings | **real** | provider/model persisted; API key in encrypted store (M3a). |
+
+**Tests:** on the M4 branch, `npm test` = **206/206 green**, `npm run build`
+(`tsc` + `vite build`) clean. On `master` (pre-#26): the smaller pre-M4 suite.
+
+## Immediate next actions (for the next agent)
+
+1. **Merge PR #26** (M4 persistence) after review — it's the last mock backend
+   (`StoreService`) going real. Nothing else should build on `master` until
+   this lands, or you'll re-derive the message/graph shape. Branch:
+   `worktree-nexra-m4-persistence`. Spec + plan:
+   `docs/superpowers/{specs,plans}/2026-07-03-nexra-m4-persistence*.md`.
+
+2. **Phase 5 — Report export** (new milestone, not yet specced). Findings
+   across an engagement's chats → a structured, client-usable report
+   (Markdown/HTML → PDF). *Done when:* a completed AWS engagement produces a
+   document you could hand to a client. Follow the locked process (brainstorm →
+   spec → plan → subagent-driven-development → finishing-a-development-branch).
+
+3. **Phase 6 — Hardening + dogfood + packaging** (the internal-usable gate).
+   Three bundled pieces:
+   - **Hardening:** `/security-review` focused on the ungated-execution +
+     key-handling + prompt-injection surface (much substance already landed in
+     M3b — this is the review that confirms it holds). Non-negotiable *because*
+     execution is ungated.
+   - **Dogfood:** (a) close the **outstanding M2 manual terminal dogfood** on
+     macOS + Windows — never done interactively (built headless); see "Known
+     gaps" below. (b) **One real AWS run** against a known account/benchmark:
+     the agent autonomously runs Prowler/ScoutSuite/PMapper, logs findings with
+     evidence, enforces scope — proof, not a description (competitive Req 8).
+   - **Packaging:** confirm `npm run dev` + a locally-built **unsigned** app run
+     on the team's Macs + Windows; document the one-time Gatekeeper/SmartScreen
+     bypass. Bump `electron-builder` to `^26` only if/when a local `.dmg`/`.exe`
+     is actually built (kills the `node-tar` advisory; re-check vs node-pty's
+     native prebuild/asar unpacking). **Public signing/notarization is
+     explicitly deferred** — not needed for internal use.
+
+*Done when Phase 6 closes:* you can run a complete AWS config-review engagement
+end-to-end on your own Mac and Windows, after a security self-review and one
+real run. That is the internal-usable definition of done.
 
 ## Locked architecture decisions
 
-- **Electron** + React/Vite renderer (not Tauri) — chosen for `node-pty` +
-  `xterm.js`-class interactive shells (PowerShell/cmd/WSL/bash) and easy
-  provider-agnostic AI in Node.
-- **AI: provider-agnostic**, via the **Vercel AI SDK v6** (planned for M3).
-  Claude (Anthropic) is the default/first-wired provider; OpenAI/Google/Ollama
-  are selectable in Settings and trivially addable.
-- **Target execution model: real, UNGATED.** The agent will eventually run
-  commands autonomously with no per-command approval gate. M2 delivers real,
-  ungated *operator* terminals; the agent itself doesn't drive the shell yet
-  (M3).
-- **M1 scope = UI shell only.** No real execution, no live LLM, no disk
-  persistence — all three backends were mocks behind clean service interfaces.
-- **M2 scope = real terminals.** `ShellService` is now backed by real
-  `node-pty` processes; `AgentService`/`StoreService` are still mocks.
+- **Electron** + React/Vite renderer (not Tauri) — needs real interactive PTYs.
+- **AI: provider-agnostic** via Vercel AI SDK v6; Claude default.
+- **Execution model: real, UNGATED** — the agent runs skills with no
+  per-command approval. Safety is designed in below the LLM (typed skill layer,
+  scope allowlist at the tool boundary, tool output treated as untrusted data,
+  credentials injected into the child process only), not a per-command prompt.
+- **Service boundary:** `electron/services/*` exposed via `contextBridge` as
+  `window.nexra.*`. **No renderer component imports a service directly** — real
+  backends swap in with zero UI changes. This is why each milestone replaces
+  exactly one backend.
+- **Styling source of truth:** vendored prototype
+  `nexra/design-reference/Nexra.dc.html` — match hex/px exactly.
+- **Icons are for action/status, not decoration** — don't add UI the reference
+  doesn't have (e.g. M4 deliberately ships memory/coverage as backend-only, no
+  new UI).
+- **Persistence (M4):** two writers split by origin — the **renderer
+  debounce-autosaves** structure + transcript (`store.save`), the **main
+  process** owns event-originated data it already emits (findings, plus new
+  `phase_coverage`/`engagement_memory`). Schema is additive-only in
+  `initSettingsDb`; an older DB upgrades in place.
 
-## What was built (M1)
+## Known gaps / deferred (triaged)
 
-Electron + React (Vite) app in `redcell/`. Three mock-backed services in
-`electron/services/` (`StoreService`, `AgentService`, `ShellService`), exposed
-to the renderer via a `contextBridge` preload as `window.redcell.*`. **No
-renderer component imports a service directly** — everything flows through
-that IPC boundary, so real backends can replace the mocks with zero UI
-changes.
-
-Screens/components (all pixel-ported from the reference, exact hex/px):
-Home (projects grid + New Project modal), Workspace (sidebar with nested
-chats, chat pane with message list + 3 tool-card states + composer), right
-context panel (Scope/Findings/Tools) + collapsed rail, New Engagement / New
-Chat modals, chat right-click context menu, a resizable shared terminal dock
-(3 shells, Ctrl+`` toggle), and an inert Settings screen (provider/model/API
-key — Claude-default, nothing wired to a real network call).
-
-State: a ported `reducer.ts`/`selectors.ts` (mirrors the prototype's
-`DCLogic` class) driving all screens via `useReducer`.
-
-**Result:** 20/20 tests passing, `npm run build` + `tsc --noEmit` clean.
-Whole-branch review verdict: **ready to merge, no Critical/Important issues**.
-
-Notable bugs caught and fixed during review (not left in the codebase):
-1. **Reducer `clone()` aliasing bug** — the plan's own code shallow-copied
-   `ui`, leaving `activeChatByEngagement`/`ctxMenu` shared across states.
-   Fixed to deep-clone those two nested collections.
-2. **Duplicate install-card bug** — clicking "Install" on an unavailable tool
-   appended a new tool card instead of transforming the clicked card in
-   place (prototype mutates the same message). Fixed by seeding the
-   running-card id map with the clicked card's own id; added a regression
-   test (`upsertToolCard` replace-in-place).
-3. Several exact-alpha CSS fidelity drifts (`theme.border2` `0.1` used where
-   the reference specified `0.09`, in Home cards/chips and two modal
-   elements) — all found by review and corrected to literal values.
-
-## What was built (M2)
-
-`ShellService`'s mock (`electron/services/shell.mock.ts`, request/response
-`run`/`prompt` over a line-model) is gone, replaced end-to-end by real
-interactive PTYs:
-
-- **`node-pty`** spawns real shells: PowerShell/cmd/WSL-Kali on Windows,
-  the operator's login shell (or `pwsh` if installed) on macOS. Its 1.x
-  releases ship **N-API prebuilt binaries** for darwin-arm64/x64 and
-  win32-x64/arm64 — confirmed by inspecting the published tarball — so no
-  `electron-rebuild`/ABI-rebuild step is needed; the same prebuild loads
-  under both plain Node (Vitest) and Electron's embedded Node. The one real
-  install-time snag: the prebuilt `spawn-helper` binary loses its executable
-  bit via npm, fixed with a `postinstall` script
-  (`nexra/scripts/fix-native-permissions.cjs`) that restores it.
-- **Session registry** (`electron/services/shell.pty.ts`) keeps one real pty
-  process per shell tab, keyed by `ShellId` — lazily created on first view,
-  and idempotent (`create()` on an already-running shell returns its current
-  state instead of spawning a second process). This is what makes sessions
-  survive the dock closing: the pty keeps running in the main process
-  regardless of whether `TerminalDock` is mounted; reopening the dock just
-  re-attaches. All sessions are force-killed on `app.on('before-quit')`, and
-  killing a session is verified (in tests) to actually end the OS process,
-  not just drop a map entry.
-- **Bounded scrollback** (`electron/services/scrollback.ts`) — an in-memory,
-  byte-capped ring buffer per session (default 5MB), replayed into a
-  reattaching `TerminalDock` so a reopened dock repaints recent output
-  instead of starting blank.
-- **Platform-resolved shell tabs** (`electron/services/shell.resolve.ts` +
-  `shell.probe.ts`) — pure resolution logic (unit-tested with an injected
-  probe) separated from the real, impure `which`/`wsl.exe -l -q` probing
-  used at runtime. Windows always offers PowerShell + cmd, adds Kali only if
-  a `kali-linux` WSL distro is detected; macOS always offers the login shell,
-  adds PowerShell only if `pwsh` is on `PATH`. Unavailable shells are simply
-  omitted, never shown broken.
-- **Renderer: `xterm.js` + `@xterm/addon-fit`** replace the old line-by-line
-  `<pre>` renderer and single-line `<input>` in `TerminalDock.tsx` — a real
-  PTY is a continuous, ANSI-bearing byte stream and needs raw keystrokes
-  (`sudo` prompts, `less`/`vim`, Ctrl-C, tab completion), which a buffered
-  `<input>` can't drive. The dock's outer chrome (resize handle, tab bar,
-  "Shared with agent" pill, close button, exact `theme.ts` colors) is
-  unchanged — only the scroll-area internals were swapped, verified
-  byte-for-byte against the pre-M2 file during review.
-- **IPC surface** changed from request/response (`shell.run`/`shell.prompt`)
-  to a session/stream model:
-  `window.nexra.shell.{tabs, create, write, resize, kill, onData}` — `onData`
-  is a `contextBridge`-exposed subscription over a single always-listening
-  `ipcRenderer.on('shell:data', ...)` channel (main process broadcasts every
-  session's output continuously; the renderer filters by `sessionId`).
-
-**Result:** 37/37 tests passing (unit: shell resolution, scrollback
-ring-buffer; real-process integration: spawn/write/resize/kill + pid-liveness
-check on both the spike and the session registry; renderer: mocked-xterm
-wiring tests — xterm.js itself isn't meaningfully unit-testable in jsdom, so
-it's covered by manual/dogfood verification instead per the design spec).
-`tsc --noEmit` and `npm run build` clean. Executed via
-`subagent-driven-development`: 7 implementation tasks, each with an
-independent implementer + reviewer subagent and a fix loop on findings
-(three fix loops total — a non-reproducible `npm install` due to the
-`spawn-helper` permission bit plus a dead-code Vitest config split on Task 1;
-a `tsc` regression on Task 2 from widening `ShellId` without propagating it
-to `UIState.terminalShell`; both resolved and re-reviewed clean).
-
-**Known gap:** cross-platform manual dogfooding (per the design spec's M2
-acceptance criteria — real prompts, `sudo`/`less`/Ctrl-C behaving correctly,
-long-running-command-survives-dock-close/reopen, no orphaned processes on
-quit) was **not performed interactively** in the environment this milestone
-was built in (a headless background job with no attached display). The
-automated integration tests exercise the same lifecycle claims
-programmatically (real spawn, real echo, real resize, real kill verified via
-`process.kill(pid, 0)`, `before-quit` wired to `killAllSessions()`), but a
-human should still walk through the manual checklist in the M2 design spec
-on both macOS and Windows before fully closing out this milestone. On macOS
-specifically, the manual check should include closing the app window itself
-(the red traffic-light button, not just the terminal dock) and reopening it
-via the dock icon, then confirming a previously-running session's live
-output still streams — this exercises the window/webContents-swap path that
-the automated suite can't cover (no `BrowserWindow` lifecycle test).
+- **M2 cross-platform manual dogfood still outstanding** — real prompts,
+  `sudo`/`less`/Ctrl-C, long-running-command-survives-dock-close/reopen, no
+  orphaned processes on quit, and (macOS) the window close/reopen live-stream
+  path. Built in a headless job with no display; a human must walk the M2
+  checklist on both OSes. **Folds into Phase 6 dogfood.**
+- **Phase 5 (report export) and Phase 6 (hardening/dogfood/packaging)** not yet
+  started — see "Immediate next actions".
+- **External memory is storage substrate only** — the agent *using* memory to
+  bound its context (so a long phase doesn't degrade as its transcript grows)
+  is a follow-on in the agent loop, not M4.
+- **Other four engagement types** (Azure/M365 config, internal/external pentest)
+  deferred until the AWS vertical proves out. Pentest types carry a sharply
+  higher safety bar and should not be first.
+- **Attack-tree planning + multi-agent orchestration** deferred to the pentest
+  verticals; AWS uses a single agent + the phase-coverage tracker.
+- Dev-only: `electron-builder ^24` pulls a vulnerable transitive `node-tar`
+  (bump at packaging time); a harmless "CJS build of Vite's Node API is
+  deprecated" stderr line appears on every vitest/build run.
 
 ## How to run it
 
 ```bash
 cd nexra
-npm install       # runs postinstall automatically (fixes node-pty's spawn-helper permissions)
+npm install       # runs postinstall (fixes node-pty's spawn-helper permissions)
 npm run dev       # launches the Electron app (needs a display)
-npm test          # Vitest, 37 tests
+npm test          # Vitest (206 on the M4 branch)
 npm run build     # tsc + vite build
-npm run dist      # electron-builder (scaffolded only — not verified/signed)
+npm run dist      # electron-builder (scaffolded only — unverified/unsigned)
 ```
 
-## Process used
+## Process (mandated by CLAUDE.md, every milestone)
 
-`superpowers:brainstorming` → spec (`docs/superpowers/specs/2026-07-01-redcell-ui-shell-design.md`
-for M1, `docs/superpowers/specs/2026-07-01-redcell-m0-m2-design.md` for M2)
-→ `superpowers:writing-plans` → plan (`docs/superpowers/plans/2026-07-01-redcell-ui-shell.md`,
-14 tasks, for M1; `docs/superpowers/plans/2026-07-02-nexra-m2-real-terminals.md`,
-8 tasks, for M2) → `superpowers:subagent-driven-development`: fresh implementer
-subagent per task (TDD), fresh reviewer subagent per task (spec + quality
-gate, fix loop on findings) → `superpowers:finishing-a-development-branch`.
-
-## Known limitations / deferred (not blocking, all triaged)
-
-- **Real backends still mocked:** the Vercel AI SDK + Claude in
-  `AgentService` (provider-agnostic, ungated execution), and
-  `better-sqlite3` in `StoreService`.
-- **No guard against overlapping agent streams** on one chat — add a
-  composer busy-lock when the real agent is wired.
-- The `finding` AgentEvent path is fully plumbed but unexercised (no current
-  mock emits one).
-- `installTool`'s id-seeding is covered only via a reducer-level test, not a
-  direct `installTool` unit test — nice-to-have follow-up.
-- Non-Anthropic providers in Settings show a single hardcoded model each
-  (placeholder; inert by design).
-- Dev-only: `electron-builder ^24` pulls a vulnerable transitive `node-tar` —
-  bump to `^26` when signed installers are actually built (this also hasn't
-  been re-checked for interaction with `node-pty`'s native prebuilds/asar
-  unpacking, which M2 didn't need to solve since `npm run dist` remains
-  unverified/scaffolded-only). Also a harmless "CJS build of Vite's Node
-  API is deprecated" stderr line appears on every `vitest`/`build` run
-  (Vite 5 config resolution quirk, no functional impact).
-- Cross-platform manual dogfood for M2 (see "Known gap" above) is still
-  outstanding.
-- This file (`docs/superpowers/HANDOVER.md`) was itself untracked in git
-  until M2's docs task — it now ships as a normal tracked file going
-  forward.
+`superpowers:brainstorming` → spec (`docs/superpowers/specs/`) →
+`superpowers:writing-plans` → plan (`docs/superpowers/plans/`) →
+`superpowers:subagent-driven-development` (implementer + reviewer subagent per
+task, fix loops on findings, final whole-branch review) →
+`superpowers:finishing-a-development-branch`. One spec per milestone, written
+just-in-time.
 
 ## Where things live
 
-- Specs: `docs/superpowers/specs/2026-07-01-redcell-ui-shell-design.md` (M1),
-  `docs/superpowers/specs/2026-07-01-redcell-m0-m2-design.md` (M0 + M2)
-- Plans: `docs/superpowers/plans/2026-07-01-redcell-ui-shell.md` (M1),
-  `docs/superpowers/plans/2026-07-02-nexra-m2-real-terminals.md` (M2)
-- App: `nexra/` (see `nexra/README.md` for architecture notes)
-- Prototype reference: `nexra/design-reference/Nexra.dc.html`
-- Per-task briefs/reports/review packages/progress ledger (working
-  scratch, not meant to be durable): `.superpowers/sdd/` (gitignored)
-- Persistent cross-session memory: see `CLAUDE.md` and the assistant's
-  memory file `redcell-project.md` (outside this repo, in the assistant's
-  memory store) for the same facts, kept in sync with this document.
-
-## Next step
-
-When ready to continue: brainstorm M3 — the agent driving the shell (the
-"Shared with agent" pill goes from visual-only to real; this is also where
-an overlapping-command/output-interleaving policy needs deciding), plus
-`better-sqlite3` persistence and the live Claude/AI-SDK agent via the Vercel
-AI SDK. Spec it, plan it, and run the same subagent-driven-development
-process. Before or alongside that: close the M2 manual-dogfood gap noted
-above on both target OSes.
+- **Roadmap / plan of record:** `docs/superpowers/specs/2026-07-02-nexra-internal-usable-plan.md`
+- Competitive requirements: `docs/superpowers/specs/2026-07-02-competitive-requirements.md`
+- Prior shipping roadmap (superseded for internal goal): `docs/superpowers/specs/2026-07-01-redcell-shipping-roadmap.md`
+- Per-milestone specs + plans: `docs/superpowers/specs/`, `docs/superpowers/plans/`
+- M4 spec + plan: `docs/superpowers/{specs,plans}/2026-07-03-nexra-m4-persistence*.md`
+- App: `nexra/` (see `nexra/README.md`)
+- This handover: `docs/superpowers/HANDOVER.md`
+</content>
