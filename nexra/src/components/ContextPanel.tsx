@@ -15,6 +15,7 @@ export function ContextPanel({ state, dispatch }: { state: AppState; dispatch: D
 
   const [tab, setTab] = useState<'scope' | 'secrets' | 'findings' | 'tools'>('scope')
   const [secretModalOpen, setSecretModalOpen] = useState(false)
+  const [expandedFinding, setExpandedFinding] = useState<string | null>(null)
   const { rightOpen } = state.ui
   const toggleRight = () => dispatch({ t: 'toggleRight' })
 
@@ -117,18 +118,43 @@ export function ContextPanel({ state, dispatch }: { state: AppState; dispatch: D
               <div style={{ padding: '16px 12px', border: '1px dashed rgba(255,255,255,0.09)', borderRadius: 9, textAlign: 'center', fontSize: 12, color: theme.dim2, marginBottom: 24 }}>No findings logged in this chat yet.</div>
             )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginBottom: 24 }}>
-              {findings.map((f, i) => (
-                <div key={i} style={{ display: 'flex', gap: 10, padding: '10px 12px', background: theme.card, border: `1px solid ${theme.border}`, borderRadius: 9 }}>
-                  <span style={{ flex: 'none', width: 8, height: 8, borderRadius: 2, background: f.color, marginTop: 5 }}></span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12.5, lineHeight: 1.45, color: '#dfe2e6', marginBottom: 5 }}>{f.title}</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', color: f.color }}>{f.sev}</span>
-                      <span style={{ fontSize: 10.5, color: theme.dim2 }}>{f.phase} · {f.time}</span>
+              {findings.map(f => {
+                const open = expandedFinding === f.id
+                return (
+                  <div key={f.id} style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: 9, overflow: 'hidden' }}>
+                    <div onClick={() => setExpandedFinding(open ? null : f.id)} style={{ display: 'flex', gap: 10, padding: '10px 12px', cursor: 'pointer' }}>
+                      <span style={{ flex: 'none', width: 8, height: 8, borderRadius: 2, background: f.color, marginTop: 5 }}></span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 12.5, lineHeight: 1.45, color: '#dfe2e6', marginBottom: 5 }}>{f.title}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', color: f.color }}>{f.sev}</span>
+                          <span style={{ fontSize: 10.5, color: theme.dim2 }}>{f.phase} · {f.time}</span>
+                          <span style={{ marginLeft: 'auto', fontSize: 9.5, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', color: f.verified ? theme.ok : theme.warn }}>{f.verified ? 'Verified' : 'Unverified'}</span>
+                        </div>
+                      </div>
                     </div>
+                    {open && (
+                      <div style={{ padding: '0 12px 11px', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                        {f.rationale && <div style={{ fontSize: 11.5, color: theme.dim, margin: '9px 0' }}>{f.rationale}</div>}
+                        {f.evidence.map((ev, ei) => (
+                          <div key={ei} style={{ marginTop: 8 }}>
+                            {ev.kind === 'tool_output' && (
+                              <pre style={{ margin: 0, padding: '8px 10px', background: theme.card2, border: `1px solid ${theme.border}`, borderRadius: 7, fontFamily: theme.mono, fontSize: 11, color: theme.textDim, whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 180, overflowY: 'auto' }}>{ev.excerpt}</pre>
+                            )}
+                            {ev.kind === 'code_block' && (
+                              <div style={{ padding: '8px 10px', background: theme.card2, border: `1px solid ${theme.border}`, borderRadius: 7 }}>
+                                <div style={{ fontFamily: theme.mono, fontSize: 11, color: theme.textDim }}>{ev.host}</div>
+                                <div style={{ fontSize: 11.5, color: theme.dim, marginTop: 3 }}>{ev.detail}</div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                        {f.evidence.length === 0 && <div style={{ fontSize: 11.5, color: theme.warn, marginTop: 9 }}>Awaiting evidence.</div>}
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </>
         )}
