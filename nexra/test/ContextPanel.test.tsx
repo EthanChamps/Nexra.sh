@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { ContextPanel } from '../src/components/ContextPanel'
 import { reducer, initialUI } from '../src/state/reducer'
@@ -32,5 +32,17 @@ describe('ContextPanel findings', () => {
     mountWithFindings([unverified])
     fireEvent.click(screen.getByText('findings'))
     expect(screen.getByText(/unverified/i)).toBeTruthy()
+  })
+})
+
+describe('ContextPanel secrets tab', () => {
+  it('passes the real company id to SecretsPanel, not the (nonexistent) Engagement.companyId', () => {
+    let s = reducer({ data: buildSnapshot(), ui: initialUI }, { t: 'openCompany', id: 'c1' })
+    const list = vi.fn(() => Promise.resolve([]))
+    ;(window as any).nexra = { secrets: { list } }
+    const dispatch = () => {}
+    render(<ContextPanel state={s} dispatch={dispatch as any} />)
+    fireEvent.click(screen.getByText('secrets'))
+    expect(list).toHaveBeenCalledWith('c1')
   })
 })
