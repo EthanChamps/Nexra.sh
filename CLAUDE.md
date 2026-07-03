@@ -8,14 +8,17 @@ context: `docs/superpowers/HANDOVER.md`.
 
 ## Status
 
-**M1 (UI shell) + M2 (real terminals) complete.** Electron + React/Vite app
-in `nexra/`. `ShellService` now runs real `node-pty` sessions (xterm.js
-renderer); `AgentService`/`StoreService` are still mocks (no live LLM, no
-persistence). 37/37 tests passing.
+**M1–M3 complete; M4 (persistence) in progress.** Electron + React/Vite app
+in `nexra/`. `ShellService` runs real `node-pty` sessions (xterm.js renderer);
+`AgentService` is a live Vercel AI SDK v6 + Claude agent (ungated tool-calling,
+findings, agent-requested inputs). `StoreService` is still a mock for
+projects/engagements/chats/messages — M4 replaces it with `better-sqlite3`
+(`store.sqlite.ts`); settings and findings already persist to sqlite (landed
+during M3). Run `npm test` for the current suite.
 
 ```bash
 cd nexra && npm install && npm run dev   # launch (needs a display)
-npm test                                    # 37 tests
+npm test                                    # unit + integration suite
 npm run build                               # tsc + vite build
 ```
 
@@ -23,13 +26,13 @@ npm run build                               # tsc + vite build
 
 - Electron (not Tauri) — needs real interactive PTYs (PowerShell/cmd/WSL) via
   `node-pty`, and provider-agnostic AI via Node.
-- AI: provider-agnostic via Vercel AI SDK v6 (planned for M3), Claude default.
+- AI: provider-agnostic via Vercel AI SDK v6 (live since M3), Claude default.
 - Target execution model: **real, ungated** (no per-command approval). M2
-  delivered this for the operator's own terminal (`node-pty`, no gate); the
-  agent driving the shell autonomously is still M3.
-- Service boundary: `electron/services/{store,agent}.mock.ts` +
-  `electron/services/shell.pty.ts` (real, since M2), exposed via
-  `contextBridge` as `window.nexra.*`. **No renderer component may
+  delivered this for the operator's own terminal (`node-pty`, no gate); M3
+  delivered the autonomous agent driving the shell with ungated tool-calls.
+- Service boundary: `electron/services/store.mock.ts` (being replaced by
+  `store.sqlite.ts` in M4) + `agent.live.ts` + `shell.pty.ts` (real), exposed
+  via `contextBridge` as `window.nexra.*`. **No renderer component may
   import a service directly** — always go through `window.nexra.*` so real
   backends swap in without UI changes.
 - Styling source of truth: vendored prototype at
@@ -43,16 +46,23 @@ npm run build                               # tsc + vite build
   to none; when unsure, leave it out and ask rather than filling empty space
   with a symbol.
 
-## Deferred to M3
+## Remaining (M4–M6)
 
-Live Claude/AI-SDK agent (the agent driving the shell — "Shared with agent"
-pill goes from visual to real), sqlite persistence, overlapping-stream
-guard, bump `electron-builder` before building signed installers. Full list
-with reasoning in `docs/superpowers/HANDOVER.md`.
+- **M4 (in progress):** `better-sqlite3` in `StoreService` — projects/
+  engagements/chats/messages/findings survive restart; schema-migration test.
+- **M5:** cross-platform (verified Windows run incl. WSL-Kali) + packaging;
+  bump `electron-builder` to `^26`; signed + notarized macOS/Windows installers.
+  Must follow M4 — package once functionally complete. Kick off Apple cert
+  procurement *during* M4 (notarization has calendar latency).
+- **M6:** pre-ship hardening — `/security-review`, OS-keychain API-key storage,
+  prompt-injection review, crash handling, dogfood pass. Overlaps M5.
+
+Roadmap: `docs/superpowers/specs/2026-07-01-redcell-shipping-roadmap.md`. Full
+context: `docs/superpowers/HANDOVER.md`.
 
 ## Process
 
 Built via `superpowers:brainstorming` → spec → `writing-plans` → plan (14
 tasks for M1, 8 for M2) → `subagent-driven-development` (implementer +
 reviewer subagent per task, fix loops on findings, final whole-branch
-review) → `finishing-a-development-branch`. Follow the same process for M3.
+review) → `finishing-a-development-branch`. Follow the same process for M4.
