@@ -20,6 +20,7 @@ export type AgentEvent =
 export interface AgentSendRequest {
   chatId: string; engagementType: string; phaseLabel: string; primaryTool: string; text: string
   history: { role: 'user' | 'assistant'; content: string }[]
+  companyId?: string; engagementId?: string
 }
 export interface AgentInstallRequest { chatId: string; toolName: string; installCmd?: string }
 export interface AgentTitleRequest { engagementType: string; text: string }

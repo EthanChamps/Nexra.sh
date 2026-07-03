@@ -22,7 +22,7 @@ export function ChatPane({
   if (!eng || !chat) return null
 
   const onSend = () => {
-    sendMessage(dispatch, chat, eng, state.ui.draft)
+    sendMessage(dispatch, chat, eng, state.ui.draft, company?.id)
     dispatch({ t: 'setDraft', value: '' })
   }
   const onInstall = (msg: Message) => installTool(dispatch, chat, msg)

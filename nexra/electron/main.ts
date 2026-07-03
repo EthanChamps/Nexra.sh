@@ -69,7 +69,7 @@ app.whenReady().then(() => {
     const ctrl = new AbortController()
     inflight.set(req.chatId, ctrl)
     try {
-      await runSend(req, loadConfig(), e => ev.sender.send('agent:event:' + req.chatId, e), ctrl.signal)
+      await runSend(req, loadConfig(), e => ev.sender.send('agent:event:' + req.chatId, e), ctrl.signal, req.companyId, req.engagementId)
     } finally {
       inflight.delete(req.chatId)
     }
