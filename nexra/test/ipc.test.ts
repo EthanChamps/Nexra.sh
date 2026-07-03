@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { sendMessage, cancelStream } from '../src/ipc'
+import { sendMessage, cancelStream, rehydrateFindings } from '../src/ipc'
 import type { AgentEvent } from '../electron/services/agent.types'
-import type { Chat, Engagement } from '../electron/services/store.types'
+import type { Chat, Engagement, Finding } from '../electron/services/store.types'
 
 const chat = { id: 'c1', name: 'New chat', phaseId: '', color: '#000', tools: [{ name: 'prowler', available: true }],
   messages: [{ id: 'g', role: 'assistant', kind: 'text', content: 'greeting' }], findings: [] } as unknown as Chat
@@ -92,6 +92,27 @@ describe('sendMessage', () => {
     } as unknown as Chat
     sendMessage((a: any) => dispatched.push(a), secondChat, eng, 'second message')
     expect(titleMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('rehydrateFindings', () => {
+  it('lists findings per chat and dispatches an upsert for each', async () => {
+    const persisted: Record<string, Finding[]> = {
+      chA: [{ id: 'f1', title: 'x', sev: 'High', phase: 'IAM', time: 'now', rationale: 'r', evidence: [], verified: false }],
+      chB: [],
+    }
+    ;(globalThis as any).window.nexra.findings = { list: (id: string) => Promise.resolve(persisted[id] ?? []) }
+    const data = { companies: [{ id: 'c1', name: 'Acme', updated: '', engagements: [
+      { id: 'e1', type: 'aws', name: 'E', status: 'In Progress', updated: '', linear: true, phases: [], scope: [], chats: [
+        { id: 'chA', name: 'A', phaseId: '', color: '#000', messages: [], findings: [], tools: [] },
+        { id: 'chB', name: 'B', phaseId: '', color: '#000', messages: [], findings: [], tools: [] },
+      ] },
+    ] }], types: {} } as any
+    const dispatched: any[] = []
+    rehydrateFindings((a: any) => dispatched.push(a), data)
+    await new Promise(r => setTimeout(r, 0))
+    expect(dispatched).toContainEqual({ t: 'upsertFinding', chatId: 'chA', finding: persisted.chA[0] })
+    expect(dispatched.filter(a => a.chatId === 'chB')).toHaveLength(0)
   })
 })
 

@@ -1,10 +1,21 @@
 import type { Dispatch } from 'react'
-import type { Snapshot, Chat, Engagement, Message } from '../electron/services/store.types'
+import type { Snapshot, Chat, Engagement, Message, Finding } from '../electron/services/store.types'
 import type { AgentEvent } from '../electron/services/agent.types'
 import { deriveTitle, type Action } from './state/reducer'
 import { phaseLabel } from './state/selectors'
+import type { AppState } from './state/selectors'
 
 export const getSnapshot = (): Promise<Snapshot> => window.nexra.store.snapshot()
+
+// After boot, pull any persisted findings for every chat into reducer state.
+// Findings key on chat_id; seeded chats have stable ids, so their findings
+// rehydrate across restart. (Full coverage arrives when M4 persists chats.)
+export function rehydrateFindings(dispatch: Dispatch<Action>, data: AppState['data']): void {
+  data.companies.forEach(c => c.engagements.forEach(e => e.chats.forEach(ch => {
+    window.nexra.findings.list(ch.id).then((fs: Finding[]) =>
+      fs.forEach(f => dispatch({ t: 'upsertFinding', chatId: ch.id, finding: f })))
+  })))
+}
 
 let _cid = 0
 const nextCardId = () => 'tc' + Date.now() + '-' + (++_cid)
