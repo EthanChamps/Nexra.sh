@@ -1,6 +1,6 @@
 import { getDb, listFindingsByChat, deleteFindingsByChat } from './store.sqlite'
 import { buildCompanies, buildTypes } from './seed'
-import type { Company, Engagement, Message, Phase, ScopeRow, ToolAvailability, InputRequestItem, Snapshot } from './store.types'
+import type { Company, Engagement, Message, Phase, ScopeRow, InputRequestItem, Snapshot } from './store.types'
 
 // Undefined → null for sqlite; empty string is preserved as-is.
 const n = (v: string | undefined): string | null => (v == null ? null : v)
@@ -22,10 +22,10 @@ export function saveGraph(companies: Company[]): void {
        status=excluded.status, updated=excluded.updated, linear=excluded.linear,
        phases=excluded.phases, scope=excluded.scope, ord=excluded.ord`)
   const upChat = db.prepare(
-    `INSERT INTO chats (id, engagement_id, name, phase_id, color, tools, ord)
-     VALUES (@id, @engagement_id, @name, @phase_id, @color, @tools, @ord)
+    `INSERT INTO chats (id, engagement_id, name, phase_id, color, ord)
+     VALUES (@id, @engagement_id, @name, @phase_id, @color, @ord)
      ON CONFLICT(id) DO UPDATE SET engagement_id=excluded.engagement_id, name=excluded.name,
-       phase_id=excluded.phase_id, color=excluded.color, tools=excluded.tools, ord=excluded.ord`)
+       phase_id=excluded.phase_id, color=excluded.color, ord=excluded.ord`)
   const upMsg = db.prepare(
     `INSERT INTO messages (id, chat_id, role, kind, content, tool_name, command, output, duration,
        reason, install_cmd, state, request_kind, request_id, items, engagement_id, ord)
@@ -46,7 +46,7 @@ export function saveGraph(companies: Company[]): void {
           scope: JSON.stringify(e.scope), ord: ei })
         e.chats.forEach((ch, chi) => {
           upChat.run({ id: ch.id, engagement_id: e.id, name: ch.name, phase_id: ch.phaseId,
-            color: ch.color, tools: JSON.stringify(ch.tools), ord: chi })
+            color: ch.color, ord: chi })
           ch.messages.forEach((m, mi) => {
             upMsg.run({ id: m.id, chat_id: ch.id, role: m.role, kind: m.kind, content: n(m.content),
               tool_name: n(m.toolName), command: n(m.command), output: n(m.output), duration: n(m.duration),
@@ -63,7 +63,7 @@ export function saveGraph(companies: Company[]): void {
 
 interface CompanyRow { id: string; name: string; updated: string }
 interface EngRow { id: string; type: string; name: string; status: string; updated: string; linear: number; phases: string; scope: string }
-interface ChatRow { id: string; name: string; phase_id: string; color: string; tools: string }
+interface ChatRow { id: string; name: string; phase_id: string; color: string }
 interface MsgRow {
   id: string; role: string; kind: string; content: string | null; tool_name: string | null; command: string | null
   output: string | null; duration: string | null; reason: string | null; install_cmd: string | null; state: string | null
@@ -119,7 +119,7 @@ export function readGraph(): Company[] {
   const db = getDb()
   const companies = db.prepare('SELECT id, name, updated FROM companies ORDER BY ord').all() as CompanyRow[]
   const engStmt = db.prepare('SELECT id, type, name, status, updated, linear, phases, scope FROM engagements WHERE company_id = ? ORDER BY ord')
-  const chatStmt = db.prepare('SELECT id, name, phase_id, color, tools FROM chats WHERE engagement_id = ? ORDER BY ord')
+  const chatStmt = db.prepare('SELECT id, name, phase_id, color FROM chats WHERE engagement_id = ? ORDER BY ord')
   const msgStmt = db.prepare('SELECT * FROM messages WHERE chat_id = ? ORDER BY ord')
 
   return companies.map(c => ({
@@ -130,7 +130,6 @@ export function readGraph(): Company[] {
       phases: JSON.parse(e.phases) as Phase[], scope: JSON.parse(e.scope) as ScopeRow[],
       chats: (chatStmt.all(e.id) as ChatRow[]).map(ch => ({
         id: ch.id, name: ch.name, phaseId: ch.phase_id, color: ch.color,
-        tools: JSON.parse(ch.tools) as ToolAvailability[],
         messages: (msgStmt.all(ch.id) as MsgRow[]).map(rowToMessage),
         findings: listFindingsByChat(ch.id),
       })),

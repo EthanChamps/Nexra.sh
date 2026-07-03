@@ -74,10 +74,9 @@ export function sendMessage(dispatch: Dispatch<Action>, chat: Chat, eng: Engagem
   const isProvisional = chat.name === 'New chat'
   dispatch({ t: 'appendUserMessage', chatId: chat.id, text: trimmed })
   dispatch({ t: 'setStreaming', chatId: chat.id, on: true })
-  const primaryTool = chat.tools.find(t => t.available)?.name ?? 'shell'
   const runningIds = new Map<string, string>()
   window.nexra.agent.send(
-    { chatId: chat.id, engagementType: eng.type, phaseLabel: phaseLabel(eng, chat.phaseId), primaryTool, text: trimmed, history, companyId, engagementId: eng.id },
+    { chatId: chat.id, engagementType: eng.type, phaseLabel: phaseLabel(eng, chat.phaseId), text: trimmed, history, companyId, engagementId: eng.id },
     applyEvent(dispatch, chat.id, runningIds),
   ).catch((err: unknown) => {
     // Only fires when the IPC invoke promise genuinely rejects with no terminal
@@ -107,10 +106,9 @@ export function resumeAfterInputs(dispatch: Dispatch<Action>, chat: Chat, eng: E
     .filter(m => m.kind === 'text' && typeof m.content === 'string')
     .map(m => ({ role: m.role, content: m.content as string }))
   dispatch({ t: 'setStreaming', chatId: chat.id, on: true })
-  const primaryTool = chat.tools.find(t => t.available)?.name ?? 'shell'
   const runningIds = new Map<string, string>()
   window.nexra.agent.send(
-    { chatId: chat.id, engagementType: eng.type, phaseLabel: phaseLabel(eng, chat.phaseId), primaryTool, text: 'The requested inputs have been provided. Continue.', history, companyId, engagementId: eng.id },
+    { chatId: chat.id, engagementType: eng.type, phaseLabel: phaseLabel(eng, chat.phaseId), text: 'The requested inputs have been provided. Continue.', history, companyId, engagementId: eng.id },
     applyEvent(dispatch, chat.id, runningIds),
   ).catch((err: unknown) => {
     dispatch({ t: 'appendError', chatId: chat.id, message: err instanceof Error ? err.message : 'Resume failed' })
@@ -135,7 +133,6 @@ export function installTool(dispatch: Dispatch<Action>, chat: Chat, msg: Message
     { chatId: chat.id, toolName: msg.toolName, installCmd: msg.installCmd },
     e => {
       applyEvent(dispatch, chat.id, runningIds)(e)
-      if (e.type === 'tool_call' && e.state === 'success') dispatch({ t: 'markToolAvailable', chatId: chat.id, toolName: e.toolName })
     },
   )
 }

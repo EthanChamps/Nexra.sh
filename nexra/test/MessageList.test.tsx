@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { MessageList } from '../src/components/MessageList'
 import type { Chat } from '../electron/services/store.types'
 
-const baseChat = { id: 'c1', name: 'Chat', phaseId: '', color: '#000', tools: [], findings: [] } as unknown as Chat
+const baseChat = { id: 'c1', name: 'Chat', phaseId: '', color: '#000', findings: [] } as unknown as Chat
 
 function mockScrollGeometry(el: HTMLElement, { scrollTop, scrollHeight, clientHeight }: { scrollTop: number; scrollHeight: number; clientHeight: number }) {
   Object.defineProperty(el, 'scrollTop', { value: scrollTop, writable: true, configurable: true })

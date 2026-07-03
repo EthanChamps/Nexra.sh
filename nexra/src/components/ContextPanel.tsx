@@ -14,7 +14,7 @@ export function ContextPanel({ state, dispatch }: { state: AppState; dispatch: D
   const hasChat = !!eng && !!chat
   if (!hasChat) return null
 
-  const [tab, setTab] = useState<'scope' | 'secrets' | 'findings' | 'tools'>('scope')
+  const [tab, setTab] = useState<'scope' | 'secrets' | 'findings'>('scope')
   const [secretModalOpen, setSecretModalOpen] = useState(false)
   const [expandedFinding, setExpandedFinding] = useState<string | null>(null)
   const { rightOpen } = state.ui
@@ -41,11 +41,6 @@ export function ContextPanel({ state, dispatch }: { state: AppState; dispatch: D
   const findings = chat!.findings.map(f => ({ ...f, color: sevColor(f.sev) }))
   const findingsCount = findings.length
   const findingsEmpty = findings.length === 0
-  const tools = chat!.tools.map(t => ({
-    name: t.name,
-    statusLabel: t.available ? 'available' : 'missing',
-    color: t.available ? '#46c47f' : '#e6a23c',
-  }))
 
   return (
     <aside data-screen-label="Context panel" style={{ width: 322, flex: 'none', background: theme.panel, borderLeft: `1px solid ${theme.border}`, display: 'flex', flexDirection: 'column' }}>
@@ -64,7 +59,7 @@ export function ContextPanel({ state, dispatch }: { state: AppState; dispatch: D
       </div>
 
       <div style={{ flex: 'none', display: 'flex', gap: 1, borderBottom: `1px solid ${theme.border}`, background: theme.card }}>
-        {['scope', 'secrets', 'findings', 'tools'].map(tabName => (
+        {['scope', 'secrets', 'findings'].map(tabName => (
           <button
             key={tabName}
             onClick={() => setTab(tabName as any)}
@@ -156,21 +151,6 @@ export function ContextPanel({ state, dispatch }: { state: AppState; dispatch: D
                   </div>
                 )
               })}
-            </div>
-          </>
-        )}
-
-        {tab === 'tools' && (
-          <>
-            <div style={{ fontSize: 10.5, fontWeight: 500, letterSpacing: '0.1em', color: theme.dim2, textTransform: 'uppercase', marginBottom: 10 }}>Chat Tools</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-              {tools.map((t, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 12px', background: theme.card, border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8 }}>
-                  <span style={{ flex: 'none', width: 6, height: 6, borderRadius: '50%', background: t.color }}></span>
-                  <span style={{ flex: 1, fontFamily: theme.mono, fontSize: 12, color: theme.textDim }}>{t.name}</span>
-                  <span style={{ fontSize: 10.5, color: t.color }}>{t.statusLabel}</span>
-                </div>
-              ))}
             </div>
           </>
         )}

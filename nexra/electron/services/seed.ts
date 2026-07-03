@@ -26,23 +26,18 @@ export function buildTypes(): Record<ReviewTypeId, ReviewTypeConfig> {
   return {
     aws: { label: 'AWS Config Review', short: 'AWS', linear: false,
       phases: [{ id: 'iam', label: 'IAM' }, { id: 'storage', label: 'Storage (S3)' }, { id: 'network', label: 'Network (VPC)' }, { id: 'logging', label: 'Logging & Monitoring' }],
-      tools: [{ name: 'prowler', available: true }, { name: 'scoutsuite', available: true }, { name: 'aws-cli', available: true }, { name: 'pmapper', available: false }],
       scope: [{ label: 'Account', value: '4821-9930-1174' }, { label: 'Regions', value: 'us-east-1, us-west-2' }, { label: 'Environment', value: 'Production' }, { label: 'Benchmark', value: 'CIS AWS v3.0' }] },
     azure: { label: 'Azure Config Review', short: 'AZ', linear: false,
       phases: [{ id: 'entra', label: 'Entra ID' }, { id: 'storage', label: 'Storage' }, { id: 'network', label: 'Network' }, { id: 'logging', label: 'Logging & Monitoring' }],
-      tools: [{ name: 'scoutsuite', available: true }, { name: 'az-cli', available: true }, { name: 'roadrecon', available: true }, { name: 'pingcastle', available: false }],
       scope: [{ label: 'Tenant', value: 'contoso.onmicrosoft.com' }, { label: 'Subscription', value: 'prod-01' }, { label: 'Regions', value: 'eastus, westeu' }, { label: 'Benchmark', value: 'CIS Azure v2.1' }] },
     m365: { label: 'M365 Config Review', short: 'M365', linear: false,
       phases: [{ id: 'identity', label: 'Identity' }, { id: 'exchange', label: 'Exchange' }, { id: 'sharepoint', label: 'SharePoint' }, { id: 'compliance', label: 'Compliance' }],
-      tools: [{ name: 'scoutsuite', available: true }, { name: 'msol', available: true }, { name: 'purview', available: true }, { name: 'maester', available: true }],
       scope: [{ label: 'Tenant', value: 'contoso.onmicrosoft.com' }, { label: 'Licenses', value: 'E5 · 1,240 seats' }, { label: 'Benchmark', value: 'CIS M365 v4.0' }] },
     internal: { label: 'Internal Pen Test', short: 'INT', linear: true,
       phases: [{ id: 'recon', label: 'Recon' }, { id: 'exploit', label: 'Exploit' }],
-      tools: [{ name: 'nmap', available: true }, { name: 'bloodhound', available: true }, { name: 'crackmapexec', available: true }, { name: 'impacket', available: true }],
       scope: [{ label: 'Subnet', value: '10.10.0.0/16' }, { label: 'Domain', value: 'CORP.LOCAL' }, { label: 'DC', value: '10.10.0.5' }, { label: 'Exclusions', value: '10.10.9.0/24' }] },
     external: { label: 'External Pen Test', short: 'EXT', linear: true,
       phases: [{ id: 'recon', label: 'Recon' }, { id: 'exploit', label: 'Exploit' }],
-      tools: [{ name: 'nmap', available: true }, { name: 'nuclei', available: true }, { name: 'amass', available: true }, { name: 'burp', available: false }],
       scope: [{ label: 'Domains', value: 'acme.com, *.acme.io' }, { label: 'ASN', value: 'AS40021' }, { label: 'Ranges', value: '198.51.100.0/24' }, { label: 'Rules', value: 'No DoS · business hrs' }] },
   }
 }
@@ -60,7 +55,7 @@ function makeChat(eng: Engagement, phaseId: string, name: string | null, color =
   return {
     id: 'ch' + (++_uid), name: name || ph.label, phaseId: ph.id, color,
     messages: [{ id: uid(), role: 'assistant', kind: 'text', content: "I'm the " + ph.label + " agent for this " + cfg.label + ". Ask me to enumerate configuration, run automated checks, or log findings — this chat keeps its own context." }],
-    findings: [], tools: cfg.tools.map(t => ({ ...t })),
+    findings: [],
   }
 }
 const stamp = (eng: Engagement) => eng.chats.forEach(c => c.messages.forEach(m => { if (!m.id) m.id = uid() }))
@@ -110,7 +105,6 @@ function enrichInternal(e: Engagement) {
     { role: 'assistant', kind: 'text', content: "TGS captured for svc-sql (member of Domain Admins). hashcat isn't available to crack it here — install it, or I can hand the hash off to your cracking rig." },
   ] as Message[]).map(m => ({ ...m, id: uid() }))
   ex.findings = [seedFinding('Kerberoastable SPN svc-sql is Domain Admin', 'High', 'Exploit', '40m ago')]
-  ex.tools = [{ name: 'nmap', available: true }, { name: 'bloodhound', available: true }, { name: 'impacket', available: true }, { name: 'hashcat', available: false }]
   e.chats = [rc, ex]; stamp(e)
 }
 

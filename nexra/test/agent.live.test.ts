@@ -8,7 +8,7 @@ import { runSend } from '../electron/services/agent.live'
 import type { AgentEvent, AgentSendRequest } from '../electron/services/agent.types'
 import type { ProviderConfig } from '../electron/services/providers'
 
-const req: AgentSendRequest = { chatId: 'c1', engagementType: 'aws', phaseLabel: 'IAM', primaryTool: 'prowler', text: 'hi', history: [] }
+const req: AgentSendRequest = { chatId: 'c1', engagementType: 'aws', phaseLabel: 'IAM', text: 'hi', history: [] }
 const cfg: ProviderConfig = { provider: 'anthropic', model: 'claude-opus-4-8', apiKey: 'sk-1' }
 
 function fakeStream(parts: string[]) {
