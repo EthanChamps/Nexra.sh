@@ -1,7 +1,7 @@
 import { streamText } from 'ai'
 import { randomUUID } from 'node:crypto'
 import type { AgentEvent, AgentSendRequest } from './agent.types'
-import type { Finding, InputRequestItem } from './store.types'
+import type { Finding, InputRequestItem, ScopeItemType } from './store.types'
 import { resolveModel, type ProviderConfig } from './providers'
 import { runSkill, AWS_SKILLS, type RunDeps, type SkillInvocation, type SkillDef } from './agent.tools'
 import { getProjectScope } from './scope'
@@ -13,6 +13,8 @@ import { createRunRegistry, evidenceFromArgs, computeVerified, normalizeSev } fr
 const STEP_CAP = 6
 
 interface DetectedSkill { name: string; args: Record<string, string> }
+
+const SCOPE_ITEM_TYPES: ScopeItemType[] = ['cidr', 'ip', 'hostname', 'url', 'cloud_account', 'tenant_id', 'region', 'other']
 
 // Canonical grammar is SKILL_CALL[name|arg=value|...]. Models occasionally slip
 // and emit the bracketless colon form SKILL_CALL:name|arg=value|... instead;
@@ -59,7 +61,8 @@ Available skills — invoke by writing SKILL_CALL[name|arg=value|...]:
 - run_pmapper|account=ID: Enumerate via PMapper.
 - log_finding|title=TEXT|sev=Critical|High|Medium|Low|phase=TEXT|rationale=TEXT: Log a finding. Attach evidence in the SAME call with tool_output=SKILL_ID (a prior skill run) or host=HOST|detail=ISSUE.
 - attach_evidence|finding=FINDING_ID|tool_output=SKILL_ID  OR  |host=HOST|detail=ISSUE: Attach evidence to a finding you logged. A finding is UNVERIFIED until evidence is attached; always verify your findings.
-- request_inputs|items=KEY:LABEL:SENS:REQ;...: Ask the operator to supply credentials/config. Each item is env-var KEY, a short LABEL, SENS ('s' secret/masked, default; '-' not secret), and REQ ('r' required, default; '-' optional). Use this instead of listing needed inputs in prose. The run pauses until every required item is filled. Mark anything that is NOT a credential — a region, account id, profile name, or resource name — as not-secret with SENS '-'; reserve 's' for actual secrets (keys, tokens, passwords). Do NOT request values a skill already derives from the AWS credentials you request: the run_* skills authenticate from AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY, so never ask for an AWS/Prowler profile name.`
+- request_inputs|items=KEY:LABEL:SENS:REQ;...: Ask the operator to supply credentials/config. Each item is env-var KEY, a short LABEL, SENS ('s' secret/masked, default; '-' not secret), and REQ ('r' required, default; '-' optional). Use this instead of listing needed inputs in prose. The run pauses until every required item is filled. Mark anything that is NOT a credential — a region, account id, profile name, or resource name — as not-secret with SENS '-'; reserve 's' for actual secrets (keys, tokens, passwords). Do NOT request values a skill already derives from the AWS credentials you request: the run_* skills authenticate from AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY, so never ask for an AWS/Prowler profile name.
+- propose_scope_item|type=TYPE|value=VALUE|reason=TEXT: Propose adding a newly discovered asset to the shared project scope for the operator to confirm. TYPE is one of cidr, ip, hostname, url, cloud_account, tenant_id, region, other. The run pauses until the operator accepts or declines; only accepted items become authorized. Use this when you find an in-scope-looking asset that is not yet listed — do NOT act on it until it is confirmed.`
   return (
     `You are Nexra, an AI assistant embedded in a security consultant's console, ` +
     `helping with a ${engagementType} engagement.${phase} ` +
@@ -113,6 +116,16 @@ export async function runSend(
         if (c.name === 'request_inputs') {
           const items = parseInputItems(c.args)
           if (items.length) { emit({ type: 'input_request', requestId: randomUUID(), items }); requestedInputs = true }
+          continue
+        }
+        if (c.name === 'propose_scope_item') {
+          const rawType = (c.args.type ?? '').trim() as ScopeItemType
+          const type: ScopeItemType = SCOPE_ITEM_TYPES.includes(rawType) ? rawType : 'other'
+          const value = (c.args.value ?? '').trim()
+          if (value && companyId) {
+            emit({ type: 'scope_proposal', companyId, item: { type, value }, reason: c.args.reason })
+            requestedInputs = true
+          }
           continue
         }
         if (c.name === 'log_finding') {
