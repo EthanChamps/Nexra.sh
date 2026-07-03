@@ -116,6 +116,20 @@ describe('runSkill — the "AI uses but cannot see" guarantee', () => {
     expect(skillEvents.some(e => e.state === 'error')).toBe(true)
   })
 
+  it('denies (never blocks/spawns) an invocation with no target dimensions at all', async () => {
+    // No account/region/ip/hostname/url — matchesScope has nothing to
+    // propose, so this must hard-deny, not propose+block.
+    const spy = vi.fn(nodeSpawn)
+    const { events, emit } = collect()
+    const noTarget: SkillInvocation = { skill: 'probe', companyId: 'c1', engagementId: 'e1' }
+    const result = await runSkill(noTarget, probeSkill, emit, baseDeps({ spawn: spy as any }))
+
+    expect(result.state).toBe('denied')
+    expect(spy).not.toHaveBeenCalled()
+    const skillEvent = events.find(e => e.type === 'skill') as any
+    expect(skillEvent.state).toBe('denied')
+  })
+
   it('proposes the target when scope is empty — the gate, never spawns', async () => {
     const spy = vi.fn(nodeSpawn)
     const { events, emit } = collect()

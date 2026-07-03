@@ -62,7 +62,7 @@ export function cleanBaseEnv(env: Record<string, string | undefined>): Record<st
   return out
 }
 
-// Run one typed skill. Emits `skill`/`secret_request`/`scope_request` events;
+// Run one typed skill. Emits `skill`/`input_request`/`scope_proposal` events;
 // resolves to a structured result. NEVER spawns on deny or block.
 export function runSkill(
   inv: SkillInvocation,

@@ -162,8 +162,10 @@ export async function runSend(
           } else if (outcome.state === 'denied') {
             results.push(`[skill ${c.name} was denied: ${outcome.reason} — the target is out of scope.]`)
           } else if (outcome.state === 'blocked') {
-            // A required credential is missing; runSkill already emitted an
-            // input_request. Pause the turn to await input, like request_inputs.
+            // Two causes: a required credential is missing (runSkill already
+            // emitted an input_request) or the target is out of scope but
+            // proposable (runSkill already emitted a scope_proposal). Either
+            // way, pause the turn to await input, like request_inputs.
             requestedInputs = true
             results.push(`[skill ${c.name} is blocked awaiting operator input: ${outcome.reason}.]`)
           }
