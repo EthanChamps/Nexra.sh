@@ -24,10 +24,12 @@ export interface NexraApi {
     fill(id: string, values: Record<string, string>): Promise<Secret>
     tie(id: string, aliasOf: string): Promise<Secret>
     delete(id: string): Promise<void>
+    fulfillPending(id: string, values: Record<string, string>): Promise<{ success: boolean; error?: string }>
   }
   scope: {
     get(engagementId: string): Promise<EngagementScope | undefined>
     set(engagementId: string, scope: EngagementScope): Promise<void>
+    setAndValidate(engagementId: string, scope: EngagementScope): Promise<{ success: boolean; error?: string }>
   }
   shell: {
     tabs(): Promise<ShellTab[]>
