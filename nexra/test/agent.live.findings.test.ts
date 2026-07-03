@@ -10,7 +10,7 @@ import { runSend } from '../electron/services/agent.live'
 import type { AgentEvent, AgentSendRequest } from '../electron/services/agent.types'
 import type { ProviderConfig } from '../electron/services/providers'
 
-const req: AgentSendRequest = { chatId: 'chat-1', engagementType: 'aws', phaseLabel: 'Storage', primaryTool: 'prowler', text: 'audit s3', history: [] }
+const req: AgentSendRequest = { chatId: 'chat-1', engagementType: 'aws', phaseLabel: 'Storage', text: 'audit s3', history: [] }
 const cfg: ProviderConfig = { provider: 'anthropic', model: 'claude-opus-4-8', apiKey: 'sk-1' }
 const fakeStream = (parts: string[]) => ({ textStream: (async function* () { for (const p of parts) yield p })(), usage: Promise.resolve({ totalTokens: 1 }) })
 

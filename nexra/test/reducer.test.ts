@@ -46,7 +46,7 @@ describe('reducer', () => {
     const highNum = probe + 500
     const data = JSON.parse(JSON.stringify(s.data)) as typeof s.data
     const eng = data.companies.flatMap((c: any) => c.engagements).find((e: any) => e.id === engId)
-    eng.chats.unshift({ id: 'ch' + highNum, name: 'Persisted', phaseId: '', color: '#0a0b0d', messages: [], findings: [], tools: [] })
+    eng.chats.unshift({ id: 'ch' + highNum, name: 'Persisted', phaseId: '', color: '#0a0b0d', messages: [], findings: [] })
 
     s = reducer(s, { t: 'hydrate', data })
     s = reducer(s, { t: 'createChat', engId })

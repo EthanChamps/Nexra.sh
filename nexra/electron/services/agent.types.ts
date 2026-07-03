@@ -21,7 +21,7 @@ export type AgentEvent =
   | { type: 'done' }
 
 export interface AgentSendRequest {
-  chatId: string; engagementType: string; phaseLabel: string; primaryTool: string; text: string
+  chatId: string; engagementType: string; phaseLabel: string; text: string
   history: { role: 'user' | 'assistant'; content: string }[]
   companyId?: string; engagementId?: string
 }

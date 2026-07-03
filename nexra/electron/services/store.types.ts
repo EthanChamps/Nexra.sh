@@ -3,12 +3,11 @@ export type Severity = 'Critical' | 'High' | 'Medium' | 'Low'
 export type EngagementStatus = 'In Progress' | 'Complete'
 
 export interface Phase { id: string; label: string }
-export interface ToolAvailability { name: string; available: boolean }
 export interface ScopeRow { label: string; value: string }
 
 export interface ReviewTypeConfig {
   label: string; short: string; linear: boolean
-  phases: Phase[]; tools: ToolAvailability[]; scope: ScopeRow[]
+  phases: Phase[]; scope: ScopeRow[]
 }
 
 export type MessageRole = 'user' | 'assistant'
@@ -49,7 +48,7 @@ export interface Finding {
 
 export interface Chat {
   id: string; name: string; phaseId: string; color: string
-  messages: Message[]; findings: Finding[]; tools: ToolAvailability[]
+  messages: Message[]; findings: Finding[]
 }
 
 // Typed, ENFORCED scope for an engagement (distinct from the freeform `scope`
