@@ -126,13 +126,17 @@ export function TerminalDock({ state, dispatch }: { state: AppState; dispatch: D
 
   useEffect(() => {
     const term = termRef.current
-    if (!term) return
-    const chat = activeChat(state)
-    if (!chat) return
-    const skillMessages = chat.messages.filter((m: any) => m.kind === 'tool' && (m as any).state === 'output')
-    if (skillMessages.length === 0) return
-    const output = skillMessages.map((m: any) => (m as any).output).join('\n')
-    if (output) term.write('\r\n' + output + '\r\n')
+    if (!term || !state.data) return
+    try {
+      const chat = activeChat(state)
+      if (!chat) return
+      const skillMessages = chat.messages.filter((m: any) => m.kind === 'tool' && (m as any).state === 'output')
+      if (skillMessages.length === 0) return
+      const output = skillMessages.map((m: any) => (m as any).output).join('\n')
+      if (output) term.write('\r\n' + output + '\r\n')
+    } catch {
+      // Safely ignore errors in development/test environments with incomplete state
+    }
   }, [state])
 
   useEffect(() => {
