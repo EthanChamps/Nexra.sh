@@ -269,6 +269,7 @@ git commit -m "feat(m3d): vault upsertFilledInput + filledEnvVars + sensitive-aw
 - Modify: `nexra/electron/services/agent.types.ts:7,14` (replace `secret_request`)
 - Modify: `nexra/electron/services/agent.tools.ts:14-20,29-38,82-87,121-137`
 - Test: `nexra/test/agent.tools.test.ts`
+- Test: `nexra/test/m3b-integration.test.ts:37-48,64-68` (also constructs `RunDeps`/`requiredSecret`/asserts `secret_request` — breaks silently if left untouched; found during plan review, not in the original file list)
 
 **Interfaces:**
 - Consumes: `filledEnvVars` (Task 2).
@@ -408,15 +409,27 @@ export const AWS_SKILLS: Record<string, SkillDef> = {
 }
 ```
 
-- [ ] **Step 6: Run to confirm green**
+- [ ] **Step 6: Update the integration test that also constructs `RunDeps`**
 
-Run: `cd nexra && npx vitest run test/agent.tools.test.ts`
+`m3b-integration.test.ts` predates this task and independently builds a `RunDeps`/`skillDef` and asserts on `secret_request` — left alone it would silently break (TS error on `deps1`/`deps2`, and the `secret_request` assertion would never match). Apply these exact edits:
+
+Line 39, `skillDef`: replace `requiredSecret: 'aws',` with `requiredEnvVars: ['AWS_SECRET_ACCESS_KEY'],`.
+
+Lines 44-48, `deps1`: replace `hasFilledSecret: () => false,` with `filledEnvVars: () => [],`.
+
+Line 56: replace `expect(events.some(e => e.type === 'secret_request')).toBe(true)` with `expect(events.some(e => e.type === 'input_request')).toBe(true)`.
+
+Lines 64-68, `deps2`: replace `hasFilledSecret: () => true,` with `filledEnvVars: () => ['AWS_SECRET_ACCESS_KEY'],`.
+
+- [ ] **Step 7: Run to confirm green**
+
+Run: `cd nexra && npx vitest run test/agent.tools.test.ts test/m3b-integration.test.ts`
 Expected: PASS.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add nexra/electron/services/store.types.ts nexra/electron/services/agent.types.ts nexra/electron/services/agent.tools.ts nexra/test/agent.tools.test.ts
+git add nexra/electron/services/store.types.ts nexra/electron/services/agent.types.ts nexra/electron/services/agent.tools.ts nexra/test/agent.tools.test.ts nexra/test/m3b-integration.test.ts
 git commit -m "feat(m3d): input_request event + field-based skill hard-gate"
 ```
 
