@@ -66,7 +66,7 @@ function applyEvent(dispatch: Dispatch<Action>, chatId: string, runningIds: Map<
   }
 }
 
-export function sendMessage(dispatch: Dispatch<Action>, chat: Chat, eng: Engagement, text: string): void {
+export function sendMessage(dispatch: Dispatch<Action>, chat: Chat, eng: Engagement, text: string, companyId?: string): void {
   const trimmed = text.trim()
   if (!trimmed) return
   const history = chat.messages
@@ -79,7 +79,7 @@ export function sendMessage(dispatch: Dispatch<Action>, chat: Chat, eng: Engagem
   const primaryTool = chat.tools.find(t => t.available)?.name ?? 'shell'
   const runningIds = new Map<string, string>()
   window.nexra.agent.send(
-    { chatId: chat.id, engagementType: eng.type, phaseLabel: phaseLabel(eng, chat.phaseId), primaryTool, text: trimmed, history },
+    { chatId: chat.id, engagementType: eng.type, phaseLabel: phaseLabel(eng, chat.phaseId), primaryTool, text: trimmed, history, companyId, engagementId: eng.id },
     applyEvent(dispatch, chat.id, runningIds),
   ).catch((err: unknown) => {
     // Only fires when the IPC invoke promise genuinely rejects with no terminal

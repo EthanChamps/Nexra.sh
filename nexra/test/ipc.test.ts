@@ -30,6 +30,12 @@ describe('sendMessage', () => {
     expect(sent!.req.history).toEqual([{ role: 'assistant', content: 'greeting' }])
     expect(sent!.req.text).toBe('hello there')
   })
+  it('includes companyId and engagementId in the request so the agent loop can run skills', () => {
+    const engWithId = { type: 'aws', id: 'eng-9', phases: [] } as unknown as Engagement
+    sendMessage(() => {}, chat, engWithId, 'audit', 'co-42')
+    expect(sent!.req.companyId).toBe('co-42')
+    expect(sent!.req.engagementId).toBe('eng-9')
+  })
   it('maps text_delta/done into reducer actions and clears streaming on done', () => {
     const dispatched: any[] = []
     sendMessage((a: any) => dispatched.push(a), chat, eng, 'hi')
