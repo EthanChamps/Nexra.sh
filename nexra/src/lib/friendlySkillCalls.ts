@@ -11,17 +11,21 @@ const SKILL_LABELS: Record<string, string> = {
   attach_evidence: 'Attaching evidence',
 }
 
-// Matches a COMPLETE SKILL_CALL[...] occurrence only — an in-progress call
+// Matches a COMPLETE SKILL_CALL[...] occurrence — an in-progress bracket call
 // still streaming in (no closing bracket yet) is deliberately left alone and
 // briefly shows its raw form until the bracket arrives, rather than flickering
-// a label on partial text.
-const SKILL_CALL_RE = /SKILL_CALL\[([a-z_]+)\|[^\]]*\]/g
+// a label on partial text. Also matches the bracketless colon form the model
+// occasionally emits (SKILL_CALL:name|...), terminated by end of line — this is
+// masked eagerly since it has no closing bracket to wait for. Kept in sync with
+// parseSkillCalls() in electron/services/agent.live.ts.
+const SKILL_CALL_RE = /SKILL_CALL(?:\[([a-z_]+)\|[^\]]*\]|:([a-z_]+)\|[^\n]*)/g
 
 // Renders the model's control syntax as a short human label instead of the raw
 // SKILL_CALL[...] grammar. Render-time only — never mutates stored message
 // content, so parsing/persistence upstream is unaffected.
 export function friendlySkillCalls(text: string): string {
-  return text.replace(SKILL_CALL_RE, (_match, name: string) => {
+  return text.replace(SKILL_CALL_RE, (_match, bracketName: string, colonName: string) => {
+    const name = bracketName ?? colonName
     const label = SKILL_LABELS[name] ?? name.replace(/_/g, ' ')
     return `→ ${label}`
   })

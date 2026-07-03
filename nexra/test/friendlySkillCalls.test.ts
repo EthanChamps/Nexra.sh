@@ -24,4 +24,9 @@ describe('friendlySkillCalls', () => {
     const input = 'Working on it. SKILL_CALL[request_inp'
     expect(friendlySkillCalls(input)).toBe(input)
   })
+
+  it('labels the bracketless colon form the model sometimes emits', () => {
+    const input = 'To begin the scan.\nSKILL_CALL:request_inputs|items=AWS_ACCESS_KEY_ID:Access Key ID:s:r'
+    expect(friendlySkillCalls(input)).toBe('To begin the scan.\n→ Requesting inputs')
+  })
 })

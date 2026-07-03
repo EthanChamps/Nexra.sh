@@ -14,14 +14,20 @@ const STEP_CAP = 6
 
 interface DetectedSkill { name: string; args: Record<string, string> }
 
+// Canonical grammar is SKILL_CALL[name|arg=value|...]. Models occasionally slip
+// and emit the bracketless colon form SKILL_CALL:name|arg=value|... instead;
+// accept that too (terminated by end of line) so a formatting deviation doesn't
+// get silently dropped, which would end the turn with no skill run / input card
+// and leave the run looking stuck.
 function parseSkillCalls(text: string): DetectedSkill[] {
-  const regex = /SKILL_CALL\[([a-z_]+)\|([^\]]+)\]/g
+  const regex = /SKILL_CALL(?:\[([a-z_]+)\|([^\]]+)\]|:([a-z_]+)\|([^\n]+))/g
   const skills: DetectedSkill[] = []
   let match
   while ((match = regex.exec(text)) !== null) {
-    const name = match[1]
+    const name = match[1] ?? match[3]
+    const body = match[2] ?? match[4]
     const args: Record<string, string> = {}
-    for (const pair of match[2].split('|')) {
+    for (const pair of body.split('|')) {
       const eq = pair.indexOf('=')
       if (eq > 0) args[pair.slice(0, eq)] = pair.slice(eq + 1)
     }
