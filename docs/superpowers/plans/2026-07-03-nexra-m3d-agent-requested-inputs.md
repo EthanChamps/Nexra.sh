@@ -576,6 +576,7 @@ git commit -m "feat(m3d): request_inputs proactive skill halts the turn awaiting
 **Files:**
 - Modify: `nexra/electron/main.ts:9,110-117` (import + handler)
 - Modify: `nexra/electron/preload.ts:24-31` (bridge)
+- Modify: `nexra/src/global.d.ts` (add `inputs` to the `NexraApi` interface — found during execution: `window.nexra`'s TS surface is declared separately from the preload implementation; skipping this leaves `window.nexra.inputs.fulfill` untyped for every renderer caller, including Task 7's `RequestCard`)
 - Test: none — this is thin glue over `upsertFilledInput` (tested in Task 2). The repo does not unit-test `ipcMain.handle` wiring (there is no `main.test.ts`), matching the existing `secrets:fulfill-pending` handler which has no direct test.
 
 **Interfaces:**

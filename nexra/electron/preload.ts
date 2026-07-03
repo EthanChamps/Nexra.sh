@@ -29,6 +29,11 @@ contextBridge.exposeInMainWorld('nexra', {
     delete: (id: string) => ipcRenderer.invoke('secrets:delete', id),
     fulfillPending: (id: string, values: Record<string, string>) => ipcRenderer.invoke('secrets:fulfill-pending', { id, values }),
   },
+  // Agent-requested inputs — plaintext travels renderer→main once (mirrors secrets).
+  inputs: {
+    fulfill: (companyId: string, key: string, value: string, sensitive: boolean) =>
+      ipcRenderer.invoke('inputs:fulfill', { companyId, key, value, sensitive }),
+  },
   scope: {
     get: (engagementId: string) => ipcRenderer.invoke('scope:get', engagementId),
     set: (engagementId: string, scope: any) => ipcRenderer.invoke('scope:set', { engagementId, scope }),
