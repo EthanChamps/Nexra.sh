@@ -80,6 +80,11 @@ export function initSettingsDb(dbPath: string): void {
     id TEXT PRIMARY KEY, engagement_id TEXT NOT NULL, name TEXT NOT NULL,
     phase_id TEXT NOT NULL, color TEXT NOT NULL, ord INTEGER NOT NULL
   )`)
+  // Additive-only CREATE TABLE IF NOT EXISTS never touches an existing table, so
+  // dbs created before the Tools-panel removal still carry the legacy
+  // `tools TEXT NOT NULL` column with no default — every saveGraph() insert then
+  // fails NOT NULL since callers no longer supply it. Drop it once, idempotently.
+  try { db.exec('ALTER TABLE chats DROP COLUMN tools') } catch { /* already migrated or never had it */ }
   db.exec(`CREATE TABLE IF NOT EXISTS messages (
     id TEXT PRIMARY KEY, chat_id TEXT NOT NULL, role TEXT NOT NULL, kind TEXT NOT NULL,
     content TEXT, tool_name TEXT, command TEXT, output TEXT, duration TEXT,
