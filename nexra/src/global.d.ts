@@ -1,4 +1,4 @@
-import type { Snapshot, Secret, SecretField, EngagementScope } from '../electron/services/store.types'
+import type { Snapshot, Secret, SecretField, EngagementScope, Finding } from '../electron/services/store.types'
 import type { AgentEvent, AgentSendRequest, AgentInstallRequest, AgentTitleRequest } from '../electron/services/agent.types'
 import type { ShellId, ShellTab, ShellCreateResult } from '../electron/services/shell.types'
 
@@ -30,6 +30,9 @@ export interface NexraApi {
     get(engagementId: string): Promise<EngagementScope | undefined>
     set(engagementId: string, scope: EngagementScope): Promise<void>
     setAndValidate(engagementId: string, scope: EngagementScope): Promise<{ success: boolean; error?: string }>
+  }
+  findings: {
+    list(chatId: string): Promise<Finding[]>
   }
   shell: {
     tabs(): Promise<ShellTab[]>

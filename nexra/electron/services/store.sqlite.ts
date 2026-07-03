@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3'
-import type { Secret, SecretField, EngagementScope } from './store.types'
+import type { Secret, SecretField, EngagementScope, Finding, Evidence } from './store.types'
 
 let db: Database.Database | null = null
 
@@ -39,6 +39,29 @@ export function initSettingsDb(dbPath: string): void {
     mode TEXT NOT NULL,
     accounts TEXT NOT NULL,
     regions TEXT NOT NULL
+  )`)
+  // Findings + their evidence artifacts (M3c). Pulled forward from M4; chat_id
+  // is a plain column now (companies/engagements/chats live in the mock
+  // snapshot, not sqlite yet). M4 adds those parent tables + FKs — an additive
+  // migration, not a rewrite.
+  db.exec(`CREATE TABLE IF NOT EXISTS findings (
+    id TEXT PRIMARY KEY,
+    chat_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    sev TEXT NOT NULL,
+    phase TEXT NOT NULL,
+    time TEXT NOT NULL,
+    rationale TEXT NOT NULL,
+    verified INTEGER NOT NULL
+  )`)
+  db.exec(`CREATE TABLE IF NOT EXISTS evidence (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    finding_id TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    tool_call_id TEXT,
+    excerpt TEXT,
+    host TEXT,
+    detail TEXT
   )`)
 }
 
@@ -125,4 +148,46 @@ export function getScopeRow(engagementId: string): EngagementScope | undefined {
   const r = requireDb().prepare('SELECT mode, accounts, regions FROM scope WHERE engagement_id = ?').get(engagementId) as { mode: string; accounts: string; regions: string } | undefined
   if (!r) return undefined
   return { mode: r.mode as EngagementScope['mode'], accounts: JSON.parse(r.accounts), regions: JSON.parse(r.regions) }
+}
+
+// ── findings + evidence (M3c) ───────────────────────────────────────────────
+interface FindingRow { id: string; chat_id: string; title: string; sev: string; phase: string; time: string; rationale: string; verified: number }
+interface EvidenceRow { kind: string; tool_call_id: string | null; excerpt: string | null; host: string | null; detail: string | null }
+
+function rowToEvidence(r: EvidenceRow): Evidence {
+  if (r.kind === 'tool_output') return { kind: 'tool_output', toolCallId: r.tool_call_id ?? '', excerpt: r.excerpt ?? '' }
+  if (r.kind === 'code_block') return { kind: 'code_block', host: r.host ?? '', detail: r.detail ?? '' }
+  return { kind: 'image' }
+}
+
+// Insert-or-replace a finding and its evidence. Evidence rows are fully
+// replaced so an upsert that changes evidence never leaves stale rows.
+export function upsertFinding(chatId: string, f: Finding): void {
+  const d = requireDb()
+  d.prepare(
+    `INSERT INTO findings (id, chat_id, title, sev, phase, time, rationale, verified)
+     VALUES (@id, @chat_id, @title, @sev, @phase, @time, @rationale, @verified)
+     ON CONFLICT(id) DO UPDATE SET
+       chat_id=excluded.chat_id, title=excluded.title, sev=excluded.sev,
+       phase=excluded.phase, time=excluded.time, rationale=excluded.rationale,
+       verified=excluded.verified`,
+  ).run({ id: f.id, chat_id: chatId, title: f.title, sev: f.sev, phase: f.phase, time: f.time, rationale: f.rationale, verified: f.verified ? 1 : 0 })
+  d.prepare('DELETE FROM evidence WHERE finding_id = ?').run(f.id)
+  const ins = d.prepare('INSERT INTO evidence (finding_id, kind, tool_call_id, excerpt, host, detail) VALUES (?, ?, ?, ?, ?, ?)')
+  for (const ev of f.evidence) {
+    if (ev.kind === 'tool_output') ins.run(f.id, ev.kind, ev.toolCallId, ev.excerpt, null, null)
+    else if (ev.kind === 'code_block') ins.run(f.id, ev.kind, null, null, ev.host, ev.detail)
+    else ins.run(f.id, ev.kind, null, null, null, null)
+  }
+}
+
+export function listFindingsByChat(chatId: string): Finding[] {
+  const d = requireDb()
+  const rows = d.prepare('SELECT * FROM findings WHERE chat_id = ? ORDER BY rowid').all(chatId) as FindingRow[]
+  const evStmt = d.prepare('SELECT kind, tool_call_id, excerpt, host, detail FROM evidence WHERE finding_id = ? ORDER BY id')
+  return rows.map(r => ({
+    id: r.id, title: r.title, sev: r.sev as Finding['sev'], phase: r.phase, time: r.time,
+    rationale: r.rationale, verified: !!r.verified,
+    evidence: (evStmt.all(r.id) as EvidenceRow[]).map(rowToEvidence),
+  }))
 }

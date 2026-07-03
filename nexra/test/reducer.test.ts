@@ -2,8 +2,14 @@ import { describe, it, expect } from 'vitest'
 import { reducer, initialUI, deriveTitle, inferFocus } from '../src/state/reducer'
 import { activeChat, activeEngagement, chatByGlobalId } from '../src/state/selectors'
 import { buildSnapshot } from '../electron/services/store.mock'
+import type { Finding } from '../electron/services/store.types'
 
 const boot = () => ({ data: buildSnapshot(), ui: initialUI })
+
+const mkFinding = (over: Partial<Finding> = {}): Finding => ({
+  id: 'f1', title: 'Public S3 bucket', sev: 'High', phase: 'Storage', time: 'just now',
+  rationale: 'World-readable ACL', evidence: [], verified: false, ...over,
+})
 
 describe('reducer', () => {
   it('opens a company into workspace with first engagement active', () => {
@@ -149,6 +155,32 @@ describe('reducer', () => {
     const chatId = activeChat(s)!.id
     s = reducer(s, { t: 'setChatTitle', chatId, title: 'Some generated title' })
     expect(chatByGlobalId(s, chatId)!.name).toBe('My audit')
+  })
+})
+
+describe('upsertFinding', () => {
+  const seededChat = () => {
+    let s = reducer(boot(), { t: 'openCompany', id: 'c1' })
+    const chatId = activeChat(s)!.id
+    return { s, chatId }
+  }
+  it('inserts a new finding by id', () => {
+    const { s, chatId } = seededChat()
+    const before = activeChat(s)!.findings.length
+    const s2 = reducer(s, { t: 'upsertFinding', chatId, finding: mkFinding() })
+    const fs = chatByGlobalId(s2, chatId)!.findings
+    expect(fs).toHaveLength(before + 1)
+    expect(fs.find(f => f.id === 'f1')!.verified).toBe(false)
+  })
+  it('replaces an existing finding in place when the id matches', () => {
+    const { s, chatId } = seededChat()
+    const s2 = reducer(s, { t: 'upsertFinding', chatId, finding: mkFinding() })
+    const countAfterInsert = chatByGlobalId(s2, chatId)!.findings.length
+    const s3 = reducer(s2, { t: 'upsertFinding', chatId, finding: mkFinding({ verified: true, evidence: [{ kind: 'code_block', host: 's3://acme', detail: 'ACL public-read' }] }) })
+    const fs = chatByGlobalId(s3, chatId)!.findings
+    expect(fs).toHaveLength(countAfterInsert)          // no duplicate
+    expect(fs.find(f => f.id === 'f1')!.verified).toBe(true)
+    expect(fs.find(f => f.id === 'f1')!.evidence).toHaveLength(1)
   })
 })
 
