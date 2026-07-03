@@ -13,8 +13,8 @@ afterEach(() => rmSync(dir, { recursive: true, force: true }))
 const two = (): Company[] => ([
   { id: 'c1', name: 'Acme', updated: 'now', engagements: [
     { id: 'e1', type: 'aws', name: 'AWS', status: 'In Progress', updated: 'now', linear: true, phases: [], scope: [], chats: [
-      { id: 'ch1', name: 'A', phaseId: 'p', color: '#111', tools: [], messages: [{ id: 'm1', role: 'user', kind: 'text', content: 'x' }], findings: [] },
-      { id: 'ch2', name: 'B', phaseId: 'p', color: '#222', tools: [], messages: [], findings: [] },
+      { id: 'ch1', name: 'A', phaseId: 'p', color: '#111', messages: [{ id: 'm1', role: 'user', kind: 'text', content: 'x' }], findings: [] },
+      { id: 'ch2', name: 'B', phaseId: 'p', color: '#222', messages: [], findings: [] },
     ] },
   ] },
   { id: 'c2', name: 'Beta', updated: 'now', engagements: [] },

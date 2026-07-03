@@ -19,7 +19,6 @@ const company = (over: Partial<Company> = {}): Company => ({
     phases: [{ id: 'iam', label: 'IAM' }], scope: [{ label: 'Account', value: '1234' }],
     chats: [{
       id: 'ch1', name: 'Recon', phaseId: 'iam', color: '#123456',
-      tools: [{ name: 'prowler', available: true }],
       messages: [msg({ id: 'm1', role: 'user' }), msg({ id: 'm2', role: 'assistant', kind: 'text', content: 'hello' })],
       findings: [],
     }],

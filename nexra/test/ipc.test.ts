@@ -3,7 +3,7 @@ import { sendMessage, cancelStream } from '../src/ipc'
 import type { AgentEvent } from '../electron/services/agent.types'
 import type { Chat, Engagement } from '../electron/services/store.types'
 
-const chat = { id: 'c1', name: 'New chat', phaseId: '', color: '#000', tools: [{ name: 'prowler', available: true }],
+const chat = { id: 'c1', name: 'New chat', phaseId: '', color: '#000',
   messages: [{ id: 'g', role: 'assistant', kind: 'text', content: 'greeting' }], findings: [] } as unknown as Chat
 const eng = { type: 'aws', phases: [] } as unknown as Engagement
 
