@@ -1,5 +1,5 @@
 import { it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { RequestCard } from '../src/components/RequestCard'
 
 const items = [
@@ -87,4 +87,28 @@ it('scope: clicking Continue calls onFulfill exactly once, not automatically on 
   expect(onFulfill).not.toHaveBeenCalled()
   fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
   expect(onFulfill).toHaveBeenCalledTimes(1)
+})
+
+it('scope_proposal: prefills the proposed item, adds on confirm, resumes with "added"', async () => {
+  const add = vi.fn(() => Promise.resolve({ id: 'i9' }))
+  ;(window as any).nexra = { projectScope: { add } }
+  const onScopeResolve = vi.fn()
+  const msg = { id: 'p1', role: 'assistant', kind: 'request', requestKind: 'scope_proposal', proposeItem: { type: 'hostname', value: 'admin.acme.com' } }
+  render(<RequestCard message={msg} companyId="co1" onFulfill={() => {}} onScopeResolve={onScopeResolve} />)
+  expect((screen.getByLabelText('Proposed scope value') as HTMLInputElement).value).toBe('admin.acme.com')
+  fireEvent.click(screen.getByRole('button', { name: 'Add to scope' }))
+  await waitFor(() => expect(add).toHaveBeenCalledWith('co1', { type: 'hostname', value: 'admin.acme.com', source: 'agent' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Continue' }))
+  expect(onScopeResolve).toHaveBeenCalledWith('added')
+})
+
+it('scope_proposal: Decline resumes with "declined" and does not add', () => {
+  const add = vi.fn()
+  ;(window as any).nexra = { projectScope: { add } }
+  const onScopeResolve = vi.fn()
+  const msg = { id: 'p2', role: 'assistant', kind: 'request', requestKind: 'scope_proposal', proposeItem: { type: 'ip', value: '10.0.0.9' } }
+  render(<RequestCard message={msg} companyId="co1" onFulfill={() => {}} onScopeResolve={onScopeResolve} />)
+  fireEvent.click(screen.getByRole('button', { name: 'Decline' }))
+  expect(add).not.toHaveBeenCalled()
+  expect(onScopeResolve).toHaveBeenCalledWith('declined')
 })

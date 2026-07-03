@@ -10,7 +10,7 @@ import { friendlySkillCalls } from '../lib/friendlySkillCalls'
 
 const BOTTOM_THRESHOLD = 64
 
-export function MessageList({ chat, streaming, onInstall, companyId, onResume }: { chat: Chat; streaming: boolean; onInstall?: (msg: Message) => void; companyId?: string; onResume?: () => void }) {
+export function MessageList({ chat, streaming, onInstall, companyId, onResume, onScopeResolve }: { chat: Chat; streaming: boolean; onInstall?: (msg: Message) => void; companyId?: string; onResume?: () => void; onScopeResolve?: (outcome: 'added' | 'declined') => void }) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const atBottomRef = useRef(true)
   const [showJump, setShowJump] = useState(false)
@@ -86,7 +86,7 @@ export function MessageList({ chat, streaming, onInstall, companyId, onResume }:
               />
             )}
             {m.kind === 'request' && (
-              <RequestCard message={m} companyId={companyId} onFulfill={onResume ?? (() => {})} />
+              <RequestCard message={m} companyId={companyId} onFulfill={onResume ?? (() => {})} onScopeResolve={onScopeResolve} />
             )}
           </div>
         ))}

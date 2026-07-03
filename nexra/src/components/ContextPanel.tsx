@@ -1,6 +1,7 @@
 import { useState, type Dispatch } from 'react'
 import { Hoverable } from './Hoverable'
 import { SecretsPanel } from './SecretsPanel'
+import { ScopePanel } from './ScopePanel'
 import { SecretModal } from './modals/SecretModal'
 import { theme } from '../theme'
 import type { AppState } from '../state/selectors'
@@ -37,7 +38,6 @@ export function ContextPanel({ state, dispatch }: { state: AppState; dispatch: D
   }
 
   const chatFocusLabel = phaseLabel(eng, chat!.phaseId)
-  const scope = eng!.scope
   const findings = chat!.findings.map(f => ({ ...f, color: sevColor(f.sev) }))
   const findingsCount = findings.length
   const findingsEmpty = findings.length === 0
@@ -83,19 +83,7 @@ export function ContextPanel({ state, dispatch }: { state: AppState; dispatch: D
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
-        {tab === 'scope' && (
-          <>
-            <div style={{ fontSize: 10.5, fontWeight: 500, letterSpacing: '0.1em', color: theme.dim2, textTransform: 'uppercase', marginBottom: 10 }}>Scope</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: theme.card, border: `1px solid ${theme.border}`, borderRadius: 9, overflow: 'hidden', marginBottom: 24 }}>
-              {scope.map((s, i) => (
-                <div key={i} style={{ display: 'flex', gap: 10, padding: '9px 12px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                  <span style={{ flex: 'none', width: 82, fontSize: 11.5, color: theme.dim }}>{s.label}</span>
-                  <span style={{ flex: 1, fontFamily: theme.mono, fontSize: 11.5, color: theme.textDim, wordBreak: 'break-word' }}>{s.value}</span>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
+        {tab === 'scope' && company && <ScopePanel companyId={company.id} />}
 
         {tab === 'secrets' && eng && company && (
           <>

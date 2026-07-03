@@ -100,23 +100,36 @@ export function sendMessage(dispatch: Dispatch<Action>, chat: Chat, eng: Engagem
   }
 }
 
-// Resume the agent after the operator has filled a requested-input card. Unlike
-// sendMessage this appends NO visible user bubble — it feeds the model a synthetic
-// "continue" turn and streams the reply. The request card message is kind:'request',
-// so it is naturally excluded from the text-only history below.
-export function resumeAfterInputs(dispatch: Dispatch<Action>, chat: Chat, eng: Engagement, companyId?: string): void {
+// Shared by all "resume after a request card" flows below: feeds the model a
+// synthetic continue turn and streams the reply. Unlike sendMessage this appends
+// NO visible user bubble. The request card message is kind:'request', so it is
+// naturally excluded from the text-only history built here.
+function resumeWith(dispatch: Dispatch<Action>, chat: Chat, eng: Engagement, text: string, companyId?: string): void {
   const history = chat.messages
     .filter(m => m.kind === 'text' && typeof m.content === 'string')
     .map(m => ({ role: m.role, content: m.content as string }))
   dispatch({ t: 'setStreaming', chatId: chat.id, on: true })
   const runningIds = new Map<string, string>()
   window.nexra.agent.send(
-    { chatId: chat.id, engagementType: eng.type, phaseLabel: phaseLabel(eng, chat.phaseId), text: 'The requested inputs have been provided. Continue.', history, companyId, engagementId: eng.id },
+    { chatId: chat.id, engagementType: eng.type, phaseLabel: phaseLabel(eng, chat.phaseId), text, history, companyId, engagementId: eng.id },
     applyEvent(dispatch, chat.id, runningIds),
   ).catch((err: unknown) => {
     dispatch({ t: 'appendError', chatId: chat.id, message: err instanceof Error ? err.message : 'Resume failed' })
     dispatch({ t: 'setStreaming', chatId: chat.id, on: false })
   })
+}
+
+// Resume the agent after the operator has filled a requested-input card.
+export function resumeAfterInputs(dispatch: Dispatch<Action>, chat: Chat, eng: Engagement, companyId?: string): void {
+  resumeWith(dispatch, chat, eng, 'The requested inputs have been provided. Continue.', companyId)
+}
+
+// Resume the agent after the operator has accepted or declined a scope proposal card.
+export function resumeAfterScope(dispatch: Dispatch<Action>, chat: Chat, eng: Engagement, companyId: string | undefined, outcome: 'added' | 'declined'): void {
+  const text = outcome === 'added'
+    ? 'The proposed scope item was added and is now in scope. Continue.'
+    : 'The proposed scope item was declined; it remains out of scope. Do not target it. Continue.'
+  resumeWith(dispatch, chat, eng, text, companyId)
 }
 
 // Clears busy state immediately instead of waiting on the abort/done IPC

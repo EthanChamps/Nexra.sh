@@ -7,7 +7,7 @@ import type { AppState } from '../state/selectors'
 import { activeCompany, activeEngagement, activeChat, phaseLabel } from '../state/selectors'
 import type { Action } from '../state/reducer'
 import type { Message } from '../../electron/services/store.types'
-import { sendMessage, installTool, cancelStream, resumeAfterInputs } from '../ipc'
+import { sendMessage, installTool, cancelStream, resumeAfterInputs, resumeAfterScope } from '../ipc'
 
 export function ChatPane({
   state,
@@ -93,7 +93,9 @@ export function ChatPane({
         </div>
       </header>
 
-      <MessageList chat={chat} streaming={!!state.ui.streamingChats[chat.id]} onInstall={onInstall} companyId={company?.id} onResume={() => resumeAfterInputs(dispatch, chat, eng, company?.id)} />
+      <MessageList chat={chat} streaming={!!state.ui.streamingChats[chat.id]} onInstall={onInstall} companyId={company?.id}
+        onResume={() => resumeAfterInputs(dispatch, chat, eng, company?.id)}
+        onScopeResolve={(o) => resumeAfterScope(dispatch, chat, eng, company?.id, o)} />
 
       <Composer
         draft={state.ui.draft}

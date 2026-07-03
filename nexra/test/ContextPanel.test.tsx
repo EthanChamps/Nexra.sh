@@ -13,6 +13,7 @@ function mountWithFindings(findings: Finding[]) {
   activeChat(s)!.findings.length = 0
   for (const f of findings) s = reducer(s, { t: 'upsertFinding', chatId, finding: f })
   const dispatch = () => {}
+  ;(window as any).nexra = { ...(window as any).nexra, projectScope: { get: () => Promise.resolve({ companyId: 'c1', items: [], notes: '' }) } }
   return render(<ContextPanel state={s} dispatch={dispatch as any} />)
 }
 
@@ -39,7 +40,7 @@ describe('ContextPanel secrets tab', () => {
   it('passes the real company id to SecretsPanel, not the (nonexistent) Engagement.companyId', () => {
     let s = reducer({ data: buildSnapshot(), ui: initialUI }, { t: 'openCompany', id: 'c1' })
     const list = vi.fn(() => Promise.resolve([]))
-    ;(window as any).nexra = { secrets: { list } }
+    ;(window as any).nexra = { secrets: { list }, projectScope: { get: () => Promise.resolve({ companyId: 'c1', items: [], notes: '' }) } }
     const dispatch = () => {}
     render(<ContextPanel state={s} dispatch={dispatch as any} />)
     fireEvent.click(screen.getByText('secrets'))

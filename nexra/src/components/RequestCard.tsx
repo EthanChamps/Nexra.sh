@@ -1,14 +1,15 @@
 import { useState, useRef } from 'react'
-import type { EngagementScope, SecretField, InputRequestItem } from '../../electron/services/store.types'
+import type { EngagementScope, SecretField, InputRequestItem, ScopeItemType } from '../../electron/services/store.types'
 import { theme } from '../theme'
 
 export interface RequestCardProps {
   message: any
   companyId?: string
   onFulfill: () => void
+  onScopeResolve?: (outcome: 'added' | 'declined') => void
 }
 
-export function RequestCard({ message, companyId, onFulfill }: RequestCardProps) {
+export function RequestCard({ message, companyId, onFulfill, onScopeResolve }: RequestCardProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -201,6 +202,59 @@ export function RequestCard({ message, companyId, onFulfill }: RequestCardProps)
             style={{ padding: '6px 12px', background: theme.accent, color: theme.bg, border: 'none', borderRadius: '4px', cursor: scopeSaved && !continued ? 'pointer' : 'not-allowed', fontSize: '12px', opacity: scopeSaved && !continued ? 1 : 0.5 }}
           >
             {continued ? 'Continuing…' : 'Continue'}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (message.requestKind === 'scope_proposal') {
+    const proposed = (message.proposeItem ?? { type: 'other', value: '' }) as { type: ScopeItemType; value: string }
+    const TYPES: ScopeItemType[] = ['cidr', 'ip', 'hostname', 'url', 'cloud_account', 'tenant_id', 'region', 'other']
+    const [type, setType] = useState<ScopeItemType>(proposed.type)
+    const [value, setValue] = useState(proposed.value)
+    const [added, setAdded] = useState(false)
+    const resolvedRef = useRef(false)
+
+    const handleAdd = async () => {
+      if (!value.trim()) return
+      setLoading(true)
+      try {
+        await window.nexra.projectScope.add(companyId!, { type, value: value.trim(), source: 'agent' })
+        setAdded(true)
+      } catch (err) { setError((err as Error).message) } finally { setLoading(false) }
+    }
+    const resolve = (outcome: 'added' | 'declined') => {
+      if (resolvedRef.current) return
+      resolvedRef.current = true
+      onScopeResolve?.(outcome)
+    }
+
+    return (
+      <div style={{ background: theme.card, border: `1px solid ${theme.accent}`, borderRadius: '6px', padding: '12px', marginTop: '8px' }}>
+        <div style={{ fontWeight: 500, marginBottom: '8px' }}>Add to scope?</div>
+        {message.reason && <div style={{ fontSize: '12px', color: theme.muted, marginBottom: '8px' }}>{message.reason}</div>}
+        {error && <div style={{ color: '#f0616d', fontSize: '12px', marginBottom: '8px' }}>{error}</div>}
+        <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
+          <select aria-label="Proposed scope type" value={type} onChange={e => setType(e.target.value as ScopeItemType)} disabled={added}
+            style={{ flex: 'none', padding: '6px', background: theme.bg, border: `1px solid ${theme.border}`, borderRadius: '4px', color: theme.text, fontSize: '12px' }}>
+            {TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+          <input aria-label="Proposed scope value" value={value} onChange={e => setValue(e.target.value)} disabled={added}
+            style={{ flex: 1, minWidth: 0, padding: '6px', background: theme.bg, border: `1px solid ${theme.border}`, borderRadius: '4px', color: theme.text, fontSize: '12px' }} />
+        </div>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button type="button" onClick={handleAdd} disabled={loading || added}
+            style={{ padding: '6px 12px', background: theme.accent, color: theme.bg, border: 'none', borderRadius: '4px', cursor: added ? 'default' : 'pointer', fontSize: '12px' }}>
+            {added ? 'Added' : loading ? 'Adding…' : 'Add to scope'}
+          </button>
+          <button type="button" onClick={() => resolve('added')} disabled={!added}
+            style={{ padding: '6px 12px', background: theme.accent, color: theme.bg, border: 'none', borderRadius: '4px', cursor: added ? 'pointer' : 'not-allowed', fontSize: '12px', opacity: added ? 1 : 0.5 }}>
+            Continue
+          </button>
+          <button type="button" onClick={() => resolve('declined')} disabled={added}
+            style={{ padding: '6px 12px', background: 'transparent', color: theme.muted, border: `1px solid ${theme.border}`, borderRadius: '4px', cursor: added ? 'not-allowed' : 'pointer', fontSize: '12px' }}>
+            Decline
           </button>
         </div>
       </div>
