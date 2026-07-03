@@ -13,8 +13,8 @@ import { validate, type Target } from './scope'
 
 export interface SkillDef {
   name: string
-  // Credential reference this skill needs FILLED before it can run (or none).
-  requiredSecret?: string
+  // Env vars that must be FILLED (present in the injected env) before this runs.
+  requiredEnvVars?: string[]
   // Build the concrete child command from a validated invocation.
   build(inv: SkillInvocation): { command: string; args: string[] }
 }
@@ -29,7 +29,7 @@ export interface SkillInvocation extends Target {
 export interface RunDeps {
   getScope(engagementId: string): EngagementScope | undefined
   injectEnv(companyId: string): Record<string, string>
-  hasFilledSecret(companyId: string, name: string): boolean
+  filledEnvVars(companyId: string): string[]
   // Overridable for tests; defaults to node:child_process.spawn.
   spawn?: (command: string, args: string[], options: SpawnOptions) => import('node:child_process').ChildProcess
   // Base environment the child inherits before creds are overlaid. Defaults to
@@ -79,11 +79,17 @@ export function runSkill(
     return Promise.resolve({ state: 'denied', reason: decision.reason ?? 'out of scope' })
   }
 
-  // Gate 3 — required credential must be FILLED; else request it, never spawn.
-  if (def.requiredSecret && !deps.hasFilledSecret(inv.companyId, def.requiredSecret)) {
-    emit({ type: 'secret_request', name: def.requiredSecret, fields: [] })
-    emit({ type: 'skill', id, skill: def.name, state: 'blocked', message: 'awaiting credential: ' + def.requiredSecret })
-    return Promise.resolve({ state: 'blocked', reason: 'awaiting-secret' })
+  // Gate 3 — every required credential env var must be FILLED; else request the
+  // missing ones and never spawn. Field-based (not fixed-name) so the operator
+  // may name the secret anything (M3d).
+  if (def.requiredEnvVars && def.requiredEnvVars.length) {
+    const have = new Set(deps.filledEnvVars(inv.companyId))
+    const missing = def.requiredEnvVars.filter(k => !have.has(k))
+    if (missing.length) {
+      emit({ type: 'input_request', requestId: id, items: missing.map(k => ({ key: k, label: k, sensitive: true, required: true })) })
+      emit({ type: 'skill', id, skill: def.name, state: 'blocked', message: 'awaiting credential: ' + missing.join(', ') })
+      return Promise.resolve({ state: 'blocked', reason: 'awaiting-secret' })
+    }
   }
 
   // Spawn. Credentials go into the CHILD env only. `emit` carries child stdout
@@ -121,17 +127,17 @@ export function runSkill(
 export const AWS_SKILLS: Record<string, SkillDef> = {
   run_prowler: {
     name: 'run_prowler',
-    requiredSecret: 'aws',
+    requiredEnvVars: ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY'],
     build: inv => ({ command: 'prowler', args: ['aws', ...(inv.region ? ['-f', inv.region] : [])] }),
   },
   run_scoutsuite: {
     name: 'run_scoutsuite',
-    requiredSecret: 'aws',
+    requiredEnvVars: ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY'],
     build: () => ({ command: 'scout', args: ['aws'] }),
   },
   run_pmapper: {
     name: 'run_pmapper',
-    requiredSecret: 'aws',
+    requiredEnvVars: ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY'],
     build: () => ({ command: 'pmapper', args: ['graph', 'create'] }),
   },
 }

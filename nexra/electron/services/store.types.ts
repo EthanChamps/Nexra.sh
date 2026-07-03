@@ -12,7 +12,7 @@ export interface ReviewTypeConfig {
 }
 
 export type MessageRole = 'user' | 'assistant'
-export type MessageKind = 'text' | 'tool'
+export type MessageKind = 'text' | 'tool' | 'request'
 export type ToolState = 'running' | 'success' | 'unavailable'
 
 export interface Message {
@@ -20,6 +20,8 @@ export interface Message {
   content?: string
   toolName?: string; command?: string; output?: string; duration?: string
   reason?: string; installCmd?: string; state?: ToolState
+  // request cards (M3d): the agent asks the operator for inputs or scope
+  requestKind?: 'inputs' | 'scope'; requestId?: string; items?: InputRequestItem[]; engagementId?: string
 }
 
 // A checkable artifact behind a finding (M3c). `tool_output` references a
@@ -74,7 +76,14 @@ export interface Secret {
   status: 'pending' | 'filled'
   aliasOf?: string                  // "tie to existing" → id of another Secret
   createdBy: 'operator' | 'agent'
+  sensitive?: boolean                // absent = sensitive (legacy default); false = plain config value
 }
+
+// One input the agent asks the operator to provide (M3d). `key` is the env var
+// the value injects as; `sensitive` masks + encrypts it; `required` gates the
+// agent's auto-resume. Defined here (not agent.types) to avoid a type cycle —
+// both the event layer and the renderer message use it.
+export interface InputRequestItem { key: string; label: string; sensitive: boolean; required: boolean }
 
 export interface Company { id: string; name: string; updated: string; engagements: Engagement[] }
 

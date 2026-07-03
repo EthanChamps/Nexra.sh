@@ -43,5 +43,12 @@
     "react-markdown": "^10.1.0",
     "remark-breaks": "^4.0.0",
     "remark-gfm": "^4.0.1"
+  },
+  "allowScripts": {
+    "better-sqlite3@12.11.1": true,
+    "electron@31.7.7": true,
+    "esbuild@0.21.5": true,
+    "fsevents@2.3.3": true,
+    "node-pty@1.1.0": true
   }
 }
