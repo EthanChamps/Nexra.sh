@@ -1,5 +1,6 @@
 import { getDb, listFindingsByChat, deleteFindingsByChat } from './store.sqlite'
-import type { Company, Engagement, Chat, Message, Phase, ScopeRow, ToolAvailability, InputRequestItem } from './store.types'
+import { buildCompanies, buildTypes } from './seed'
+import type { Company, Engagement, Chat, Message, Phase, ScopeRow, ToolAvailability, InputRequestItem, Snapshot } from './store.types'
 
 // Undefined → null for sqlite; empty string is preserved as-is.
 const n = (v: string | undefined): string | null => (v == null ? null : v)
@@ -135,4 +136,11 @@ export function readGraph(): Company[] {
       })),
     })),
   }))
+}
+
+// Boot read: seed an empty db once, then return the persisted graph plus the
+// static review-type config (types are never persisted — they are code).
+export function readSnapshot(): Snapshot {
+  if (isEmptyGraph()) saveGraph(buildCompanies())
+  return { companies: readGraph(), types: buildTypes() }
 }
