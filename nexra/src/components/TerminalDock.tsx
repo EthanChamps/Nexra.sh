@@ -16,7 +16,9 @@ export function TerminalDock({ state, dispatch }: { state: AppState; dispatch: D
   const termRef = useRef<Terminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
   const writeRef = useRef<(data: string) => void>(() => {})
-  const sessionIdRef = useRef<ShellId | null>(null)
+  // The session key returned by shell.create — a bare ShellId, or a
+  // `${companyId}:${ShellId}` composite for a per-project shell (M3b).
+  const sessionIdRef = useRef<string | null>(null)
 
   const resizing = useRef(false)
   const startY = useRef(0)

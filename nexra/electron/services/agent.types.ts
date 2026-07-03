@@ -1,9 +1,18 @@
-import type { Severity, ToolState } from './store.types'
+import type { Severity, ToolState, SecretField } from './store.types'
+
+// Lifecycle of one typed-skill invocation (M3b). `denied` = scope refused it
+// (never spawned); `blocked` = a required credential is missing (never spawned,
+// paired with a secret_request); `output` carries a stdout chunk from the CHILD
+// process only — never its environment.
+export type SkillState = 'running' | 'output' | 'success' | 'denied' | 'blocked'
 
 export type AgentEvent =
   | { type: 'text'; text: string }
   | { type: 'text_delta'; delta: string }
   | { type: 'tool_call'; state: ToolState; toolName: string; command?: string; output?: string; duration?: string; reason?: string; installCmd?: string }
+  | { type: 'skill'; id: string; skill: string; state: SkillState; chunk?: string; message?: string; exitCode?: number }
+  | { type: 'secret_request'; name: string; fields: SecretField[] }
+  | { type: 'scope_request'; engagementId: string }
   | { type: 'finding'; title: string; sev: Severity; phase: string; time: string }
   | { type: 'error'; message: string }
   | { type: 'done' }

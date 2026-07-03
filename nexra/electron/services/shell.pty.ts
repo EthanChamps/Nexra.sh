@@ -4,18 +4,33 @@ import type { ShellId, ShellTab, ShellCreateResult } from './shell.types'
 import { resolveShellTabs, resolveShellCommand } from './shell.resolve'
 import { createRealShellProbe } from './shell.probe'
 import { ScrollbackBuffer } from './scrollback'
+import { cleanBaseEnv } from './agent.tools'
+import { injectEnv } from './secrets.vault'
 
 interface PtyRecord { proc: pty.IPty; buffer: ScrollbackBuffer }
 
-// Keyed by ShellId (not a per-call generated id): this app has exactly one
-// shared terminal dock, so one session per shell type is the whole design.
-// That's what makes createSession idempotent and every session always
-// reachable by re-selecting its tab — no leaked/unreachable sessions short
-// of app quit.
-const sessions = new Map<ShellId, PtyRecord>()
+// Keyed by session key — a bare ShellId for a global shell, or
+// `${companyId}:${ShellId}` for a per-project shell (M3b). Per-project keying
+// is what keeps one client's injected credentials out of another client's
+// terminal: each project gets its own pty, spawned once with its own creds.
+// createSession stays idempotent per key; sessions survive the dock closing.
+const sessions = new Map<string, PtyRecord>()
+
+function keyOf(shell: ShellId, companyId?: string): string {
+  return companyId ? `${companyId}:${shell}` : shell
+}
 
 export function shellTabs(): ShellTab[] {
   return resolveShellTabs(process.platform, createRealShellProbe())
+}
+
+// Build the child environment: host env with credential-shaped vars stripped
+// (cleanBaseEnv — resolves the standing "keep creds out of operator shells"
+// warning), then the project's vault-injected creds overlaid. With no
+// companyId (a global shell) only the strip happens — no project creds present.
+function spawnEnv(companyId?: string): Record<string, string> {
+  const base = cleanBaseEnv(process.env)
+  return companyId ? { ...base, ...injectEnv(companyId) } : base
 }
 
 export function createSession(
@@ -23,42 +38,39 @@ export function createSession(
   cols: number,
   rows: number,
   onData: (data: string) => void,
+  companyId?: string,
 ): ShellCreateResult {
-  const existing = sessions.get(shell)
+  const key = keyOf(shell, companyId)
+  const existing = sessions.get(key)
   if (existing) {
     existing.proc.resize(cols, rows)
-    return { sessionId: shell, scrollback: existing.buffer.read() }
+    return { sessionId: key, scrollback: existing.buffer.read() }
   }
 
   const { command, args } = resolveShellCommand(shell, process.platform, process.env)
-  // Fine today: the main process's process.env holds no secrets. When a
-  // later milestone (M3) wires a real provider API key for the live agent,
-  // that key must NOT be added to process.env in a way that would flow into
-  // these operator shells via env inheritance — keep provider credentials
-  // out of process.env or explicitly strip them before spawning here.
   const proc = pty.spawn(command, args, {
     name: 'xterm-256color',
     cols,
     rows,
     cwd: os.homedir(),
-    env: process.env as Record<string, string>,
+    env: spawnEnv(companyId),
   })
   const buffer = new ScrollbackBuffer()
   proc.onData(data => { buffer.push(data); onData(data) })
-  proc.onExit(() => { sessions.delete(shell) })
-  sessions.set(shell, { proc, buffer })
-  return { sessionId: shell, scrollback: '' }
+  proc.onExit(() => { sessions.delete(key) })
+  sessions.set(key, { proc, buffer })
+  return { sessionId: key, scrollback: '' }
 }
 
-export function writeToSession(sessionId: ShellId, data: string): void {
+export function writeToSession(sessionId: string, data: string): void {
   sessions.get(sessionId)?.proc.write(data)
 }
 
-export function resizeSession(sessionId: ShellId, cols: number, rows: number): void {
+export function resizeSession(sessionId: string, cols: number, rows: number): void {
   sessions.get(sessionId)?.proc.resize(cols, rows)
 }
 
-export function killSession(sessionId: ShellId): void {
+export function killSession(sessionId: string): void {
   sessions.get(sessionId)?.proc.kill()
   sessions.delete(sessionId)
 }
@@ -68,6 +80,6 @@ export function killAllSessions(): void {
   sessions.clear()
 }
 
-export function getSessionPid(sessionId: ShellId): number | undefined {
+export function getSessionPid(sessionId: string): number | undefined {
   return sessions.get(sessionId)?.proc.pid
 }
