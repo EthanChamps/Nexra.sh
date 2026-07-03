@@ -66,11 +66,44 @@ export function initSettingsDb(dbPath: string): void {
     host TEXT,
     detail TEXT
   )`)
+
+  // ── M4: engagement graph (companies → engagements → chats → messages) ──
+  db.exec(`CREATE TABLE IF NOT EXISTS companies (
+    id TEXT PRIMARY KEY, name TEXT NOT NULL, updated TEXT NOT NULL, ord INTEGER NOT NULL
+  )`)
+  db.exec(`CREATE TABLE IF NOT EXISTS engagements (
+    id TEXT PRIMARY KEY, company_id TEXT NOT NULL, type TEXT NOT NULL, name TEXT NOT NULL,
+    status TEXT NOT NULL, updated TEXT NOT NULL, linear INTEGER NOT NULL,
+    phases TEXT NOT NULL, scope TEXT NOT NULL, ord INTEGER NOT NULL
+  )`)
+  db.exec(`CREATE TABLE IF NOT EXISTS chats (
+    id TEXT PRIMARY KEY, engagement_id TEXT NOT NULL, name TEXT NOT NULL,
+    phase_id TEXT NOT NULL, color TEXT NOT NULL, tools TEXT NOT NULL, ord INTEGER NOT NULL
+  )`)
+  db.exec(`CREATE TABLE IF NOT EXISTS messages (
+    id TEXT PRIMARY KEY, chat_id TEXT NOT NULL, role TEXT NOT NULL, kind TEXT NOT NULL,
+    content TEXT, tool_name TEXT, command TEXT, output TEXT, duration TEXT,
+    reason TEXT, install_cmd TEXT, state TEXT,
+    request_kind TEXT, request_id TEXT, items TEXT, engagement_id TEXT, ord INTEGER NOT NULL
+  )`)
+  db.exec(`CREATE TABLE IF NOT EXISTS phase_coverage (
+    engagement_id TEXT NOT NULL, phase_id TEXT NOT NULL, status TEXT NOT NULL, updated TEXT NOT NULL,
+    PRIMARY KEY (engagement_id, phase_id)
+  )`)
+  db.exec(`CREATE TABLE IF NOT EXISTS engagement_memory (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, engagement_id TEXT NOT NULL, chat_id TEXT,
+    kind TEXT NOT NULL, content TEXT NOT NULL, time TEXT NOT NULL
+  )`)
 }
 
 function requireDb(): Database.Database {
   if (!db) throw new Error('settings db not initialized — call initSettingsDb first')
   return db
+}
+
+// Shared handle for sibling persistence modules (store.graph.ts, coverage/memory).
+export function getDb(): Database.Database {
+  return requireDb()
 }
 
 // ── settings (M3a) ──────────────────────────────────────────────────────────
@@ -184,6 +217,15 @@ export function upsertFinding(chatId: string, f: Finding): void {
     else if (ev.kind === 'code_block') ins.run(f.id, ev.kind, null, null, ev.host, ev.detail)
     else ins.run(f.id, ev.kind, null, null, null, null)
   }
+}
+
+// Delete every finding for a chat and its evidence (used by M4 cascade deletes).
+export function deleteFindingsByChat(chatId: string): void {
+  const d = requireDb()
+  const ids = (d.prepare('SELECT id FROM findings WHERE chat_id = ?').all(chatId) as { id: string }[]).map(r => r.id)
+  const delEv = d.prepare('DELETE FROM evidence WHERE finding_id = ?')
+  for (const id of ids) delEv.run(id)
+  d.prepare('DELETE FROM findings WHERE chat_id = ?').run(chatId)
 }
 
 export function listFindingsByChat(chatId: string): Finding[] {
