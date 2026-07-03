@@ -1,7 +1,8 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
-import { buildSnapshot } from './services/store.mock'
+import { readSnapshot, saveGraph, deleteCompanyGraph, deleteChatGraph } from './services/store.graph'
+import { listPhaseCoverage, listMemory } from './services/store.memory'
 import { runSend } from './services/agent.live'
 import { runTitle } from './services/agent.title'
 import { initSettingsDb, getSetting, setSetting, listFindingsByChat } from './services/store.sqlite'
@@ -10,7 +11,7 @@ import { createSecret, fillSecret, tieSecret, listSecrets, deleteSecret, upsertF
 import { getScope, setScope } from './services/scope'
 import { track, untrack } from './services/inflight'
 import type { ProviderConfig } from './services/providers'
-import type { EngagementScope, SecretField } from './services/store.types'
+import type { EngagementScope, SecretField, Company } from './services/store.types'
 import { shellTabs, createSession, writeToSession, resizeSession, killSession, killAllSessions } from './services/shell.pty'
 
 const __dirname2 = path.dirname(fileURLToPath(import.meta.url))
@@ -65,7 +66,15 @@ function loadConfig(): ProviderConfig {
 app.whenReady().then(() => {
   initSettingsDb(path.join(app.getPath('userData'), 'nexra.db'))
 
-  ipcMain.handle('store:snapshot', () => buildSnapshot())
+  ipcMain.handle('store:snapshot', () => readSnapshot())
+  ipcMain.handle('store:save', (_ev, companies: Company[]) => {
+    try { saveGraph(companies); return { success: true } }
+    catch (err) { console.error('store:save failed', err); return { success: false, error: (err as Error).message } }
+  })
+  ipcMain.handle('store:deleteCompany', (_ev, id: string) => { try { deleteCompanyGraph(id) } catch (err) { console.error('store:deleteCompany', err) } })
+  ipcMain.handle('store:deleteChat', (_ev, id: string) => { try { deleteChatGraph(id) } catch (err) { console.error('store:deleteChat', err) } })
+  ipcMain.handle('store:coverage', (_ev, engagementId: string) => listPhaseCoverage(engagementId))
+  ipcMain.handle('store:memory', (_ev, engagementId: string) => listMemory(engagementId))
   ipcMain.handle('agent:send', async (ev, req) => {
     const ctrl = track(inflight, req.chatId)
     try {
