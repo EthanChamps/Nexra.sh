@@ -43,6 +43,15 @@ describe('MessageList', () => {
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 
+  it('shows the typing indicator while streaming and the last message is a request card (e.g. resuming after Continue)', () => {
+    const chat = {
+      ...baseChat,
+      messages: [{ id: 'r1', role: 'assistant', kind: 'request', requestKind: 'inputs', requestId: 'req1', items: [] }],
+    } as unknown as Chat
+    render(<MessageList chat={chat} streaming />)
+    expect(screen.getByRole('status', { name: /responding/i })).toBeInTheDocument()
+  })
+
   it('hides the typing indicator when not streaming', () => {
     const chat = { ...baseChat, messages: [{ id: 'u1', role: 'user', kind: 'text', content: 'hi' }] } as unknown as Chat
     render(<MessageList chat={chat} streaming={false} />)

@@ -6,6 +6,7 @@ import { MarkdownMessage } from './MarkdownMessage'
 import { TypingIndicator } from './TypingIndicator'
 import { RequestCard } from './RequestCard'
 import { Hoverable } from './Hoverable'
+import { friendlySkillCalls } from '../lib/friendlySkillCalls'
 
 const BOTTOM_THRESHOLD = 64
 
@@ -44,7 +45,11 @@ export function MessageList({ chat, streaming, onInstall, companyId, onResume }:
   }, [chat.messages, streaming])
 
   const lastMessage = chat.messages[chat.messages.length - 1]
-  const showTyping = streaming && lastMessage?.role === 'user'
+  // Show the indicator whenever a stream is active and the trailing message
+  // isn't yet in-progress assistant prose — covers the normal user-message
+  // case AND resuming after a request card (which posts no user bubble), so
+  // the operator sees SOMETHING is happening rather than a dead chat.
+  const showTyping = streaming && !(lastMessage?.role === 'assistant' && lastMessage?.kind === 'text')
 
   return (
     <div style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex' }}>
@@ -56,7 +61,7 @@ export function MessageList({ chat, streaming, onInstall, companyId, onResume }:
               <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                 <span style={{ flex: 'none', width: 26, height: 26, borderRadius: 7, background: 'rgba(111,123,240,0.16)', color: '#9aa2f5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, marginTop: 1 }}>◆</span>
                 <div style={{ maxWidth: 700, paddingTop: 3 }}>
-                  <MarkdownMessage content={m.content ?? ''} />
+                  <MarkdownMessage content={friendlySkillCalls(m.content ?? '')} />
                 </div>
               </div>
             )}

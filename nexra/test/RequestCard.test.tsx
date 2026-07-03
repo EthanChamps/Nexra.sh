@@ -28,13 +28,32 @@ it('auto-saves a field on blur with its sensitivity', async () => {
   expect(fulfill).toHaveBeenCalledWith('co1', 'AWS_ACCESS_KEY_ID', 'AKIA-1', true)
 })
 
-it('calls onFulfill once all REQUIRED items are saved (optionals may stay blank)', async () => {
+it('does NOT auto-continue once required items are saved — shows an enabled Continue button instead', async () => {
   const onFulfill = vi.fn()
   render(<RequestCard message={msg} companyId="co1" onFulfill={onFulfill} />)
   const input = screen.getByLabelText('AWS access key')       // the only required item
   fireEvent.change(input, { target: { value: 'AKIA-1' } })
   fireEvent.blur(input)
   await Promise.resolve(); await Promise.resolve()
+  expect(onFulfill).not.toHaveBeenCalled()
+  expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled()
+})
+
+it('Continue is disabled until all required fields are filled (optional REGION may stay blank)', () => {
+  render(<RequestCard message={msg} companyId="co1" onFulfill={() => {}} />)
+  expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled()
+})
+
+it('clicking Continue calls onFulfill exactly once even on a rapid double-click', async () => {
+  const onFulfill = vi.fn()
+  render(<RequestCard message={msg} companyId="co1" onFulfill={onFulfill} />)
+  const input = screen.getByLabelText('AWS access key')
+  fireEvent.change(input, { target: { value: 'AKIA-1' } })
+  fireEvent.blur(input)
+  await Promise.resolve(); await Promise.resolve()
+  const continueBtn = screen.getByRole('button', { name: 'Continue' })
+  fireEvent.click(continueBtn)
+  fireEvent.click(continueBtn)
   expect(onFulfill).toHaveBeenCalledTimes(1)
 })
 
@@ -46,4 +65,26 @@ it('toggling "not a secret" unmasks the field and saves it as non-sensitive', as
   fireEvent.change(input, { target: { value: 'plain' } })
   fireEvent.blur(input)
   expect(fulfill).toHaveBeenCalledWith('co1', 'AWS_ACCESS_KEY_ID', 'plain', false)
+})
+
+it('scope: Continue is disabled until Set Scope succeeds, then enabled', async () => {
+  ;(window as any).nexra = { ...(window as any).nexra, scope: { setAndValidate: vi.fn(() => Promise.resolve({ success: true })) } }
+  const scopeMsg = { id: 'm2', role: 'assistant', kind: 'request', requestKind: 'scope', engagementId: 'e1' }
+  render(<RequestCard message={scopeMsg} companyId="co1" onFulfill={() => {}} />)
+  expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled()
+  fireEvent.click(screen.getByRole('button', { name: 'Set Scope' }))
+  await screen.findByRole('button', { name: 'Scope set' })
+  expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled()
+})
+
+it('scope: clicking Continue calls onFulfill exactly once, not automatically on Set Scope', async () => {
+  ;(window as any).nexra = { ...(window as any).nexra, scope: { setAndValidate: vi.fn(() => Promise.resolve({ success: true })) } }
+  const onFulfill = vi.fn()
+  const scopeMsg = { id: 'm2', role: 'assistant', kind: 'request', requestKind: 'scope', engagementId: 'e1' }
+  render(<RequestCard message={scopeMsg} companyId="co1" onFulfill={onFulfill} />)
+  fireEvent.click(screen.getByRole('button', { name: 'Set Scope' }))
+  await screen.findByRole('button', { name: 'Scope set' })
+  expect(onFulfill).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(onFulfill).toHaveBeenCalledTimes(1)
 })
