@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import type { Secret } from '../../electron/services/store.types'
 import { theme } from '../theme'
+import { Hoverable } from './Hoverable'
 
 export interface SecretsPanelProps {
   companyId: string
@@ -40,9 +41,15 @@ export function SecretsPanel({ companyId, onCreateClick }: SecretsPanelProps) {
               {s.status === 'filled' ? '✓ Filled' : '○ Pending'} · {s.fields.length} field{s.fields.length !== 1 ? 's' : ''}
             </div>
           </div>
-          <button onClick={() => handleDelete(s.id)} style={{ padding: '4px 8px', background: theme.error, color: theme.bg, border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '12px' }}>
+          <Hoverable
+            as="button"
+            type="button"
+            onClick={() => handleDelete(s.id)}
+            baseStyle={{ padding: '4px 8px', background: '#f0616d', color: '#fff', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '12px', fontFamily: 'inherit', transition: 'background .12s' }}
+            hoverStyle={{ background: 'rgba(240,97,109,0.85)' }}
+          >
             Delete
-          </button>
+          </Hoverable>
         </div>
       ))}
       <button onClick={onCreateClick} style={{ width: '100%', marginTop: '8px', padding: '6px', background: theme.border, color: theme.text1, border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
