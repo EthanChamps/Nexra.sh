@@ -26,6 +26,10 @@ export interface NexraApi {
     delete(id: string): Promise<void>
     fulfillPending(id: string, values: Record<string, string>): Promise<{ success: boolean; error?: string }>
   }
+  // Agent-requested inputs (M3d) — plaintext travels renderer→main once (mirrors secrets).
+  inputs: {
+    fulfill(companyId: string, key: string, value: string, sensitive: boolean): Promise<{ success: boolean; error?: string }>
+  }
   scope: {
     get(engagementId: string): Promise<EngagementScope | undefined>
     set(engagementId: string, scope: EngagementScope): Promise<void>
