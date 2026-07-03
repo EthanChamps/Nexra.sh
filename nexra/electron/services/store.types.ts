@@ -13,7 +13,10 @@ export interface ReviewTypeConfig {
 
 export type MessageRole = 'user' | 'assistant'
 export type MessageKind = 'text' | 'tool' | 'request'
-export type ToolState = 'running' | 'success' | 'unavailable'
+// Lifecycle of a tool card (mock tool_call OR a real typed-skill run — both
+// become kind:'tool' messages). tool_call only uses running/success/unavailable;
+// skill runs add the terminal states below (see SkillState in agent.types).
+export type ToolState = 'running' | 'success' | 'unavailable' | 'output' | 'denied' | 'blocked' | 'error'
 
 export interface Message {
   id: string; role: MessageRole; kind: MessageKind

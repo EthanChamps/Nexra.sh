@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { Secret, SecretField } from '../../electron/services/store.types'
+import type { Secret, SecretField } from '../../../electron/services/store.types'
 import { theme } from '../../theme'
 
 export interface SecretModalProps {
@@ -10,7 +10,7 @@ export interface SecretModalProps {
 
 export function SecretModal({ companyId, onClose, onSave }: SecretModalProps) {
   const [name, setName] = useState('')
-  const [fields, setFields] = useState<SecretField[]>([{ envVar: 'AWS_ACCESS_KEY_ID' }, { envVar: 'AWS_SECRET_ACCESS_KEY' }])
+  const [fields] = useState<SecretField[]>([{ envVar: 'AWS_ACCESS_KEY_ID' }, { envVar: 'AWS_SECRET_ACCESS_KEY' }])
   const [values, setValues] = useState<Record<string, string>>({})
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -38,15 +38,15 @@ export function SecretModal({ companyId, onClose, onSave }: SecretModalProps) {
     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
       <div style={{ background: theme.bg, border: `1px solid ${theme.border}`, borderRadius: '8px', padding: '20px', maxWidth: '400px', width: '90%', maxHeight: '80vh', overflow: 'auto' }}>
         <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '16px' }}>Create Secret</div>
-        {error && <div style={{ color: theme.error, marginBottom: '12px', fontSize: '12px' }}>{error}</div>}
+        {error && <div style={{ color: '#f0616d', marginBottom: '12px', fontSize: '12px' }}>{error}</div>}
         <div style={{ marginBottom: '12px' }}>
-          <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: theme.text3 }}>Secret Name</label>
-          <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="e.g., aws-prod" style={{ width: '100%', padding: '8px', background: theme.bg2, border: `1px solid ${theme.border}`, borderRadius: '4px', color: theme.text1 }} />
+          <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: theme.muted }}>Secret Name</label>
+          <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="e.g., aws-prod" style={{ width: '100%', padding: '8px', background: theme.input, border: `1px solid ${theme.border}`, borderRadius: '4px', color: theme.text }} />
         </div>
         {fields.map(f => (
           <div key={f.envVar} style={{ marginBottom: '12px' }}>
-            <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: theme.text3 }}>{f.envVar}</label>
-            <input type="password" value={values[f.envVar] || ''} onChange={e => setValues({ ...values, [f.envVar]: e.target.value })} placeholder="Enter value" style={{ width: '100%', padding: '8px', background: theme.bg2, border: `1px solid ${theme.border}`, borderRadius: '4px', color: theme.text1 }} />
+            <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: theme.muted }}>{f.envVar}</label>
+            <input type="password" value={values[f.envVar] || ''} onChange={e => setValues({ ...values, [f.envVar]: e.target.value })} placeholder="Enter value" style={{ width: '100%', padding: '8px', background: theme.input, border: `1px solid ${theme.border}`, borderRadius: '4px', color: theme.text }} />
           </div>
         ))}
         <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>

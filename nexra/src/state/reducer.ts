@@ -271,13 +271,25 @@ export function reducer(state: AppState, a: Action): AppState {
       if (e.type === 'skill') {
         const existing = c.messages.find(m => m.kind === 'tool' && (m as any).id === e.id)
         if (existing) {
-          Object.assign(existing, { state: e.state, output: e.chunk || (existing as any).output || '', reason: e.message })
+          const ex = existing as any
+          // Accumulate streamed output chunks rather than replacing; carry
+          // command/duration/installCmd forward as later events (success,
+          // unavailable) fill them in.
+          Object.assign(existing, {
+            state: e.state,
+            command: e.command ?? ex.command,
+            output: e.chunk ? (ex.output ?? '') + e.chunk : ex.output ?? '',
+            duration: e.duration ?? ex.duration,
+            reason: e.message ?? ex.reason,
+            installCmd: e.installCmd ?? ex.installCmd,
+          })
           return s
         }
         const card: Message = {
           id: e.id, role: 'assistant', kind: 'tool',
-          toolName: e.skill, state: e.state as any,
-          output: e.chunk || '', reason: e.message
+          toolName: e.skill, state: e.state,
+          command: e.command, output: e.chunk ?? '',
+          duration: e.duration, reason: e.message, installCmd: e.installCmd,
         }
         c.messages.push(card)
       }
