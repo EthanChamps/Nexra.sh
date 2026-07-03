@@ -8,7 +8,7 @@ vi.mock('ai', () => ({ streamText: (o: any) => streamText(o) }))
 vi.mock('../electron/services/providers', () => ({ resolveModel: () => ({ tag: 'fake-model' }) }))
 
 import { initSettingsDb } from '../electron/services/store.sqlite'
-import { setScope } from '../electron/services/scope'
+import { addScopeItem } from '../electron/services/scope'
 import { listPhaseCoverage } from '../electron/services/store.memory'
 import { runSend } from '../electron/services/agent.live'
 import type { AgentEvent, AgentSendRequest } from '../electron/services/agent.types'
@@ -32,7 +32,7 @@ afterEach(() => rmSync(dir, { recursive: true, force: true }))
 
 describe('runSend marks phase coverage on a skill run (M4)', () => {
   it('marks the requested phase in_progress after a skill runs for an engagement', async () => {
-    setScope('eng-1', { mode: 'all', accounts: [], regions: [] })
+    addScopeItem('co-1', { type: 'cloud_account', value: '111111111111', source: 'user' })
     streamText
       .mockReturnValueOnce(fakeStream(['SKILL_CALL[probe|account=111111111111|region=us-east-1]']))
       .mockReturnValueOnce(fakeStream(['Done probing.']))

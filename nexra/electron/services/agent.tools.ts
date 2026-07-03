@@ -1,8 +1,8 @@
 import { spawn as nodeSpawn, type SpawnOptions } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import type { AgentEvent } from './agent.types'
-import type { EngagementScope } from './store.types'
-import { validate, type Target } from './scope'
+import type { ProjectScope } from './store.types'
+import { matchesScope, type Target } from './scope'
 
 // The typed-skill execution layer (M3b). The agent NEVER gets a freeform shell;
 // it may only invoke one of these fixed skills. That is what makes both the
@@ -29,7 +29,7 @@ export interface SkillInvocation extends Target {
 
 // Injected so tests can supply fakes and main can wire the real vault/scope.
 export interface RunDeps {
-  getScope(engagementId: string): EngagementScope | undefined
+  getScope(companyId: string): ProjectScope
   injectEnv(companyId: string): Record<string, string>
   filledEnvVars(companyId: string): string[]
   // Overridable for tests; defaults to node:child_process.spawn.
@@ -71,17 +71,19 @@ export function runSkill(
   deps: RunDeps,
   id: string = randomUUID(),
 ): Promise<SkillResult> {
-  // Gate 1 — scope must exist (populated by operator or via scope_request).
-  const scope = deps.getScope(inv.engagementId)
-  if (!scope) {
-    emit({ type: 'scope_request', engagementId: inv.engagementId })
-    emit({ type: 'skill', id, skill: def.name, state: 'blocked', message: 'no scope set for this engagement' })
-    return Promise.resolve({ state: 'blocked', reason: 'no-scope' })
-  }
-
-  // Gate 2 — target must be in scope. Enforced below the LLM; never spawns.
-  const decision = validate({ account: inv.account, region: inv.region }, scope)
+  // Gate — target must be authorized by the project scope (below the LLM;
+  // never spawns). Instead of a dead-end refusal, an out-of-scope target with
+  // a proposable value emits a scope_proposal + blocks (the operator confirms,
+  // then the run resumes). Only a target with nothing to propose hard-denies.
+  const scope = deps.getScope(inv.companyId)
+  const target: Target = { account: inv.account, region: inv.region, ip: inv.ip, hostname: inv.hostname, url: inv.url }
+  const decision = matchesScope(target, scope)
   if (!decision.allowed) {
+    if (decision.propose) {
+      emit({ type: 'scope_proposal', companyId: inv.companyId, item: decision.propose, reason: decision.reason })
+      emit({ type: 'skill', id, skill: def.name, state: 'blocked', message: decision.reason })
+      return Promise.resolve({ state: 'blocked', reason: 'awaiting-scope' })
+    }
     emit({ type: 'skill', id, skill: def.name, state: 'denied', message: decision.reason })
     return Promise.resolve({ state: 'denied', reason: decision.reason ?? 'out of scope' })
   }

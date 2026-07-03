@@ -3,7 +3,7 @@ import { spawn as nodeSpawn } from 'node:child_process'
 import { EventEmitter } from 'node:events'
 import { runSkill, cleanBaseEnv, type SkillDef, type SkillInvocation, type RunDeps } from '../electron/services/agent.tools'
 import type { AgentEvent } from '../electron/services/agent.types'
-import type { EngagementScope } from '../electron/services/store.types'
+import type { ProjectScope } from '../electron/services/store.types'
 
 const SECRET_VALUE = 'super-secret-value-xyz-9000'
 
@@ -16,7 +16,7 @@ const inv: SkillInvocation = { skill: 'probe', companyId: 'c1', engagementId: 'e
 
 function baseDeps(over: Partial<RunDeps> = {}): RunDeps {
   return {
-    getScope: () => ({ mode: 'all', accounts: [], regions: [] }),
+    getScope: (): ProjectScope => ({ companyId: 'c1', notes: '', items: [{ id: 's1', type: 'cloud_account', value: '111111111111', source: 'user', addedAt: 0 }] }),
     injectEnv: () => ({ AWS_SECRET_ACCESS_KEY: SECRET_VALUE }),
     filledEnvVars: () => ['AWS_SECRET_ACCESS_KEY'],
     baseEnv: { PATH: process.env.PATH },
@@ -46,17 +46,18 @@ describe('runSkill — the "AI uses but cannot see" guarantee', () => {
     expect(agentView).toContain('CRED_PRESENT')   // it does see the tool's own output
   })
 
-  it('denies an out-of-scope target and never spawns', async () => {
+  it('proposes (and blocks, never spawns) an out-of-scope target', async () => {
     const spy = vi.fn(nodeSpawn)
     const { events, emit } = collect()
-    const scope: EngagementScope = { mode: 'allowlist', accounts: ['111111111111'], regions: [] }
+    const scope: ProjectScope = { companyId: 'c1', notes: '', items: [{ id: 's1', type: 'cloud_account', value: '111111111111', source: 'user', addedAt: 0 }] }
     const result = await runSkill(
       { ...inv, account: '999999999999' }, probeSkill, emit,
       baseDeps({ getScope: () => scope, spawn: spy as any }),
     )
-    expect(result.state).toBe('denied')
+    expect(result.state).toBe('blocked')
     expect(spy).not.toHaveBeenCalled()
-    expect(events.some(e => e.type === 'skill' && e.state === 'denied')).toBe(true)
+    const proposal = events.find(e => e.type === 'scope_proposal') as any
+    expect(proposal.item).toEqual({ type: 'cloud_account', value: '999999999999' })
   })
 
   it('blocks and emits an input_request when a required env var is missing — never spawns', async () => {
@@ -115,14 +116,14 @@ describe('runSkill — the "AI uses but cannot see" guarantee', () => {
     expect(skillEvents.some(e => e.state === 'error')).toBe(true)
   })
 
-  it('blocks (and requests scope) when no scope record exists — the gate', async () => {
+  it('proposes the target when scope is empty — the gate, never spawns', async () => {
     const spy = vi.fn(nodeSpawn)
     const { events, emit } = collect()
-    const result = await runSkill(inv, probeSkill, emit, baseDeps({ getScope: () => undefined, spawn: spy as any }))
-
-    expect(result).toEqual({ state: 'blocked', reason: 'no-scope' })
+    const empty: ProjectScope = { companyId: 'c1', notes: '', items: [] }
+    const result = await runSkill(inv, probeSkill, emit, baseDeps({ getScope: () => empty, spawn: spy as any }))
+    expect(result).toEqual({ state: 'blocked', reason: 'awaiting-scope' })
     expect(spy).not.toHaveBeenCalled()
-    expect(events.some(e => e.type === 'scope_request')).toBe(true)
+    expect(events.some(e => e.type === 'scope_proposal')).toBe(true)
   })
 })
 

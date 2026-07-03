@@ -1,4 +1,4 @@
-import type { Severity, ToolState, Evidence, InputRequestItem } from './store.types'
+import type { Severity, ToolState, Evidence, InputRequestItem, ScopeItemType } from './store.types'
 
 // Lifecycle of one typed-skill invocation (M3b). `denied` = scope refused it
 // (never spawned); `blocked` = a required credential is missing (never spawned,
@@ -16,6 +16,7 @@ export type AgentEvent =
   | { type: 'skill'; id: string; skill: string; state: SkillState; command?: string; chunk?: string; message?: string; exitCode?: number; duration?: string; installCmd?: string }
   | { type: 'input_request'; requestId: string; items: InputRequestItem[] }
   | { type: 'scope_request'; engagementId: string }
+  | { type: 'scope_proposal'; companyId: string; item: { type: ScopeItemType; value: string }; reason?: string }
   | { type: 'finding'; id: string; title: string; sev: Severity; phase: string; time: string; rationale: string; evidence: Evidence[]; verified: boolean }
   | { type: 'error'; message: string }
   | { type: 'done' }

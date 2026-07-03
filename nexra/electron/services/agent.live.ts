@@ -4,7 +4,7 @@ import type { AgentEvent, AgentSendRequest } from './agent.types'
 import type { Finding, InputRequestItem } from './store.types'
 import { resolveModel, type ProviderConfig } from './providers'
 import { runSkill, AWS_SKILLS, type RunDeps, type SkillInvocation, type SkillDef } from './agent.tools'
-import { getScope } from './scope'
+import { getProjectScope } from './scope'
 import { filledEnvVars, injectEnv } from './secrets.vault'
 import { upsertFinding } from './store.sqlite'
 import { setPhaseCoverage } from './store.memory'
@@ -146,7 +146,7 @@ export async function runSend(
           if (!skillDef) { results.push(`[unknown skill ${c.name}]`); continue }
           const id = randomUUID()
           const inv: SkillInvocation = { skill: c.name, companyId, engagementId, account: c.args.account, region: c.args.region }
-          const deps: RunDeps = { getScope, injectEnv, filledEnvVars }
+          const deps: RunDeps = { getScope: getProjectScope, injectEnv, filledEnvVars }
           const outcome = await runSkill(inv, skillDef as any, recordingEmit, deps, id)
           // Report the ACTUAL outcome to the model — a failed/missing tool must
           // never be reported as a run, or the model claims a scan happened that
