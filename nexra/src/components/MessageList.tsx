@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { theme } from '../theme'
 import type { Chat, Message } from '../../electron/services/store.types'
 import { ToolCard } from './ToolCard'
+import { RequestCard } from './RequestCard'
 
 export function MessageList({ chat, onInstall }: { chat: Chat; onInstall?: (msg: Message) => void }) {
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -45,6 +46,9 @@ export function MessageList({ chat, onInstall }: { chat: Chat; onInstall?: (msg:
                 installCmd={m.installCmd}
                 onInstall={onInstall ? () => onInstall(m) : undefined}
               />
+            )}
+            {m.kind === 'request' && (
+              <RequestCard message={m} onFulfill={() => {}} />
             )}
           </div>
         ))}
