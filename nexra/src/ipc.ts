@@ -109,6 +109,26 @@ export function sendMessage(dispatch: Dispatch<Action>, chat: Chat, eng: Engagem
   }
 }
 
+// Resume the agent after the operator has filled a requested-input card. Unlike
+// sendMessage this appends NO visible user bubble — it feeds the model a synthetic
+// "continue" turn and streams the reply. The request card message is kind:'request',
+// so it is naturally excluded from the text-only history below.
+export function resumeAfterInputs(dispatch: Dispatch<Action>, chat: Chat, eng: Engagement, companyId?: string): void {
+  const history = chat.messages
+    .filter(m => m.kind === 'text' && typeof m.content === 'string')
+    .map(m => ({ role: m.role, content: m.content as string }))
+  dispatch({ t: 'setStreaming', chatId: chat.id, on: true })
+  const primaryTool = chat.tools.find(t => t.available)?.name ?? 'shell'
+  const runningIds = new Map<string, string>()
+  window.nexra.agent.send(
+    { chatId: chat.id, engagementType: eng.type, phaseLabel: phaseLabel(eng, chat.phaseId), primaryTool, text: 'The requested inputs have been provided. Continue.', history, companyId, engagementId: eng.id },
+    applyEvent(dispatch, chat.id, runningIds),
+  ).catch((err: unknown) => {
+    dispatch({ t: 'appendError', chatId: chat.id, message: err instanceof Error ? err.message : 'Resume failed' })
+    dispatch({ t: 'setStreaming', chatId: chat.id, on: false })
+  })
+}
+
 // Clears busy state immediately instead of waiting on the abort/done IPC
 // round trip — Stop must free up the composer on click, not once the
 // in-flight request has finished unwinding on the main-process side.

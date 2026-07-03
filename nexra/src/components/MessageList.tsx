@@ -9,7 +9,7 @@ import { Hoverable } from './Hoverable'
 
 const BOTTOM_THRESHOLD = 64
 
-export function MessageList({ chat, streaming, onInstall }: { chat: Chat; streaming: boolean; onInstall?: (msg: Message) => void }) {
+export function MessageList({ chat, streaming, onInstall, companyId, onResume }: { chat: Chat; streaming: boolean; onInstall?: (msg: Message) => void; companyId?: string; onResume?: () => void }) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const atBottomRef = useRef(true)
   const [showJump, setShowJump] = useState(false)
@@ -80,7 +80,7 @@ export function MessageList({ chat, streaming, onInstall }: { chat: Chat; stream
               />
             )}
             {m.kind === 'request' && (
-              <RequestCard message={m} onFulfill={() => {}} />
+              <RequestCard message={m} companyId={companyId} onFulfill={onResume ?? (() => {})} />
             )}
           </div>
         ))}
