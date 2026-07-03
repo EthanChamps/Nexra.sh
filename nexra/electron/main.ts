@@ -6,7 +6,10 @@ import { runSend } from './services/agent.live'
 import { runTitle } from './services/agent.title'
 import { initSettingsDb, getSetting, setSetting } from './services/store.sqlite'
 import { encryptSecret, decryptSecret } from './services/secrets'
+import { createSecret, fillSecret, tieSecret, listSecrets, deleteSecret } from './services/secrets.vault'
+import { getScope, setScope } from './services/scope'
 import type { ProviderConfig } from './services/providers'
+import type { EngagementScope, SecretField } from './services/store.types'
 import { shellTabs, createSession, writeToSession, resizeSession, killSession, killAllSessions } from './services/shell.pty'
 
 const __dirname2 = path.dirname(fileURLToPath(import.meta.url))
@@ -88,9 +91,23 @@ app.whenReady().then(() => {
   ipcMain.handle('settings:setKey', (_ev, { provider, plaintext }: { provider: string; plaintext: string }) =>
     setSetting('secret.apikey.' + provider, encryptSecret(plaintext)))
 
+  // ── credential vault (M3b) — values travel renderer→main only, never back ──
+  ipcMain.handle('secrets:list', (_ev, companyId: string) => listSecrets(companyId))
+  ipcMain.handle('secrets:create', (_ev, input: { companyId: string; name: string; fields: SecretField[]; createdBy?: 'operator' | 'agent' }) =>
+    createSecret({ companyId: input.companyId, name: input.name, fields: input.fields, createdBy: input.createdBy ?? 'operator' }))
+  ipcMain.handle('secrets:fill', (_ev, { id, values }: { id: string; values: Record<string, string> }) => fillSecret(id, values))
+  ipcMain.handle('secrets:tie', (_ev, { id, aliasOf }: { id: string; aliasOf: string }) => tieSecret(id, aliasOf))
+  ipcMain.handle('secrets:delete', (_ev, id: string) => deleteSecret(id))
+
+  // ── engagement scope (M3b) ──
+  ipcMain.handle('scope:get', (_ev, engagementId: string) => getScope(engagementId))
+  ipcMain.handle('scope:set', (_ev, { engagementId, scope }: { engagementId: string; scope: EngagementScope }) => setScope(engagementId, scope))
+
   ipcMain.handle('shell:tabs', () => shellTabs())
-  ipcMain.handle('shell:create', (_ev, { shell, cols, rows }: { shell: any; cols: number; rows: number }) =>
-    createSession(shell, cols, rows, data => mainWindow?.webContents.send('shell:data', { sessionId: shell, data })))
+  ipcMain.handle('shell:create', (_ev, { shell, cols, rows, companyId }: { shell: any; cols: number; rows: number; companyId?: string }) => {
+    const sessionId = companyId ? `${companyId}:${shell}` : shell
+    return createSession(shell, cols, rows, data => mainWindow?.webContents.send('shell:data', { sessionId, data }), companyId)
+  })
   ipcMain.handle('shell:write', (_e, { sessionId, data }: { sessionId: any; data: string }) => writeToSession(sessionId, data))
   ipcMain.handle('shell:resize', (_e, { sessionId, cols, rows }: { sessionId: any; cols: number; rows: number }) => resizeSession(sessionId, cols, rows))
   ipcMain.handle('shell:kill', (_e, sessionId: any) => killSession(sessionId))
