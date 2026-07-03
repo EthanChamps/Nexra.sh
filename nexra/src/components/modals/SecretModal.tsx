@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { Secret, SecretField } from '../../../electron/services/store.types'
+import type { Secret } from '../../../electron/services/store.types'
 import { theme } from '../../theme'
 
 export interface SecretModalProps {
@@ -8,22 +8,27 @@ export interface SecretModalProps {
   onSave: (secret: Secret) => void
 }
 
+// Env vars must be `[A-Za-z_][A-Za-z0-9_]*` — derive one from the free-text
+// name the operator types (e.g. "aws-prod" -> "AWS_PROD").
+function envVarFromName(name: string): string {
+  return name.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'SECRET'
+}
+
 export function SecretModal({ companyId, onClose, onSave }: SecretModalProps) {
   const [name, setName] = useState('')
-  const [fields] = useState<SecretField[]>([{ envVar: 'AWS_ACCESS_KEY_ID' }, { envVar: 'AWS_SECRET_ACCESS_KEY' }])
-  const [values, setValues] = useState<Record<string, string>>({})
+  const [value, setValue] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
   const handleSave = async () => {
     if (!name.trim()) { setError('Name is required'); return }
-    if (fields.length === 0) { setError('At least one field is required'); return }
-    for (const f of fields) if (!values[f.envVar]) { setError(`Value for ${f.envVar} is required`); return }
+    if (!value) { setError('Secret value is required'); return }
 
     setLoading(true)
     try {
-      const secret = await window.nexra.secrets.create({ companyId, name, fields, createdBy: 'operator' })
-      await window.nexra.secrets.fill(secret.id, values)
+      const envVar = envVarFromName(name)
+      const secret = await window.nexra.secrets.create({ companyId, name, fields: [{ envVar }], createdBy: 'operator' })
+      await window.nexra.secrets.fill(secret.id, { [envVar]: value })
       const filled = await window.nexra.secrets.list(companyId).then(ss => ss.find(s => s.id === secret.id)!)
       onSave(filled)
       onClose()
@@ -43,12 +48,10 @@ export function SecretModal({ companyId, onClose, onSave }: SecretModalProps) {
           <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: theme.muted }}>Secret Name</label>
           <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="e.g., aws-prod" style={{ width: '100%', padding: '8px', background: theme.input, border: `1px solid ${theme.border}`, borderRadius: '4px', color: theme.text }} />
         </div>
-        {fields.map(f => (
-          <div key={f.envVar} style={{ marginBottom: '12px' }}>
-            <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: theme.muted }}>{f.envVar}</label>
-            <input type="password" value={values[f.envVar] || ''} onChange={e => setValues({ ...values, [f.envVar]: e.target.value })} placeholder="Enter value" style={{ width: '100%', padding: '8px', background: theme.input, border: `1px solid ${theme.border}`, borderRadius: '4px', color: theme.text }} />
-          </div>
-        ))}
+        <div style={{ marginBottom: '12px' }}>
+          <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: theme.muted }}>Secret</label>
+          <input type="password" value={value} onChange={e => setValue(e.target.value)} placeholder="Enter value" style={{ width: '100%', padding: '8px', background: theme.input, border: `1px solid ${theme.border}`, borderRadius: '4px', color: theme.text }} />
+        </div>
         <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
           <button onClick={onClose} disabled={loading} style={{ padding: '8px 16px', background: theme.border, border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Cancel</button>
           <button onClick={handleSave} disabled={loading} style={{ padding: '8px 16px', background: theme.accent, color: theme.bg, border: 'none', borderRadius: '4px', cursor: 'pointer' }}>{loading ? 'Saving...' : 'Save'}</button>
