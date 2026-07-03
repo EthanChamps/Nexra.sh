@@ -4,11 +4,12 @@ import { SecretsPanel } from './SecretsPanel'
 import { SecretModal } from './modals/SecretModal'
 import { theme } from '../theme'
 import type { AppState } from '../state/selectors'
-import { activeEngagement, activeChat, phaseLabel, sevColor } from '../state/selectors'
+import { activeEngagement, activeCompany, activeChat, phaseLabel, sevColor } from '../state/selectors'
 import type { Action } from '../state/reducer'
 
 export function ContextPanel({ state, dispatch }: { state: AppState; dispatch: Dispatch<Action> }) {
   const eng = activeEngagement(state)
+  const company = activeCompany(state)
   const chat = activeChat(state)
   const hasChat = !!eng && !!chat
   if (!hasChat) return null
@@ -101,10 +102,10 @@ export function ContextPanel({ state, dispatch }: { state: AppState; dispatch: D
           </>
         )}
 
-        {tab === 'secrets' && eng && (
+        {tab === 'secrets' && eng && company && (
           <>
-            <SecretsPanel companyId={eng.companyId} onCreateClick={() => setSecretModalOpen(true)} />
-            {secretModalOpen && <SecretModal companyId={eng.companyId} onClose={() => setSecretModalOpen(false)} onSave={() => { setSecretModalOpen(false) }} />}
+            <SecretsPanel companyId={company.id} onCreateClick={() => setSecretModalOpen(true)} />
+            {secretModalOpen && <SecretModal companyId={company.id} onClose={() => setSecretModalOpen(false)} onSave={() => { setSecretModalOpen(false) }} />}
           </>
         )}
 
