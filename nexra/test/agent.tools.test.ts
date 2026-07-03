@@ -17,7 +17,7 @@ function baseDeps(over: Partial<RunDeps> = {}): RunDeps {
   return {
     getScope: () => ({ mode: 'all', accounts: [], regions: [] }),
     injectEnv: () => ({ AWS_SECRET_ACCESS_KEY: SECRET_VALUE }),
-    hasFilledSecret: () => true,
+    filledEnvVars: () => ['AWS_SECRET_ACCESS_KEY'],
     baseEnv: { PATH: process.env.PATH },
     ...over,
   }
@@ -58,16 +58,25 @@ describe('runSkill — the "AI uses but cannot see" guarantee', () => {
     expect(events.some(e => e.type === 'skill' && e.state === 'denied')).toBe(true)
   })
 
-  it('blocks (and requests a secret) when a required credential is missing — never spawns', async () => {
+  it('blocks and emits an input_request when a required env var is missing — never spawns', async () => {
     const spy = vi.fn(nodeSpawn)
     const { events, emit } = collect()
-    const needsCred: SkillDef = { ...probeSkill, requiredSecret: 'aws' }
-    const result = await runSkill(inv, needsCred, emit, baseDeps({ hasFilledSecret: () => false, spawn: spy as any }))
+    const needsCred: SkillDef = { ...probeSkill, requiredEnvVars: ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY'] }
+    const result = await runSkill(inv, needsCred, emit, baseDeps({ filledEnvVars: () => [], spawn: spy as any }))
 
     expect(result.state).toBe('blocked')
     expect(spy).not.toHaveBeenCalled()
-    const req = events.find(e => e.type === 'secret_request') as any
-    expect(req?.name).toBe('aws')
+    const req = events.find(e => e.type === 'input_request') as any
+    expect(req.items.map((i: any) => i.key)).toEqual(['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY'])
+    expect(req.items.every((i: any) => i.sensitive && i.required)).toBe(true)
+  })
+
+  it('runs when every required env var is filled', async () => {
+    const { events, emit } = collect()
+    const needsCred: SkillDef = { ...probeSkill, requiredEnvVars: ['AWS_SECRET_ACCESS_KEY'] }
+    const result = await runSkill(inv, needsCred, emit, baseDeps())   // filledEnvVars has it
+    expect(result.state).toBe('success')
+    expect(events.some(e => e.type === 'input_request')).toBe(false)
   })
 
   it('blocks (and requests scope) when no scope record exists — the gate', async () => {

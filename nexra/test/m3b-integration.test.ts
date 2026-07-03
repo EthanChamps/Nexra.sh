@@ -36,7 +36,7 @@ describe('M3b end-to-end', () => {
     // Define a skill that needs 'aws' credential
     const skillDef = {
       name: 'probe',
-      requiredSecret: 'aws',
+      requiredEnvVars: ['AWS_SECRET_ACCESS_KEY'],
       build: () => ({ command: process.execPath, args: ['-e', `process.stdout.write('CRED_PRESENT')`] }),
     }
 
@@ -44,7 +44,7 @@ describe('M3b end-to-end', () => {
     const deps1: RunDeps = {
       getScope: () => ({ mode: 'all', accounts: [], regions: [] }),
       injectEnv: () => ({}),
-      hasFilledSecret: () => false,
+      filledEnvVars: () => [],
     }
     const result1 = await runSkill(
       { skill: 'probe', companyId: 'c-1', engagementId: 'eng-1', account: '111', region: 'us-east-1' },
@@ -53,7 +53,7 @@ describe('M3b end-to-end', () => {
       deps1,
     )
     expect(result1.state).toBe('blocked')
-    expect(events.some(e => e.type === 'secret_request')).toBe(true)
+    expect(events.some(e => e.type === 'input_request')).toBe(true)
 
     // Create and fill the secret
     const secret = createSecret({ companyId: 'c-1', name: 'aws', fields: [{ envVar: 'AWS_SECRET_ACCESS_KEY' }], createdBy: 'operator' })
@@ -64,7 +64,7 @@ describe('M3b end-to-end', () => {
     const deps2: RunDeps = {
       getScope: () => ({ mode: 'all', accounts: [], regions: [] }),
       injectEnv: () => ({ AWS_SECRET_ACCESS_KEY: 'test-value' }),
-      hasFilledSecret: () => true,
+      filledEnvVars: () => ['AWS_SECRET_ACCESS_KEY'],
     }
     const result2 = await runSkill(
       { skill: 'probe', companyId: 'c-1', engagementId: 'eng-1', account: '111', region: 'us-east-1' },
