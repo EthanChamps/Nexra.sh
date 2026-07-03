@@ -63,7 +63,7 @@ export function ContextPanel({ state, dispatch }: { state: AppState; dispatch: D
         </Hoverable>
       </div>
 
-      <div style={{ flex: 'none', display: 'flex', gap: 1, borderBottom: `1px solid ${theme.border}`, background: theme.bg2 }}>
+      <div style={{ flex: 'none', display: 'flex', gap: 1, borderBottom: `1px solid ${theme.border}`, background: theme.card }}>
         {['scope', 'secrets', 'findings', 'tools'].map(tabName => (
           <button
             key={tabName}
