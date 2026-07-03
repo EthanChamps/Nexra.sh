@@ -4,13 +4,14 @@
   "description": "Nexra.sh — AI security engagement console",
   "main": "dist-electron/main.js",
   "scripts": {
-    "predev": "electron-rebuild --only better-sqlite3",
+    "predev": "electron-rebuild --only better-sqlite3 --force",
     "dev": "vite",
     "typecheck": "tsc -p tsconfig.json",
     "build": "npm run typecheck && tsc -p tsconfig.node.json && vite build",
+    "pretest": "npm rebuild better-sqlite3",
     "test": "vitest run",
     "test:watch": "vitest",
-    "predist": "electron-rebuild --only better-sqlite3",
+    "predist": "electron-rebuild --only better-sqlite3 --force",
     "dist": "npm run build && electron-builder",
     "postinstall": "node scripts/fix-native-permissions.cjs"
   },
