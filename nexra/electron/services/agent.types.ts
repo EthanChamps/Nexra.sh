@@ -1,4 +1,4 @@
-import type { Severity, ToolState, SecretField } from './store.types'
+import type { Severity, ToolState, SecretField, Evidence } from './store.types'
 
 // Lifecycle of one typed-skill invocation (M3b). `denied` = scope refused it
 // (never spawned); `blocked` = a required credential is missing (never spawned,
@@ -13,7 +13,7 @@ export type AgentEvent =
   | { type: 'skill'; id: string; skill: string; state: SkillState; chunk?: string; message?: string; exitCode?: number }
   | { type: 'secret_request'; name: string; fields: SecretField[] }
   | { type: 'scope_request'; engagementId: string }
-  | { type: 'finding'; title: string; sev: Severity; phase: string; time: string }
+  | { type: 'finding'; id: string; title: string; sev: Severity; phase: string; time: string; rationale: string; evidence: Evidence[]; verified: boolean }
   | { type: 'error'; message: string }
   | { type: 'done' }
 

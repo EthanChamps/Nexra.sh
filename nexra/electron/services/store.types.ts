@@ -22,7 +22,25 @@ export interface Message {
   reason?: string; installCmd?: string; state?: ToolState
 }
 
-export interface Finding { title: string; sev: Severity; phase: string; time: string }
+// A checkable artifact behind a finding (M3c). `tool_output` references a
+// captured skill run; `code_block` is the agent's structured statement of the
+// affected host + issue; `image` is typed now, wired with the web/pentest
+// verticals later.
+export type Evidence =
+  | { kind: 'tool_output'; toolCallId: string; excerpt: string }
+  | { kind: 'code_block'; host: string; detail: string }
+  | { kind: 'image' }
+
+export interface Finding {
+  id: string
+  title: string
+  sev: Severity
+  phase: string
+  time: string
+  rationale: string        // why this severity — the model's reasoning
+  evidence: Evidence[]     // ≥1 resolving artifact required to be verified
+  verified: boolean        // computed in main; the model cannot set it
+}
 
 export interface Chat {
   id: string; name: string; phaseId: string; color: string
