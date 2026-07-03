@@ -41,7 +41,7 @@
 **Files:**
 - Modify: `nexra/electron/services/store.types.ts:68-77`
 - Modify: `nexra/electron/services/store.sqlite.ts:17-26` (schema), `:84` (row iface), `:86-108` (mapping)
-- Test: `nexra/test/store.sqlite.native.test.ts`
+- Test: `nexra/test/store.sqlite.test.ts` (has the `initSettingsDb`/tmpdir harness this needs; `store.sqlite.native.test.ts` is an unrelated raw native-module smoke test — corrected during execution)
 
 **Interfaces:**
 - Consumes: nothing new.
@@ -616,10 +616,10 @@ In `preload.ts`, after the `secrets: { ... }` object (line 31) add a sibling:
   },
 ```
 
-- [ ] **Step 3: Verify it type-checks and builds**
+- [ ] **Step 3: Verify no NEW type errors were introduced**
 
-Run: `cd nexra && npm run build`
-Expected: `tsc` + `vite build` succeed with no type errors.
+Run: `cd nexra && npx tsc --noEmit`
+Expected: this repo's `tsc` was already broken before M3d — ~32 pre-existing errors in `ContextPanel.tsx`, `SecretModal.tsx`, `SecretsPanel.tsx` (theme property names like `bg2`/`text3`/`text1`/`error` that don't exist on the current `theme` object, plus a bad relative import path and one stray `Engagement.companyId`), none of them touched by this plan. Confirm the error count/file list matches that pre-existing baseline (i.e. no new file, and `agent.live.ts`/`agent.tools.ts` are clean) rather than expecting a fully clean build — fixing the unrelated theme/import errors is out of scope for M3d. Tasks 6-7 happen to fix the `MessageList.tsx(82,14)` and `RequestCard.tsx` `Secret`-unused errors as a side effect of the work already planned there; do not go looking for other pre-existing errors to fix.
 
 - [ ] **Step 4: Commit**
 
@@ -995,10 +995,10 @@ Update the `<MessageList ... />` render (line 96):
 
 (`chat`, `eng`, `company`, and `dispatch` are already in scope in `ChatPane` — they are used by the existing `sendMessage(dispatch, chat, eng, state.ui.draft, company?.id)` call at line 25. If `eng` is under a different local name there, use that name.)
 
-- [ ] **Step 7: Run the full suite + build**
+- [ ] **Step 7: Run the full suite + type-check**
 
-Run: `cd nexra && npm test && npm run build`
-Expected: all tests PASS (37 baseline + the M3d additions); `tsc` + `vite build` succeed.
+Run: `cd nexra && npm test && npx tsc --noEmit`
+Expected: all tests PASS (37 baseline + the M3d additions). `tsc` errors should now be ONLY the pre-existing unrelated ones in `ContextPanel.tsx` and `SecretModal.tsx` (theme property mismatches, bad import path — out of scope for M3d, see Task 5 Step 3) — `MessageList.tsx` and `RequestCard.tsx` should now be clean since this task touches both.
 
 - [ ] **Step 8: Commit**
 
@@ -1012,7 +1012,7 @@ git commit -m "feat(m3d): inline input card with per-field auto-save + auto-resu
 ## Final verification
 
 - [ ] **Run the whole suite:** `cd nexra && npm test` — all green.
-- [ ] **Build:** `cd nexra && npm run build` — clean `tsc` + `vite build`.
+- [ ] **Type-check:** `cd nexra && npx tsc --noEmit` — no errors in any M3d-touched file; remaining errors are the pre-existing, unrelated `ContextPanel.tsx`/`SecretModal.tsx`/`SecretsPanel.tsx` theme/import issues (discovered during Task 4, out of scope for this feature — `npm run build`'s `vite build` step was already unreachable before this branch and stays that way; fixing it is a separate cleanup).
 - [ ] **Manual smoke (needs a display + a configured provider key):** `cd nexra && npm run dev`, open an AWS engagement chat, ask "conduct a CIS review against my AWS org — what do you need from me?"; confirm the agent emits a `request_inputs` card inline, that a sensitive field is masked with a working "not a secret" toggle, that filling the required fields shows "saved" and the agent resumes on its own, and that a subsequent `run_prowler` is no longer gate-blocked (it now spawns / reports the tool-missing error rather than re-requesting the credential).
 - [ ] **Whole-branch review:** invoke `superpowers:requesting-code-review` before finishing the branch (matches the M1/M2/M3 process).
 

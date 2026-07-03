@@ -1,11 +1,11 @@
 import { streamText } from 'ai'
 import { randomUUID } from 'node:crypto'
 import type { AgentEvent, AgentSendRequest } from './agent.types'
-import type { Finding } from './store.types'
+import type { Finding, InputRequestItem } from './store.types'
 import { resolveModel, type ProviderConfig } from './providers'
 import { runSkill, AWS_SKILLS, type RunDeps, type SkillInvocation } from './agent.tools'
 import { getScope } from './scope'
-import { hasFilledSecret, injectEnv } from './secrets.vault'
+import { filledEnvVars, injectEnv } from './secrets.vault'
 import { upsertFinding } from './store.sqlite'
 import { createRunRegistry, evidenceFromArgs, computeVerified, normalizeSev } from './agent.findings'
 
@@ -29,6 +29,20 @@ function parseSkillCalls(text: string): DetectedSkill[] {
   return skills
 }
 
+// Decode the request_inputs `items=` arg: `KEY:LABEL:SENS:REQ;...`.
+// SENS 's' (default) = sensitive; REQ 'r' (default) = required.
+function parseInputItems(args: Record<string, string>): InputRequestItem[] {
+  return (args.items ?? '').split(';').map(s => s.trim()).filter(Boolean).map(entry => {
+    const [key, label, sens, req] = entry.split(':')
+    return {
+      key: (key ?? '').trim(),
+      label: (label ?? key ?? '').trim(),
+      sensitive: (sens ?? 's').trim() !== '-',
+      required: (req ?? 'r').trim() !== '-',
+    }
+  }).filter(i => i.key)
+}
+
 function systemPrompt(engagementType: string, phaseLabel: string): string {
   const phase = phaseLabel ? ` Its current phase is: ${phaseLabel}.` : ''
   const skills = `
@@ -37,7 +51,8 @@ Available skills — invoke by writing SKILL_CALL[name|arg=value|...]:
 - run_scoutsuite|account=ID: Enumerate via ScoutSuite.
 - run_pmapper|account=ID: Enumerate via PMapper.
 - log_finding|title=TEXT|sev=Critical|High|Medium|Low|phase=TEXT|rationale=TEXT: Log a finding. Attach evidence in the SAME call with tool_output=SKILL_ID (a prior skill run) or host=HOST|detail=ISSUE.
-- attach_evidence|finding=FINDING_ID|tool_output=SKILL_ID  OR  |host=HOST|detail=ISSUE: Attach evidence to a finding you logged. A finding is UNVERIFIED until evidence is attached; always verify your findings.`
+- attach_evidence|finding=FINDING_ID|tool_output=SKILL_ID  OR  |host=HOST|detail=ISSUE: Attach evidence to a finding you logged. A finding is UNVERIFIED until evidence is attached; always verify your findings.
+- request_inputs|items=KEY:LABEL:SENS:REQ;...: Ask the operator to supply credentials/config. Each item is env-var KEY, a short LABEL, SENS ('s' secret/masked, default; '-' not secret), and REQ ('r' required, default; '-' optional). Use this instead of listing needed inputs in prose. The run pauses until every required item is filled.`
   return (
     `You are Nexra, an AI assistant embedded in a security consultant's console, ` +
     `helping with a ${engagementType} engagement.${phase} ` +
@@ -85,8 +100,14 @@ export async function runSend(
 
       messages.push({ role: 'assistant', content: assistantText })
       const results: string[] = []
+      let requestedInputs = false
 
       for (const c of calls) {
+        if (c.name === 'request_inputs') {
+          const items = parseInputItems(c.args)
+          if (items.length) { emit({ type: 'input_request', requestId: randomUUID(), items }); requestedInputs = true }
+          continue
+        }
         if (c.name === 'log_finding') {
           const id = randomUUID()
           const ev = evidenceFromArgs(c.args, registry)
@@ -118,13 +139,14 @@ export async function runSend(
           if (!skillDef) { results.push(`[unknown skill ${c.name}]`); continue }
           const id = randomUUID()
           const inv: SkillInvocation = { skill: c.name, companyId, engagementId, account: c.args.account, region: c.args.region }
-          const deps: RunDeps = { getScope, injectEnv, hasFilledSecret }
+          const deps: RunDeps = { getScope, injectEnv, filledEnvVars }
           await runSkill(inv, skillDef as any, recordingEmit, deps, id)
           results.push(`[skill ${c.name} ran, id=${id} — reference its output with tool_output=${id}]`)
         } else {
           results.push(`[skill ${c.name} unavailable: no engagement context]`)
         }
       }
+      if (requestedInputs) break   // await operator input; the card drives resume
       messages.push({ role: 'user', content: results.join('\n') })
     }
     emit({ type: 'done' })
