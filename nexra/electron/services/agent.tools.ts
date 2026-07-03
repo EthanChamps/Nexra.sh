@@ -15,6 +15,8 @@ export interface SkillDef {
   name: string
   // Env vars that must be FILLED (present in the injected env) before this runs.
   requiredEnvVars?: string[]
+  // Shown to the operator when the tool binary isn't installed (spawn ENOENT).
+  installCmd?: string
   // Build the concrete child command from a validated invocation.
   build(inv: SkillInvocation): { command: string; args: string[] }
 }
@@ -41,6 +43,11 @@ export type SkillResult =
   | { state: 'success'; exitCode: number }
   | { state: 'denied'; reason: string }
   | { state: 'blocked'; reason: string }
+  // The tool binary isn't installed (spawn ENOENT). Distinct from `success` so
+  // the model is told to have the operator install it, not that the scan ran.
+  | { state: 'unavailable'; reason: string }
+  // The child failed to spawn for some other reason (e.g. EACCES).
+  | { state: 'error'; reason: string }
 
 // Strip credential-shaped vars from an inherited environment so a stray host
 // value can't leak into a skill run; the vault's injected values are overlaid
@@ -98,21 +105,33 @@ export function runSkill(
   const env = { ...base, ...deps.injectEnv(inv.companyId) }
   const spawn = deps.spawn ?? nodeSpawn
   const { command, args } = def.build(inv)
+  const startedAt = Date.now()
 
-  emit({ type: 'skill', id, skill: def.name, state: 'running' })
+  emit({ type: 'skill', id, skill: def.name, state: 'running', command })
 
   return new Promise<SkillResult>(resolve => {
     const child = spawn(command, args, { env, stdio: ['ignore', 'pipe', 'pipe'] })
-    const onChunk = (buf: Buffer) => emit({ type: 'skill', id, skill: def.name, state: 'output', chunk: buf.toString('utf8') })
+    const onChunk = (buf: Buffer) => emit({ type: 'skill', id, skill: def.name, state: 'output', command, chunk: buf.toString('utf8') })
     child.stdout?.on('data', onChunk)
     child.stderr?.on('data', onChunk)
     child.on('error', err => {
-      emit({ type: 'skill', id, skill: def.name, state: 'success', exitCode: -1, message: err.message })
-      resolve({ state: 'success', exitCode: -1 })
+      // A spawn failure is NOT a successful run. ENOENT means the tool binary
+      // isn't installed — surface that as `unavailable` (with an install hint)
+      // so the operator/model can act, not a green check over an empty box.
+      const notInstalled = (err as NodeJS.ErrnoException).code === 'ENOENT'
+      if (notInstalled) {
+        const reason = `${command} is not installed`
+        emit({ type: 'skill', id, skill: def.name, state: 'unavailable', command, message: reason, installCmd: def.installCmd })
+        resolve({ state: 'unavailable', reason })
+      } else {
+        emit({ type: 'skill', id, skill: def.name, state: 'error', command, message: err.message })
+        resolve({ state: 'error', reason: err.message })
+      }
     })
     child.on('close', code => {
       const exitCode = code ?? 0
-      emit({ type: 'skill', id, skill: def.name, state: 'success', exitCode })
+      const duration = ((Date.now() - startedAt) / 1000).toFixed(1) + 's'
+      emit({ type: 'skill', id, skill: def.name, state: 'success', command, exitCode, duration })
       resolve({ state: 'success', exitCode })
     })
   })
@@ -128,16 +147,19 @@ export const AWS_SKILLS: Record<string, SkillDef> = {
   run_prowler: {
     name: 'run_prowler',
     requiredEnvVars: ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY'],
+    installCmd: 'pip install prowler',
     build: inv => ({ command: 'prowler', args: ['aws', ...(inv.region ? ['-f', inv.region] : [])] }),
   },
   run_scoutsuite: {
     name: 'run_scoutsuite',
     requiredEnvVars: ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY'],
+    installCmd: 'pip install scoutsuite',
     build: () => ({ command: 'scout', args: ['aws'] }),
   },
   run_pmapper: {
     name: 'run_pmapper',
     requiredEnvVars: ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY'],
+    installCmd: 'pip install principalmapper',
     build: () => ({ command: 'pmapper', args: ['graph', 'create'] }),
   },
 }

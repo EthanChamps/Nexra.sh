@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { spawn as nodeSpawn } from 'node:child_process'
+import { EventEmitter } from 'node:events'
 import { runSkill, cleanBaseEnv, type SkillDef, type SkillInvocation, type RunDeps } from '../electron/services/agent.tools'
 import type { AgentEvent } from '../electron/services/agent.types'
 import type { EngagementScope } from '../electron/services/store.types'
@@ -77,6 +78,41 @@ describe('runSkill — the "AI uses but cannot see" guarantee', () => {
     const result = await runSkill(inv, needsCred, emit, baseDeps())   // filledEnvVars has it
     expect(result.state).toBe('success')
     expect(events.some(e => e.type === 'input_request')).toBe(false)
+  })
+
+  it('reports a missing tool binary as `unavailable` (not success) with an install hint', async () => {
+    // Real spawn of a nonexistent binary → ENOENT, exactly the "tool not
+    // installed" case (e.g. prowler absent). Must NOT be mislabeled success.
+    const { events, emit } = collect()
+    const notInstalled: SkillDef = {
+      name: 'run_prowler',
+      installCmd: 'pip install prowler',
+      build: () => ({ command: 'nexra-definitely-not-a-real-binary-xyz', args: [] }),
+    }
+    const result = await runSkill(inv, notInstalled, emit, baseDeps())
+
+    expect(result.state).toBe('unavailable')
+    const skillEvents = events.filter(e => e.type === 'skill') as any[]
+    expect(skillEvents.some(e => e.state === 'success')).toBe(false)
+    const unavail = skillEvents.find(e => e.state === 'unavailable')
+    expect(unavail).toBeTruthy()
+    expect(unavail.installCmd).toBe('pip install prowler')
+  })
+
+  it('reports a non-ENOENT spawn failure as `error` (not success)', async () => {
+    const fakeSpawn = () => {
+      const child: any = new EventEmitter()
+      child.stdout = new EventEmitter(); child.stderr = new EventEmitter()
+      queueMicrotask(() => child.emit('error', Object.assign(new Error('permission denied'), { code: 'EACCES' })))
+      return child
+    }
+    const { events, emit } = collect()
+    const result = await runSkill(inv, probeSkill, emit, baseDeps({ spawn: fakeSpawn as any }))
+
+    expect(result.state).toBe('error')
+    const skillEvents = events.filter(e => e.type === 'skill') as any[]
+    expect(skillEvents.some(e => e.state === 'success')).toBe(false)
+    expect(skillEvents.some(e => e.state === 'error')).toBe(true)
   })
 
   it('blocks (and requests scope) when no scope record exists — the gate', async () => {

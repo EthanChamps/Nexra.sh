@@ -72,9 +72,10 @@ export function MessageList({ chat, streaming, onInstall, companyId, onResume }:
             )}
             {m.kind === 'tool' && (
               <ToolCard
-                running={m.state === 'running'}
+                running={m.state === 'running' || m.state === 'output' || m.state === 'blocked'}
                 success={m.state === 'success'}
                 unavailable={m.state === 'unavailable'}
+                errored={m.state === 'error' || m.state === 'denied'}
                 command={m.command}
                 output={m.output}
                 duration={m.duration}
