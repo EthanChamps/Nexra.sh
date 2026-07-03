@@ -8,6 +8,32 @@ import { chatColors } from '../../electron/services/seed'
 let _id = 1000
 const nextId = (p: string) => p + (++_id)
 
+// Ids are `<prefix><n>` minted from this single in-process counter, which resets
+// to 1000 on every launch. Persisted data (M4) reloads chats/messages minted in
+// earlier sessions (ch1001, ch1002, …), so after hydrating we must advance the
+// counter past the highest numeric id already in use — otherwise the next
+// createChat re-mints an id that already exists, producing two chats that share
+// an id: selecting one highlights both, and the sqlite upsert (PRIMARY KEY id)
+// silently merges them. UUID ids (findings, tool cards) don't match and are
+// ignored — only counter-minted ids matter.
+const COUNTER_ID_RE = /^(?:ch|c|e|m)(\d+)$/
+function considerId(id: string): void {
+  const m = COUNTER_ID_RE.exec(id)
+  if (m) { const n = parseInt(m[1], 10); if (n > _id) _id = n }
+}
+function syncIdCounter(data: AppState['data']): void {
+  for (const c of data.companies) {
+    considerId(c.id)
+    for (const e of c.engagements) {
+      considerId(e.id)
+      for (const ch of e.chats) {
+        considerId(ch.id)
+        for (const m of ch.messages) considerId(m.id)
+      }
+    }
+  }
+}
+
 // Fallback title when the live cheap-model call (see agent.title.ts) fails —
 // derives a short title from the user's first question. Pure/deterministic.
 export function deriveTitle(text: string): string {
@@ -179,7 +205,7 @@ export function reducer(state: AppState, a: Action): AppState {
     case 'setTerminalHeight': U.terminalHeight = a.h; return s
     case 'openSettings': U.settingsOpen = true; return s
     case 'closeSettings': U.settingsOpen = false; return s
-    case 'replaceData': case 'hydrate': s.data = a.data; return s
+    case 'replaceData': case 'hydrate': syncIdCounter(a.data); s.data = a.data; return s
     case 'seedActiveMap': U.activeChatByEngagement = a.map; return s
     case 'appendUserMessage': {
       const c = chatByGlobalId(s, a.chatId); if (!c) return state
