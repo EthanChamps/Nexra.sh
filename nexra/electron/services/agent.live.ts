@@ -7,6 +7,7 @@ import { runSkill, AWS_SKILLS, type RunDeps, type SkillInvocation } from './agen
 import { getScope } from './scope'
 import { filledEnvVars, injectEnv } from './secrets.vault'
 import { upsertFinding } from './store.sqlite'
+import { setPhaseCoverage } from './store.memory'
 import { createRunRegistry, evidenceFromArgs, computeVerified, normalizeSev } from './agent.findings'
 
 const STEP_CAP = 6
@@ -141,6 +142,7 @@ export async function runSend(
           const inv: SkillInvocation = { skill: c.name, companyId, engagementId, account: c.args.account, region: c.args.region }
           const deps: RunDeps = { getScope, injectEnv, filledEnvVars }
           await runSkill(inv, skillDef as any, recordingEmit, deps, id)
+          if (req.phaseLabel) setPhaseCoverage(engagementId, req.phaseLabel, 'in_progress')
           results.push(`[skill ${c.name} ran, id=${id} — reference its output with tool_output=${id}]`)
         } else {
           results.push(`[skill ${c.name} unavailable: no engagement context]`)

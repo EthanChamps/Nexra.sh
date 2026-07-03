@@ -7,7 +7,14 @@ ipcRenderer.on('shell:data', (_e, payload: { sessionId: string; data: string }) 
 
 contextBridge.exposeInMainWorld('nexra', {
   platform: process.platform,
-  store: { snapshot: () => ipcRenderer.invoke('store:snapshot') },
+  store: {
+    snapshot: () => ipcRenderer.invoke('store:snapshot'),
+    save: (companies: any) => ipcRenderer.invoke('store:save', companies),
+    deleteCompany: (id: string) => ipcRenderer.invoke('store:deleteCompany', id),
+    deleteChat: (id: string) => ipcRenderer.invoke('store:deleteChat', id),
+    coverage: (engagementId: string) => ipcRenderer.invoke('store:coverage', engagementId),
+    memory: (engagementId: string) => ipcRenderer.invoke('store:memory', engagementId),
+  },
   agent: {
     send: (req: any, onEvent: any) => { const ch = 'agent:event:' + req.chatId; const l = (_: any, e: any) => onEvent(e); ipcRenderer.on(ch, l); return ipcRenderer.invoke('agent:send', req).finally(() => ipcRenderer.removeListener(ch, l)) },
     title: (req: any) => ipcRenderer.invoke('agent:title', req),
