@@ -103,6 +103,24 @@ app.whenReady().then(() => {
   ipcMain.handle('scope:get', (_ev, engagementId: string) => getScope(engagementId))
   ipcMain.handle('scope:set', (_ev, { engagementId, scope }: { engagementId: string; scope: EngagementScope }) => setScope(engagementId, scope))
 
+  // ── fulfillment: operator fills a pending secret or sets scope (M3b) ──
+  ipcMain.handle('secrets:fulfill-pending', (_ev, { id, values }: { id: string; values: Record<string, string> }) => {
+    try {
+      fillSecret(id, values)
+      return { success: true }
+    } catch (err) {
+      return { success: false, error: (err as Error).message }
+    }
+  })
+  ipcMain.handle('scope:set-and-validate', (_ev, { engagementId, scope }: { engagementId: string; scope: EngagementScope }) => {
+    try {
+      setScope(engagementId, scope)
+      return { success: true }
+    } catch (err) {
+      return { success: false, error: (err as Error).message }
+    }
+  })
+
   ipcMain.handle('shell:tabs', () => shellTabs())
   ipcMain.handle('shell:create', (_ev, { shell, cols, rows, companyId }: { shell: any; cols: number; rows: number; companyId?: string }) => {
     const sessionId = companyId ? `${companyId}:${shell}` : shell

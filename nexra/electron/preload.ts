@@ -27,10 +27,12 @@ contextBridge.exposeInMainWorld('nexra', {
     fill: (id: string, values: Record<string, string>) => ipcRenderer.invoke('secrets:fill', { id, values }),
     tie: (id: string, aliasOf: string) => ipcRenderer.invoke('secrets:tie', { id, aliasOf }),
     delete: (id: string) => ipcRenderer.invoke('secrets:delete', id),
+    fulfillPending: (id: string, values: Record<string, string>) => ipcRenderer.invoke('secrets:fulfill-pending', { id, values }),
   },
   scope: {
     get: (engagementId: string) => ipcRenderer.invoke('scope:get', engagementId),
     set: (engagementId: string, scope: any) => ipcRenderer.invoke('scope:set', { engagementId, scope }),
+    setAndValidate: (engagementId: string, scope: any) => ipcRenderer.invoke('scope:set-and-validate', { engagementId, scope }),
   },
   shell: {
     tabs: () => ipcRenderer.invoke('shell:tabs'),
