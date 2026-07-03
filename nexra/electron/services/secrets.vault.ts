@@ -88,8 +88,37 @@ export function injectEnv(companyId: string): Record<string, string> {
     if (!source) continue
     for (const f of source.fields) {
       const blob = getSecretValueBlob(source.id, f.envVar)
-      if (blob != null) env[f.envVar] = decryptSecret(blob)
+      if (blob != null) env[f.envVar] = source.sensitive === false ? blob : decryptSecret(blob)
     }
   }
   return env
+}
+
+// Every env-var name across a company's FILLED secrets, WITHOUT decrypting any
+// value. Used by the skill hard-gate (M3d) to decide, by field presence rather
+// than by a fixed secret name, whether a scan may run.
+export function filledEnvVars(companyId: string): string[] {
+  const out: string[] = []
+  for (const s of listSecretMetaByCompany(companyId)) {
+    if (s.status !== 'filled') continue
+    const source = s.aliasOf ? getSecretMeta(s.aliasOf) : s
+    if (!source) continue
+    for (const f of source.fields) out.push(f.envVar)
+  }
+  return out
+}
+
+// Create-or-update a single-field secret named `key` and fill it in one step
+// (the agent-requested-input path). Sensitive values are encrypted; non-secret
+// config values are stored in the clear. Idempotent per (companyId, key).
+export function upsertFilledInput(companyId: string, key: string, value: string, sensitive: boolean): Secret {
+  const existing = listSecretMetaByCompany(companyId).find(s => s.name === key)
+  const id = existing?.id ?? randomUUID()
+  const secret: Secret = {
+    id, companyId, name: key, fields: [{ envVar: key }],
+    status: 'filled', createdBy: existing?.createdBy ?? 'agent', sensitive,
+  }
+  insertSecretMeta(secret)
+  setSecretValue(id, key, sensitive ? encryptSecret(value) : value)
+  return secret
 }
