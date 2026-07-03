@@ -62,9 +62,8 @@ export function runSkill(
   def: SkillDef,
   emit: (e: AgentEvent) => void,
   deps: RunDeps,
+  id: string = randomUUID(),
 ): Promise<SkillResult> {
-  const id = randomUUID()
-
   // Gate 1 — scope must exist (populated by operator or via scope_request).
   const scope = deps.getScope(inv.engagementId)
   if (!scope) {
