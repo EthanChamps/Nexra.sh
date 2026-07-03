@@ -1,7 +1,7 @@
 # Nexra.sh — Handover
 
 **Date:** 2026-07-03
-**Status:** M1 + M2 + M3 (a–d) merged to `master`. **M4 complete, in review — draft PR #26** (`worktree-nexra-m4-persistence`), not yet merged.
+**Status:** M1 + M2 + M3 (a–d) + **M4 all merged to `master`** (M4 via PR #26). The last mock backend (`StoreService`) is now real. Next work: Phase 5, then Phase 6.
 
 > The app was renamed **Redcell → Nexra.sh** partway through. App dir is
 > `nexra/`, IPC is `window.nexra.*`, vendored design reference is
@@ -27,11 +27,11 @@ The single source of truth for sequencing is
 re-scopes the older shipping roadmap around one goal: running a real AWS
 config-review engagement internally, end-to-end. Read it first.
 
-Critical path (✅ = merged, 🟡 = done but in review, ⬜ = not started):
+Critical path (✅ = merged, ⬜ = not started):
 
 ```
-M3a live agent ✅ ─► M4 persistence 🟡(PR #26) ─► M3b AWS exec+safety ✅
-      └──────────────────────────────────────────► M3c evidence ✅
+M3a live agent ✅ ─► M4 persistence ✅ ─► M3b AWS exec+safety ✅
+      └──────────────────────────────────► M3c evidence ✅
         (+ M3d agent-requested inputs ✅)
                                     Phase 5 report export ⬜
                                     Phase 6 hardening/dogfood/packaging ⬜ ─► INTERNAL-USABLE
@@ -51,27 +51,21 @@ are done. What matters is the state below, not the labels.
 | Credential vault | **real** | encrypted secrets in sqlite; `secrets.vault.ts` / `secrets.ts`. |
 | Findings + evidence | **real** | evidence required before a finding is `verified`; persisted (M3c). |
 | Agent-requested inputs | **real** | input/scope/skill request cards + manual Continue button (M3d). |
-| `StoreService` (graph persistence) | **done, in PR #26** | companies/engagements/chats/messages now persist to sqlite and survive restart; `phase_coverage` + `engagement_memory` substrate. **On `master` this is still the read-only mock seed until #26 merges.** |
+| `StoreService` (graph persistence) | **real (M4)** | companies/engagements/chats/messages persist to sqlite and survive restart; `phase_coverage` + `engagement_memory` substrate. Spec + plan: `docs/superpowers/{specs,plans}/2026-07-03-nexra-m4-persistence*.md`. |
 | Settings | **real** | provider/model persisted; API key in encrypted store (M3a). |
 
-**Tests:** on the M4 branch, `npm test` = **206/206 green**, `npm run build`
-(`tsc` + `vite build`) clean. On `master` (pre-#26): the smaller pre-M4 suite.
+**Tests:** `npm test` = **206/206 green** on `master`, `npm run build`
+(`tsc` + `vite build`) clean.
 
 ## Immediate next actions (for the next agent)
 
-1. **Merge PR #26** (M4 persistence) after review — it's the last mock backend
-   (`StoreService`) going real. Nothing else should build on `master` until
-   this lands, or you'll re-derive the message/graph shape. Branch:
-   `worktree-nexra-m4-persistence`. Spec + plan:
-   `docs/superpowers/{specs,plans}/2026-07-03-nexra-m4-persistence*.md`.
-
-2. **Phase 5 — Report export** (new milestone, not yet specced). Findings
+1. **Phase 5 — Report export** (new milestone, not yet specced). Findings
    across an engagement's chats → a structured, client-usable report
    (Markdown/HTML → PDF). *Done when:* a completed AWS engagement produces a
    document you could hand to a client. Follow the locked process (brainstorm →
    spec → plan → subagent-driven-development → finishing-a-development-branch).
 
-3. **Phase 6 — Hardening + dogfood + packaging** (the internal-usable gate).
+2. **Phase 6 — Hardening + dogfood + packaging** (the internal-usable gate).
    Three bundled pieces:
    - **Hardening:** `/security-review` focused on the ungated-execution +
      key-handling + prompt-injection surface (much substance already landed in
