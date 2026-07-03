@@ -4,6 +4,7 @@ import type { Chat, Message } from '../../electron/services/store.types'
 import { ToolCard } from './ToolCard'
 import { MarkdownMessage } from './MarkdownMessage'
 import { TypingIndicator } from './TypingIndicator'
+import { RequestCard } from './RequestCard'
 
 export function MessageList({ chat, streaming, onInstall }: { chat: Chat; streaming: boolean; onInstall?: (msg: Message) => void }) {
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -52,6 +53,9 @@ export function MessageList({ chat, streaming, onInstall }: { chat: Chat; stream
                 installCmd={m.installCmd}
                 onInstall={onInstall ? () => onInstall(m) : undefined}
               />
+            )}
+            {m.kind === 'request' && (
+              <RequestCard message={m} onFulfill={() => {}} />
             )}
           </div>
         ))}
