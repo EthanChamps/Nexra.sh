@@ -80,7 +80,7 @@ function makeChat(state: AppState, engId: string): Chat {
   const cfg = state.data.types[eng.type]
   const greeting: Message = { id: nextId('m'), role: 'assistant', kind: 'text',
     content: "I'm the agent for this " + cfg.label + ". Ask me to enumerate configuration, run automated checks, or log findings — this chat keeps its own context." }
-  return { id: nextId('ch'), name: 'New chat', phaseId: '', color: '#0a0b0d', messages: [greeting], findings: [], tools: cfg.tools.map(t => ({ ...t })) }
+  return { id: nextId('ch'), name: 'New chat', phaseId: '', color: '#0a0b0d', messages: [greeting], findings: [] }
 }
 
 function engagementForChat(state: AppState, chatId: string) {
@@ -114,7 +114,6 @@ export type Action =
   | { t: 'appendText'; chatId: string; text: string }
   | { t: 'upsertToolCard'; chatId: string; card: Message }
   | { t: 'upsertFinding'; chatId: string; finding: Finding }
-  | { t: 'markToolAvailable'; chatId: string; toolName: string }
   | { t: 'appendTextDelta'; chatId: string; delta: string }
   | { t: 'appendError'; chatId: string; message: string }
   | { t: 'appendSkillEvent'; chatId: string; skillEvent: AgentEvent }
@@ -124,7 +123,7 @@ export type Action =
   | { t: 'fulfillScopeRequest'; engagementId: string; scope: EngagementScope }
   | { t: 'setStreaming'; chatId: string; on: boolean }
 
-const clone = (s: AppState): AppState => ({ data: { ...s.data, companies: s.data.companies.map(c => ({ ...c, engagements: c.engagements.map(e => ({ ...e, chats: e.chats.map(ch => ({ ...ch, messages: [...ch.messages], findings: [...ch.findings], tools: [...ch.tools] })) })) })) }, ui: { ...s.ui, activeChatByEngagement: { ...s.ui.activeChatByEngagement }, ctxMenu: { ...s.ui.ctxMenu }, companyCtxMenu: { ...s.ui.companyCtxMenu }, streamingChats: { ...s.ui.streamingChats } } })
+const clone = (s: AppState): AppState => ({ data: { ...s.data, companies: s.data.companies.map(c => ({ ...c, engagements: c.engagements.map(e => ({ ...e, chats: e.chats.map(ch => ({ ...ch, messages: [...ch.messages], findings: [...ch.findings] })) })) })) }, ui: { ...s.ui, activeChatByEngagement: { ...s.ui.activeChatByEngagement }, ctxMenu: { ...s.ui.ctxMenu }, companyCtxMenu: { ...s.ui.companyCtxMenu }, streamingChats: { ...s.ui.streamingChats } } })
 
 export function reducer(state: AppState, a: Action): AppState {
   const s = clone(state)
@@ -242,12 +241,6 @@ export function reducer(state: AppState, a: Action): AppState {
       const idx = c.findings.findIndex(f => f.id === a.finding.id)
       if (idx >= 0) c.findings[idx] = a.finding
       else c.findings.push(a.finding)
-      return s
-    }
-    case 'markToolAvailable': {
-      const c = chatByGlobalId(s, a.chatId); if (!c) return state
-      const tool = c.tools.find(t => t.name === a.toolName)
-      if (tool) tool.available = true
       return s
     }
     case 'appendTextDelta': {

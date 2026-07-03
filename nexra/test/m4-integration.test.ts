@@ -21,7 +21,7 @@ describe('M4 done-when: a full engagement survives restart', () => {
       id: 'c9', name: 'Client Nine', updated: 'now', engagements: [{
         id: 'e9', type: 'aws', name: 'AWS config review', status: 'In Progress', updated: 'now', linear: true,
         phases: [{ id: 'iam', label: 'IAM' }], scope: [], chats: [{
-          id: 'ch9', name: 'IAM recon', phaseId: 'iam', color: '#3355ff', tools: [{ name: 'prowler', available: true }],
+          id: 'ch9', name: 'IAM recon', phaseId: 'iam', color: '#3355ff',
           messages: [
             { id: 'm1', role: 'user', kind: 'text', content: 'audit IAM' },
             { id: 'm2', role: 'assistant', kind: 'text', content: 'Running Prowler…' },

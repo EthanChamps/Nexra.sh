@@ -78,7 +78,7 @@ export function initSettingsDb(dbPath: string): void {
   )`)
   db.exec(`CREATE TABLE IF NOT EXISTS chats (
     id TEXT PRIMARY KEY, engagement_id TEXT NOT NULL, name TEXT NOT NULL,
-    phase_id TEXT NOT NULL, color TEXT NOT NULL, tools TEXT NOT NULL, ord INTEGER NOT NULL
+    phase_id TEXT NOT NULL, color TEXT NOT NULL, ord INTEGER NOT NULL
   )`)
   db.exec(`CREATE TABLE IF NOT EXISTS messages (
     id TEXT PRIMARY KEY, chat_id TEXT NOT NULL, role TEXT NOT NULL, kind TEXT NOT NULL,

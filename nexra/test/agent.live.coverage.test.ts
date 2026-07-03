@@ -17,7 +17,7 @@ import type { ProviderConfig } from '../electron/services/providers'
 const fakeStream = (parts: string[]) => ({ textStream: (async function* () { for (const p of parts) yield p })(), usage: Promise.resolve({ totalTokens: 1 }) })
 
 const req: AgentSendRequest = {
-  chatId: 'chat-1', engagementType: 'aws', phaseLabel: 'IAM', primaryTool: 'prowler',
+  chatId: 'chat-1', engagementType: 'aws', phaseLabel: 'IAM',
   text: 'enumerate iam', history: [],
 }
 const cfg: ProviderConfig = { provider: 'anthropic', model: 'claude-opus-4-8', apiKey: 'sk-1' }
