@@ -1,10 +1,21 @@
 import type { Dispatch } from 'react'
-import type { Snapshot, Chat, Engagement, Message } from '../electron/services/store.types'
+import type { Snapshot, Chat, Engagement, Message, Finding } from '../electron/services/store.types'
 import type { AgentEvent } from '../electron/services/agent.types'
 import { deriveTitle, type Action } from './state/reducer'
 import { phaseLabel } from './state/selectors'
+import type { AppState } from './state/selectors'
 
 export const getSnapshot = (): Promise<Snapshot> => window.nexra.store.snapshot()
+
+// After boot, pull any persisted findings for every chat into reducer state.
+// Findings key on chat_id; seeded chats have stable ids, so their findings
+// rehydrate across restart. (Full coverage arrives when M4 persists chats.)
+export function rehydrateFindings(dispatch: Dispatch<Action>, data: AppState['data']): void {
+  data.companies.forEach(c => c.engagements.forEach(e => e.chats.forEach(ch => {
+    window.nexra.findings.list(ch.id).then((fs: Finding[]) =>
+      fs.forEach(f => dispatch({ t: 'upsertFinding', chatId: ch.id, finding: f })))
+  })))
+}
 
 let _cid = 0
 const nextCardId = () => 'tc' + Date.now() + '-' + (++_cid)
@@ -42,7 +53,7 @@ function applyEvent(dispatch: Dispatch<Action>, chatId: string, runningIds: Map<
         break
       }
       case 'finding':
-        dispatch({ t: 'appendFinding', chatId, finding: { title: e.title, sev: e.sev, phase: e.phase, time: e.time } })
+        dispatch({ t: 'upsertFinding', chatId, finding: { id: e.id, title: e.title, sev: e.sev, phase: e.phase, time: e.time, rationale: e.rationale, evidence: e.evidence, verified: e.verified } })
         break
       case 'error':
         dispatch({ t: 'appendError', chatId, message: e.message })
@@ -55,7 +66,7 @@ function applyEvent(dispatch: Dispatch<Action>, chatId: string, runningIds: Map<
   }
 }
 
-export function sendMessage(dispatch: Dispatch<Action>, chat: Chat, eng: Engagement, text: string): void {
+export function sendMessage(dispatch: Dispatch<Action>, chat: Chat, eng: Engagement, text: string, companyId?: string): void {
   const trimmed = text.trim()
   if (!trimmed) return
   const history = chat.messages
@@ -68,7 +79,7 @@ export function sendMessage(dispatch: Dispatch<Action>, chat: Chat, eng: Engagem
   const primaryTool = chat.tools.find(t => t.available)?.name ?? 'shell'
   const runningIds = new Map<string, string>()
   window.nexra.agent.send(
-    { chatId: chat.id, engagementType: eng.type, phaseLabel: phaseLabel(eng, chat.phaseId), primaryTool, text: trimmed, history },
+    { chatId: chat.id, engagementType: eng.type, phaseLabel: phaseLabel(eng, chat.phaseId), primaryTool, text: trimmed, history, companyId, engagementId: eng.id },
     applyEvent(dispatch, chat.id, runningIds),
   ).catch((err: unknown) => {
     // Only fires when the IPC invoke promise genuinely rejects with no terminal

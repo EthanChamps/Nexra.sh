@@ -87,7 +87,7 @@ export type Action =
   | { t: 'setChatTitle'; chatId: string; title: string }
   | { t: 'appendText'; chatId: string; text: string }
   | { t: 'upsertToolCard'; chatId: string; card: Message }
-  | { t: 'appendFinding'; chatId: string; finding: Finding }
+  | { t: 'upsertFinding'; chatId: string; finding: Finding }
   | { t: 'markToolAvailable'; chatId: string; toolName: string }
   | { t: 'appendTextDelta'; chatId: string; delta: string }
   | { t: 'appendError'; chatId: string; message: string }
@@ -209,9 +209,11 @@ export function reducer(state: AppState, a: Action): AppState {
       else c.messages.push(a.card)
       return s
     }
-    case 'appendFinding': {
+    case 'upsertFinding': {
       const c = chatByGlobalId(s, a.chatId); if (!c) return state
-      c.findings.push(a.finding)
+      const idx = c.findings.findIndex(f => f.id === a.finding.id)
+      if (idx >= 0) c.findings[idx] = a.finding
+      else c.findings.push(a.finding)
       return s
     }
     case 'markToolAvailable': {

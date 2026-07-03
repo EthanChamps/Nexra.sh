@@ -1,7 +1,17 @@
-import type { Company, Engagement, Chat, ReviewTypeId, ReviewTypeConfig, Message } from './store.types'
+import type { Company, Engagement, Chat, ReviewTypeId, ReviewTypeConfig, Message, Finding } from './store.types'
 
 let _uid = 0
 const uid = () => 'm' + (++_uid)
+
+let _sfid = 0
+// Seed findings are demo/first-run data; give them a verified code_block so the
+// Findings panel demonstrates the M3c evidence UI.
+const seedFinding = (title: string, sev: Finding['sev'], phase: string, time: string): Finding => ({
+  id: 'f-seed-' + (++_sfid), title, sev, phase, time,
+  rationale: `${sev} severity — see evidence.`,
+  evidence: [{ kind: 'code_block', host: 'seed', detail: title }],
+  verified: true,
+})
 
 export const chatColors = [
   { id: 'slate', bg: '#0a0b0d', dot: '#3a3f47' },
@@ -68,10 +78,10 @@ function enrichAws(e: Engagement) {
     { role: 'assistant', kind: 'text', content: "I captured the direct finding from the policy document regardless. Install PMapper for the full escalation graph, or I can move on to the access-key hygiene issues." },
   ] as Message[]).map(m => ({ ...m, id: uid() }))
   iam.findings = [
-    { title: 'ci-deployer role grants iam:* on *', sev: 'Critical', phase: 'IAM', time: '2m ago' },
-    { title: 'Root account missing hardware MFA', sev: 'High', phase: 'IAM', time: '3m ago' },
-    { title: '12 users with access keys unused >90d', sev: 'Medium', phase: 'IAM', time: '4m ago' },
-    { title: 'Password policy permits reuse', sev: 'Low', phase: 'IAM', time: '4m ago' },
+    seedFinding('ci-deployer role grants iam:* on *', 'Critical', 'IAM', '2m ago'),
+    seedFinding('Root account missing hardware MFA', 'High', 'IAM', '3m ago'),
+    seedFinding('12 users with access keys unused >90d', 'Medium', 'IAM', '4m ago'),
+    seedFinding('Password policy permits reuse', 'Low', 'IAM', '4m ago'),
   ]
   const s3 = makeChat(e, 'storage', 'S3 bucket audit', '#08140f')
   s3.messages.push({ id: uid(), role: 'assistant', kind: 'tool', toolName: 'scoutsuite', command: 'scout aws --services s3 --report-dir ./scout-out', state: 'running', output: '' })
@@ -88,8 +98,8 @@ function enrichInternal(e: Engagement) {
     { role: 'assistant', kind: 'text', content: '218 live hosts; 14 have SMB signing disabled — solid NTLM-relay candidates. Logged to findings. Spin up a separate chat when you move to exploitation so this context stays clean.' },
   ] as Message[]).map(m => ({ ...m, id: uid() }))
   rc.findings = [
-    { title: 'SMB signing disabled on 14 hosts', sev: 'High', phase: 'Recon', time: '54m ago' },
-    { title: 'SMBv1 enabled on legacy host', sev: 'Medium', phase: 'Recon', time: '55m ago' },
+    seedFinding('SMB signing disabled on 14 hosts', 'High', 'Recon', '54m ago'),
+    seedFinding('SMBv1 enabled on legacy host', 'Medium', 'Recon', '55m ago'),
   ]
   const ex = makeChat(e, 'exploit', 'Kerberoast svc-sql', '#170a0f')
   ex.messages = ([
@@ -99,7 +109,7 @@ function enrichInternal(e: Engagement) {
     { role: 'assistant', kind: 'tool', state: 'unavailable', toolName: 'hashcat', reason: 'hashcat is not installed on this host — GPU cracking of the captured TGS ticket is unavailable locally.', installCmd: 'apt install hashcat' },
     { role: 'assistant', kind: 'text', content: "TGS captured for svc-sql (member of Domain Admins). hashcat isn't available to crack it here — install it, or I can hand the hash off to your cracking rig." },
   ] as Message[]).map(m => ({ ...m, id: uid() }))
-  ex.findings = [{ title: 'Kerberoastable SPN svc-sql is Domain Admin', sev: 'High', phase: 'Exploit', time: '40m ago' }]
+  ex.findings = [seedFinding('Kerberoastable SPN svc-sql is Domain Admin', 'High', 'Exploit', '40m ago')]
   ex.tools = [{ name: 'nmap', available: true }, { name: 'bloodhound', available: true }, { name: 'impacket', available: true }, { name: 'hashcat', available: false }]
   e.chats = [rc, ex]; stamp(e)
 }

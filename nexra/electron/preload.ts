@@ -34,6 +34,9 @@ contextBridge.exposeInMainWorld('nexra', {
     set: (engagementId: string, scope: any) => ipcRenderer.invoke('scope:set', { engagementId, scope }),
     setAndValidate: (engagementId: string, scope: any) => ipcRenderer.invoke('scope:set-and-validate', { engagementId, scope }),
   },
+  findings: {
+    list: (chatId: string) => ipcRenderer.invoke('findings:list', chatId),
+  },
   shell: {
     tabs: () => ipcRenderer.invoke('shell:tabs'),
     create: (shell: any, cols: number, rows: number, companyId?: string) => ipcRenderer.invoke('shell:create', { shell, cols, rows, companyId }),
