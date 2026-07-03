@@ -12,7 +12,7 @@ export interface ReviewTypeConfig {
 }
 
 export type MessageRole = 'user' | 'assistant'
-export type MessageKind = 'text' | 'tool'
+export type MessageKind = 'text' | 'tool' | 'request'
 export type ToolState = 'running' | 'success' | 'unavailable'
 
 export interface Message {
@@ -20,6 +20,8 @@ export interface Message {
   content?: string
   toolName?: string; command?: string; output?: string; duration?: string
   reason?: string; installCmd?: string; state?: ToolState
+  // request cards (M3d): the agent asks the operator for inputs or scope
+  requestKind?: 'inputs' | 'scope'; requestId?: string; items?: InputRequestItem[]; engagementId?: string
 }
 
 // A checkable artifact behind a finding (M3c). `tool_output` references a

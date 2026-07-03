@@ -99,6 +99,17 @@ describe('sendMessage', () => {
     sendMessage((a: any) => dispatched.push(a), secondChat, eng, 'second message')
     expect(titleMock).not.toHaveBeenCalled()
   })
+  it('maps input_request / scope_request / skill events into reducer actions', () => {
+    const dispatched: any[] = []
+    sendMessage((a: any) => dispatched.push(a), chat, eng, 'hi')
+    const items = [{ key: 'AWS_ACCESS_KEY_ID', label: 'AWS access key', sensitive: true, required: true }]
+    sent!.onEvent({ type: 'input_request', requestId: 'r1', items })
+    sent!.onEvent({ type: 'scope_request', engagementId: 'e1' })
+    sent!.onEvent({ type: 'skill', id: 'sk1', skill: 'run_prowler', state: 'running' })
+    expect(dispatched).toContainEqual({ t: 'appendInputRequest', chatId: 'c1', requestId: 'r1', items })
+    expect(dispatched).toContainEqual({ t: 'appendScopeRequest', chatId: 'c1', engagementId: 'e1' })
+    expect(dispatched).toContainEqual({ t: 'appendSkillEvent', chatId: 'c1', skillEvent: { type: 'skill', id: 'sk1', skill: 'run_prowler', state: 'running' } })
+  })
 })
 
 describe('rehydrateFindings', () => {

@@ -230,3 +230,29 @@ describe('m3a streaming reducer actions', () => {
     expect(s.ui.streamingChats[id]).toBeUndefined()
   })
 })
+
+describe('reducer — request cards (M3d)', () => {
+  it('appendInputRequest pushes an inputs request message', () => {
+    let s = reducer(boot(), { t: 'openCompany', id: 'c1' })
+    const chatId = activeEngagement(s)!.chats[0].id
+    const items = [{ key: 'AWS_ACCESS_KEY_ID', label: 'AWS access key', sensitive: true, required: true }]
+    s = reducer(s, { t: 'appendInputRequest', chatId, requestId: 'r1', items })
+    const msgs = chatByGlobalId(s, chatId)!.messages
+    const msg = msgs[msgs.length - 1]
+    expect(msg.kind).toBe('request')
+    expect(msg.requestKind).toBe('inputs')
+    expect(msg.requestId).toBe('r1')
+    expect(msg.items).toEqual(items)
+  })
+
+  it('appendScopeRequest pushes a scope request message', () => {
+    let s = reducer(boot(), { t: 'openCompany', id: 'c1' })
+    const chatId = activeEngagement(s)!.chats[0].id
+    s = reducer(s, { t: 'appendScopeRequest', chatId, engagementId: 'e1' })
+    const msgs = chatByGlobalId(s, chatId)!.messages
+    const msg = msgs[msgs.length - 1]
+    expect(msg.kind).toBe('request')
+    expect(msg.requestKind).toBe('scope')
+    expect(msg.engagementId).toBe('e1')
+  })
+})
