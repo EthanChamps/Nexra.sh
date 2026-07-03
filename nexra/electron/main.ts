@@ -8,6 +8,7 @@ import { initSettingsDb, getSetting, setSetting, listFindingsByChat } from './se
 import { encryptSecret, decryptSecret } from './services/secrets'
 import { createSecret, fillSecret, tieSecret, listSecrets, deleteSecret, upsertFilledInput } from './services/secrets.vault'
 import { getScope, setScope } from './services/scope'
+import { track, untrack } from './services/inflight'
 import type { ProviderConfig } from './services/providers'
 import type { EngagementScope, SecretField } from './services/store.types'
 import { shellTabs, createSession, writeToSession, resizeSession, killSession, killAllSessions } from './services/shell.pty'
@@ -66,12 +67,11 @@ app.whenReady().then(() => {
 
   ipcMain.handle('store:snapshot', () => buildSnapshot())
   ipcMain.handle('agent:send', async (ev, req) => {
-    const ctrl = new AbortController()
-    inflight.set(req.chatId, ctrl)
+    const ctrl = track(inflight, req.chatId)
     try {
       await runSend(req, loadConfig(), e => ev.sender.send('agent:event:' + req.chatId, e), ctrl.signal, req.companyId, req.engagementId)
     } finally {
-      inflight.delete(req.chatId)
+      untrack(inflight, req.chatId, ctrl)
     }
   })
   ipcMain.handle('agent:title', (_ev, req) => runTitle(req, loadConfig()))

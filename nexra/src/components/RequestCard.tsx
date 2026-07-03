@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import type { EngagementScope, SecretField, InputRequestItem } from '../../electron/services/store.types'
 import { theme } from '../theme'
 
@@ -17,11 +17,13 @@ export function RequestCard({ message, companyId, onFulfill }: RequestCardProps)
     const [values, setValues] = useState<Record<string, string>>({})
     const [sens, setSens] = useState<Record<string, boolean>>(() => Object.fromEntries(items.map(i => [i.key, i.sensitive])))
     const [saved, setSaved] = useState<Record<string, boolean>>({})
-    const [resumed, setResumed] = useState(false)
+    const [continued, setContinued] = useState(false)
+    const continuedRef = useRef(false)
     const [err, setErr] = useState('')
 
     const requiredKeys = items.filter(i => i.required).map(i => i.key)
     const filledCount = requiredKeys.filter(k => saved[k]).length
+    const allRequiredFilled = filledCount === requiredKeys.length
 
     const save = async (key: string) => {
       const value = values[key]
@@ -29,10 +31,18 @@ export function RequestCard({ message, companyId, onFulfill }: RequestCardProps)
       try {
         const res = await window.nexra.inputs.fulfill(companyId!, key, value, sens[key])
         if (res && res.success === false) { setErr(res.error || 'Save failed'); return }
-        const nextSaved = { ...saved, [key]: true }
-        setSaved(nextSaved)
-        if (!resumed && requiredKeys.every(k => nextSaved[k])) { setResumed(true); onFulfill() }
+        setSaved(prev => ({ ...prev, [key]: true }))
       } catch (e) { setErr((e as Error).message) }
+    }
+
+    // Ref-based guard: a rapid double-click fires both handlers before the
+    // first render (which would set `continued`/disable the button) commits,
+    // so a plain useState check alone is not reliable here.
+    const handleContinue = () => {
+      if (continuedRef.current) return
+      continuedRef.current = true
+      setContinued(true)
+      onFulfill()
     }
 
     return (
@@ -65,9 +75,17 @@ export function RequestCard({ message, companyId, onFulfill }: RequestCardProps)
             </div>
           </div>
         ))}
-        <div style={{ fontSize: '12px', color: theme.muted, marginTop: '4px' }}>
+        <div style={{ fontSize: '12px', color: theme.muted, marginTop: '4px', marginBottom: '8px' }}>
           {filledCount} of {requiredKeys.length} required filled
         </div>
+        <button
+          type="button"
+          onClick={handleContinue}
+          disabled={!allRequiredFilled || continued}
+          style={{ padding: '6px 12px', background: theme.accent, color: theme.bg, border: 'none', borderRadius: '4px', cursor: allRequiredFilled && !continued ? 'pointer' : 'not-allowed', fontSize: '12px', opacity: allRequiredFilled && !continued ? 1 : 0.5 }}
+        >
+          {continued ? 'Continuing…' : 'Continue'}
+        </button>
       </div>
     )
   }
@@ -114,6 +132,9 @@ export function RequestCard({ message, companyId, onFulfill }: RequestCardProps)
     const [regions, setRegions] = useState<string[]>([])
     const [accountInput, setAccountInput] = useState('')
     const [regionInput, setRegionInput] = useState('')
+    const [scopeSaved, setScopeSaved] = useState(false)
+    const [continued, setContinued] = useState(false)
+    const continuedRef = useRef(false)
 
     const handleSetScope = async () => {
       const scope: EngagementScope = { mode, accounts, regions }
@@ -122,12 +143,19 @@ export function RequestCard({ message, companyId, onFulfill }: RequestCardProps)
         const engagementId = (message as any).engagementId
         if (!engagementId) throw new Error('No engagement ID')
         await window.nexra.scope.setAndValidate(engagementId, scope)
-        onFulfill()
+        setScopeSaved(true)
       } catch (err) {
         setError((err as Error).message)
       } finally {
         setLoading(false)
       }
+    }
+
+    const handleContinue = () => {
+      if (continuedRef.current) return
+      continuedRef.current = true
+      setContinued(true)
+      onFulfill()
     }
 
     return (
@@ -162,9 +190,19 @@ export function RequestCard({ message, companyId, onFulfill }: RequestCardProps)
             </div>
           </>
         )}
-        <button onClick={handleSetScope} disabled={loading} style={{ marginTop: '8px', padding: '6px 12px', background: theme.accent, color: theme.bg, border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
-          {loading ? 'Setting...' : 'Set Scope'}
-        </button>
+        <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+          <button onClick={handleSetScope} disabled={loading || scopeSaved} style={{ padding: '6px 12px', background: theme.accent, color: theme.bg, border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
+            {scopeSaved ? 'Scope set' : loading ? 'Setting...' : 'Set Scope'}
+          </button>
+          <button
+            type="button"
+            onClick={handleContinue}
+            disabled={!scopeSaved || continued}
+            style={{ padding: '6px 12px', background: theme.accent, color: theme.bg, border: 'none', borderRadius: '4px', cursor: scopeSaved && !continued ? 'pointer' : 'not-allowed', fontSize: '12px', opacity: scopeSaved && !continued ? 1 : 0.5 }}
+          >
+            {continued ? 'Continuing…' : 'Continue'}
+          </button>
+        </div>
       </div>
     )
   }
