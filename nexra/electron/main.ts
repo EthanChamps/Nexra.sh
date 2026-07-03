@@ -4,7 +4,7 @@ import path from 'node:path'
 import { buildSnapshot } from './services/store.mock'
 import { runSend } from './services/agent.live'
 import { runTitle } from './services/agent.title'
-import { initSettingsDb, getSetting, setSetting } from './services/store.sqlite'
+import { initSettingsDb, getSetting, setSetting, listFindingsByChat } from './services/store.sqlite'
 import { encryptSecret, decryptSecret } from './services/secrets'
 import { createSecret, fillSecret, tieSecret, listSecrets, deleteSecret } from './services/secrets.vault'
 import { getScope, setScope } from './services/scope'
@@ -102,6 +102,9 @@ app.whenReady().then(() => {
   // ── engagement scope (M3b) ──
   ipcMain.handle('scope:get', (_ev, engagementId: string) => getScope(engagementId))
   ipcMain.handle('scope:set', (_ev, { engagementId, scope }: { engagementId: string; scope: EngagementScope }) => setScope(engagementId, scope))
+
+  // ── findings (M3c) ──
+  ipcMain.handle('findings:list', (_ev, chatId: string) => listFindingsByChat(chatId))
 
   // ── fulfillment: operator fills a pending secret or sets scope (M3b) ──
   ipcMain.handle('secrets:fulfill-pending', (_ev, { id, values }: { id: string; values: Record<string, string> }) => {

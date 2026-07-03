@@ -1,7 +1,7 @@
 import { useEffect, useReducer } from 'react'
 import { reducer, initialUI, initialActiveMap } from './state/reducer'
 import type { AppState } from './state/selectors'
-import { getSnapshot } from './ipc'
+import { getSnapshot, rehydrateFindings } from './ipc'
 import { Home } from './screens/Home'
 import { Workspace } from './screens/Workspace'
 import { Settings } from './components/Settings'
@@ -15,6 +15,7 @@ export default function App() {
       const seeded: AppState = { data, ui: initialUI }
       dispatch({ t: 'hydrate', data })
       dispatch({ t: 'seedActiveMap', map: initialActiveMap(seeded) })
+      rehydrateFindings(dispatch, data)
     })
   }, [])
 
