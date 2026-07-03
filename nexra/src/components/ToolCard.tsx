@@ -1,14 +1,14 @@
 import { Hoverable } from './Hoverable'
 
 export interface ToolCardProps {
-  running: boolean; success: boolean; unavailable: boolean
+  running: boolean; success: boolean; unavailable: boolean; errored?: boolean
   command?: string; output?: string; duration?: string
   toolName?: string; reason?: string; installCmd?: string
   onInstall?: () => void
 }
 
 export function ToolCard(props: ToolCardProps) {
-  const { running, success, unavailable, command, output, duration, toolName, reason, installCmd, onInstall } = props
+  const { running, success, unavailable, errored, command, output, duration, toolName, reason, installCmd, onInstall } = props
 
   return (
     <div style={{ marginLeft: 38, maxWidth: 720 }}>
@@ -28,6 +28,18 @@ export function ToolCard(props: ToolCardProps) {
             <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: '#565c65' }}>{duration}</span>
           </div>
           <pre style={{ margin: 0, padding: '11px 13px', fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, lineHeight: 1.55, color: '#8b929c', whiteSpace: 'pre-wrap', maxHeight: 230, overflow: 'auto', background: '#0c0d10' }}>{output}</pre>
+        </div>
+      )}
+
+      {errored && (
+        <div style={{ border: '1px solid rgba(240,97,109,0.36)', borderRadius: 10, background: 'rgba(240,97,109,0.055)', display: 'flex', gap: 11, padding: '12px 13px' }}>
+          <span style={{ flex: 'none', width: 18, height: 18, borderRadius: 5, background: 'rgba(240,97,109,0.2)', color: '#f0616d', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700 }}>!</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#f0a5ac', marginBottom: reason ? 4 : 0 }}>
+              Skill failed{toolName ? <> — <span style={{ fontFamily: "'IBM Plex Mono',monospace" }}>{toolName}</span></> : null}
+            </div>
+            {reason && <div style={{ fontSize: 12.5, lineHeight: 1.5, color: '#c99ca0' }}>{reason}</div>}
+          </div>
         </div>
       )}
 

@@ -6,7 +6,8 @@
   "scripts": {
     "predev": "electron-rebuild --only better-sqlite3",
     "dev": "vite",
-    "build": "tsc -p tsconfig.node.json && vite build",
+    "typecheck": "tsc -p tsconfig.json",
+    "build": "npm run typecheck && tsc -p tsconfig.node.json && vite build",
     "test": "vitest run",
     "test:watch": "vitest",
     "predist": "electron-rebuild --only better-sqlite3",

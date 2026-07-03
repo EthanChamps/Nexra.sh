@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto'
 import type { AgentEvent, AgentSendRequest } from './agent.types'
 import type { Finding, InputRequestItem } from './store.types'
 import { resolveModel, type ProviderConfig } from './providers'
-import { runSkill, AWS_SKILLS, type RunDeps, type SkillInvocation } from './agent.tools'
+import { runSkill, AWS_SKILLS, type RunDeps, type SkillInvocation, type SkillDef } from './agent.tools'
 import { getScope } from './scope'
 import { filledEnvVars, injectEnv } from './secrets.vault'
 import { upsertFinding } from './store.sqlite'
@@ -59,7 +59,7 @@ Available skills — invoke by writing SKILL_CALL[name|arg=value|...]:
 - run_pmapper|account=ID: Enumerate via PMapper.
 - log_finding|title=TEXT|sev=Critical|High|Medium|Low|phase=TEXT|rationale=TEXT: Log a finding. Attach evidence in the SAME call with tool_output=SKILL_ID (a prior skill run) or host=HOST|detail=ISSUE.
 - attach_evidence|finding=FINDING_ID|tool_output=SKILL_ID  OR  |host=HOST|detail=ISSUE: Attach evidence to a finding you logged. A finding is UNVERIFIED until evidence is attached; always verify your findings.
-- request_inputs|items=KEY:LABEL:SENS:REQ;...: Ask the operator to supply credentials/config. Each item is env-var KEY, a short LABEL, SENS ('s' secret/masked, default; '-' not secret), and REQ ('r' required, default; '-' optional). Use this instead of listing needed inputs in prose. The run pauses until every required item is filled.`
+- request_inputs|items=KEY:LABEL:SENS:REQ;...: Ask the operator to supply credentials/config. Each item is env-var KEY, a short LABEL, SENS ('s' secret/masked, default; '-' not secret), and REQ ('r' required, default; '-' optional). Use this instead of listing needed inputs in prose. The run pauses until every required item is filled. Mark anything that is NOT a credential — a region, account id, profile name, or resource name — as not-secret with SENS '-'; reserve 's' for actual secrets (keys, tokens, passwords). Do NOT request values a skill already derives from the AWS credentials you request: the run_* skills authenticate from AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY, so never ask for an AWS/Prowler profile name.`
   return (
     `You are Nexra, an AI assistant embedded in a security consultant's console, ` +
     `helping with a ${engagementType} engagement.${phase} ` +
@@ -147,9 +147,26 @@ export async function runSend(
           const id = randomUUID()
           const inv: SkillInvocation = { skill: c.name, companyId, engagementId, account: c.args.account, region: c.args.region }
           const deps: RunDeps = { getScope, injectEnv, filledEnvVars }
-          await runSkill(inv, skillDef as any, recordingEmit, deps, id)
-          if (req.phaseLabel) setPhaseCoverage(engagementId, req.phaseLabel, 'in_progress')
-          results.push(`[skill ${c.name} ran, id=${id} — reference its output with tool_output=${id}]`)
+          const outcome = await runSkill(inv, skillDef as any, recordingEmit, deps, id)
+          // Report the ACTUAL outcome to the model — a failed/missing tool must
+          // never be reported as a run, or the model claims a scan happened that
+          // never did instead of telling the operator to install/fix it.
+          if (outcome.state === 'success') {
+            if (req.phaseLabel) setPhaseCoverage(engagementId, req.phaseLabel, 'in_progress')
+            results.push(`[skill ${c.name} ran, id=${id} — reference its output with tool_output=${id}]`)
+          } else if (outcome.state === 'unavailable') {
+            const hint = (skillDef as SkillDef).installCmd
+            results.push(`[skill ${c.name} could NOT run: ${outcome.reason}. Do NOT claim the scan ran — tell the operator to install it${hint ? ` (${hint})` : ''}, then retry.]`)
+          } else if (outcome.state === 'error') {
+            results.push(`[skill ${c.name} failed to run: ${outcome.reason}. Do not claim it ran.]`)
+          } else if (outcome.state === 'denied') {
+            results.push(`[skill ${c.name} was denied: ${outcome.reason} — the target is out of scope.]`)
+          } else if (outcome.state === 'blocked') {
+            // A required credential is missing; runSkill already emitted an
+            // input_request. Pause the turn to await input, like request_inputs.
+            requestedInputs = true
+            results.push(`[skill ${c.name} is blocked awaiting operator input: ${outcome.reason}.]`)
+          }
         } else {
           results.push(`[skill ${c.name} unavailable: no engagement context]`)
         }
