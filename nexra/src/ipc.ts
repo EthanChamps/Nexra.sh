@@ -72,7 +72,7 @@ export function sendMessage(dispatch: Dispatch<Action>, chat: Chat, eng: Engagem
     .map(m => ({ role: m.role, content: m.content as string }))
   const isFirstUserMessage = !chat.messages.some(m => m.role === 'user')
   const isProvisional = chat.name === 'New chat'
-  dispatch({ t: 'appendUserMessage', chatId: chat.id, text: trimmed })
+  dispatch({ t: 'appendUserMessage', chatId: chat.id, engId: eng.id, text: trimmed })
   dispatch({ t: 'setStreaming', chatId: chat.id, on: true })
   const runningIds = new Map<string, string>()
   window.nexra.agent.send(

@@ -1,7 +1,7 @@
 import type { AppState } from './selectors'
-import { activeCompany, engagementById, chatByIds, chatByGlobalId } from './selectors'
-import type { UIState } from './types'
-import type { Chat, Message, Finding, Phase, EngagementScope, InputRequestItem } from '../../electron/services/store.types'
+import { activeCompany, activeEngagement, engagementById, chatByIds, chatByGlobalId, greetingFor } from './selectors'
+import type { UIState, PendingChat } from './types'
+import type { Chat, Message, Finding, Phase, Engagement, EngagementScope, InputRequestItem } from '../../electron/services/store.types'
 import type { AgentEvent } from '../../electron/services/agent.types'
 import { chatColors } from '../../electron/services/seed'
 
@@ -76,19 +76,65 @@ export function initialActiveMap(s: AppState): Record<string, string> {
   return map
 }
 
-function makeChat(state: AppState, engId: string): Chat {
-  const eng = engagementById(state, engId)!
-  const cfg = state.data.types[eng.type]
-  const greeting: Message = { id: nextId('m'), role: 'assistant', kind: 'text',
-    content: "I'm the agent for this " + cfg.label + ". Ask me to enumerate configuration, run automated checks, or log findings — this chat keeps its own context." }
-  return { id: nextId('ch'), name: 'New chat', phaseId: '', color: '#0a0b0d', messages: [greeting], findings: [] }
+function makeChat(state: AppState, eng: Engagement, id: string = nextId('ch')): Chat {
+  const greeting: Message = { id: nextId('m'), role: 'assistant', kind: 'text', content: greetingFor(state, eng) }
+  return { id, name: 'New chat', phaseId: '', color: '#0a0b0d', messages: [greeting], findings: [] }
 }
 
-function engagementForChat(state: AppState, chatId: string) {
-  for (const c of state.data.companies)
-    for (const e of c.engagements)
-      if (e.chats.some(ch => ch.id === chatId)) return e
-  return null
+// "+ New chat" and a new engagement both land the user on an uncommitted, in-memory
+// placeholder — never written into eng.chats, never persisted — until it either
+// gains a draft (see settlePendingChat) or a sent message (see resolveChatForMessage).
+function startPendingChat(state: AppState, engId: string): void {
+  const id = nextId('ch')
+  state.ui.pendingChatByEngagement[engId] = { id, draft: '' }
+  state.ui.activeChatByEngagement[engId] = id
+}
+
+// Looks up an engagement by (companyId, engId) rather than "the currently active
+// company" — settlePendingChat below may run after activeCompanyId has already
+// changed (e.g. an openCompany dispatch), so engagementById (which is scoped to
+// the active company) would silently fail to find the engagement being settled.
+function engagementInCompany(state: AppState, companyId: string, engId: string): Engagement | null {
+  const c = state.data.companies.find(x => x.id === companyId)
+  return c?.engagements.find(e => e.id === engId) ?? null
+}
+
+// Called by the reducer wrapper (see `reducer` below) whenever the user leaves a
+// pending chat. A non-blank draft commits it into a real, persisted chat; a blank
+// one is simply discarded — it was never written to eng.chats, so there is nothing
+// to clean up. Guards against the pending entry having already been replaced (e.g.
+// clicking "+ New chat" again while the first is still uncommitted) by only clearing
+// the map slot if it still points at the chat being settled.
+function settlePendingChat(state: AppState, companyId: string, engId: string, pending: PendingChat): AppState {
+  const stillTracked = state.ui.pendingChatByEngagement[engId]?.id === pending.id
+  const eng = engagementInCompany(state, companyId, engId)
+  if (eng && pending.draft.trim() && !eng.chats.some(c => c.id === pending.id)) {
+    const chat = makeChat(state, eng, pending.id)
+    eng.chats = [chat, ...eng.chats]
+    eng.updated = 'just now'
+    state.ui.draftByChatId[pending.id] = pending.draft
+  } else if (eng && state.ui.activeChatByEngagement[engId] === pending.id) {
+    // discarded — fall back to another real chat if one exists, else clear
+    if (eng.chats[0]) state.ui.activeChatByEngagement[engId] = eng.chats[0].id
+    else delete state.ui.activeChatByEngagement[engId]
+  }
+  if (stillTracked) delete state.ui.pendingChatByEngagement[engId]
+  return state
+}
+
+// Sending a message is a stronger signal than leaving with a draft, and can't wait
+// for the leave-hook because the user stays on the same chat afterward. Promotes
+// unconditionally (even a blank draft) since a real message is unambiguous content.
+function resolveChatForMessage(state: AppState, eng: Engagement, chatId: string): Chat | null {
+  const real = eng.chats.find(c => c.id === chatId)
+  if (real) return real
+  const pending = state.ui.pendingChatByEngagement[eng.id]
+  if (!pending || pending.id !== chatId) return null
+  const chat = makeChat(state, eng, pending.id)
+  eng.chats = [chat, ...eng.chats]
+  eng.updated = 'just now'
+  delete state.ui.pendingChatByEngagement[eng.id]
+  return chat
 }
 
 export type Action =
@@ -110,7 +156,7 @@ export type Action =
   | { t: 'toggleTerminal' } | { t: 'closeTerminal' } | { t: 'setTerminalShell'; id: UIState['terminalShell'] } | { t: 'setTerminalHeight'; h: number }
   | { t: 'openSettings' } | { t: 'closeSettings' }
   | { t: 'replaceData'; data: AppState['data'] }
-  | { t: 'appendUserMessage'; chatId: string; text: string }
+  | { t: 'appendUserMessage'; chatId: string; text: string; engId: string }
   | { t: 'setChatTitle'; chatId: string; title: string }
   | { t: 'appendText'; chatId: string; text: string }
   | { t: 'upsertToolCard'; chatId: string; card: Message }
@@ -124,9 +170,9 @@ export type Action =
   | { t: 'fulfillScopeRequest'; engagementId: string; scope: EngagementScope }
   | { t: 'setStreaming'; chatId: string; on: boolean }
 
-const clone = (s: AppState): AppState => ({ data: { ...s.data, companies: s.data.companies.map(c => ({ ...c, engagements: c.engagements.map(e => ({ ...e, chats: e.chats.map(ch => ({ ...ch, messages: [...ch.messages], findings: [...ch.findings] })) })) })) }, ui: { ...s.ui, activeChatByEngagement: { ...s.ui.activeChatByEngagement }, ctxMenu: { ...s.ui.ctxMenu }, companyCtxMenu: { ...s.ui.companyCtxMenu }, streamingChats: { ...s.ui.streamingChats } } })
+const clone = (s: AppState): AppState => ({ data: { ...s.data, companies: s.data.companies.map(c => ({ ...c, engagements: c.engagements.map(e => ({ ...e, chats: e.chats.map(ch => ({ ...ch, messages: [...ch.messages], findings: [...ch.findings] })) })) })) }, ui: { ...s.ui, activeChatByEngagement: { ...s.ui.activeChatByEngagement }, pendingChatByEngagement: { ...s.ui.pendingChatByEngagement }, draftByChatId: { ...s.ui.draftByChatId }, ctxMenu: { ...s.ui.ctxMenu }, companyCtxMenu: { ...s.ui.companyCtxMenu }, streamingChats: { ...s.ui.streamingChats } } })
 
-export function reducer(state: AppState, a: Action): AppState {
+function rawReducer(state: AppState, a: Action): AppState {
   const s = clone(state)
   const U = s.ui
   switch (a.t) {
@@ -163,14 +209,15 @@ export function reducer(state: AppState, a: Action): AppState {
       const cfg = s.data.types[U.selectedType as keyof typeof s.data.types]
       const eng = { id: nextId('e'), type: U.selectedType as any, name: U.newName.trim() || cfg.label, status: 'In Progress' as const, updated: 'just now', linear: cfg.linear, phases: cfg.phases, scope: cfg.scope.map(x => ({ ...x })), chats: [] }
       const c = activeCompany(s)!; c.updated = 'just now'; c.engagements = [eng, ...c.engagements]
-      U.activeEngagementId = eng.id; U.newOpen = false; U.editingName = false; return s
+      U.activeEngagementId = eng.id; U.newOpen = false; U.editingName = false
+      startPendingChat(s, eng.id)
+      return s
     }
     case 'createChat': {
       const id = a.engId || U.activeEngagementId; const eng = id ? engagementById(s, id) : null; if (!eng) return state
       U.activeEngagementId = eng.id
-      const chat = makeChat(s, eng.id)
-      eng.chats = [chat, ...eng.chats]; eng.updated = 'just now'
-      U.activeChatByEngagement[eng.id] = chat.id; U.editingName = false; return s
+      startPendingChat(s, eng.id)
+      U.editingName = false; return s
     }
     case 'startRename': { const c = chatByIds(s, U.activeEngagementId!, U.activeChatByEngagement[U.activeEngagementId!]); if (c) { U.editingName = true; U.nameDraft = c.name; U.colorMenuOpen = false } return s }
     case 'setNameDraft': U.nameDraft = a.value; return s
@@ -198,7 +245,14 @@ export function reducer(state: AppState, a: Action): AppState {
       U.confirmDeleteCompanyId = null
       return s
     }
-    case 'setDraft': U.draft = a.value; return s
+    case 'setDraft': {
+      const eng = activeEngagement(s); if (!eng) return state
+      const id = U.activeChatByEngagement[eng.id]
+      const pending = U.pendingChatByEngagement[eng.id]
+      if (pending && pending.id === id) U.pendingChatByEngagement[eng.id] = { ...pending, draft: a.value }
+      else if (id) U.draftByChatId[id] = a.value
+      return s
+    }
     case 'toggleTerminal': U.terminalOpen = !U.terminalOpen; return s
     case 'closeTerminal': U.terminalOpen = false; return s
     case 'setTerminalShell': U.terminalShell = a.id; return s
@@ -208,16 +262,14 @@ export function reducer(state: AppState, a: Action): AppState {
     case 'replaceData': case 'hydrate': syncIdCounter(a.data); s.data = a.data; return s
     case 'seedActiveMap': U.activeChatByEngagement = a.map; return s
     case 'appendUserMessage': {
-      const c = chatByGlobalId(s, a.chatId); if (!c) return state
+      const eng = engagementById(s, a.engId); if (!eng) return state
+      const c = resolveChatForMessage(s, eng, a.chatId); if (!c) return state
       const firstUser = !c.messages.some(m => m.role === 'user')
       c.messages.push({ id: nextId('m'), role: 'user', kind: 'text', content: a.text })
       // First question on a still-provisional chat → infer focus. The title
       // itself arrives asynchronously via 'setChatTitle' once the live
       // cheap-model call resolves (see ipc.ts sendMessage).
-      if (firstUser && c.name === 'New chat') {
-        const eng = engagementForChat(s, a.chatId)
-        if (eng) c.phaseId = inferFocus(a.text, eng.phases)
-      }
+      if (firstUser && c.name === 'New chat') c.phaseId = inferFocus(a.text, eng.phases)
       return s
     }
     case 'setChatTitle': {
@@ -316,4 +368,31 @@ export function reducer(state: AppState, a: Action): AppState {
     default: return state
   }
 }
+
+// Every dispatch is routed through this wrapper so that leaving a pending chat —
+// via any action that changes the active chat/engagement/company, or navigating
+// back to Home — settles it exactly once, without special-casing every action
+// that can cause a "leave". `prevCompanyId`/`prevPending` are captured before
+// rawReducer runs so they still hold the correct values even if the action
+// itself already changed activeCompanyId or replaced the live
+// pendingChatByEngagement[engId] entry (e.g. "+ New chat" clicked twice in a
+// row, or switching companies while a draft-holding pending chat is active).
+export function reducer(state: AppState, a: Action): AppState {
+  const prevCompanyId = state.ui.activeCompanyId
+  const prevEngId = state.ui.activeEngagementId
+  const prevPending = prevEngId ? state.ui.pendingChatByEngagement[prevEngId] : undefined
+  const wasViewingPending = !!(prevPending && state.ui.activeChatByEngagement[prevEngId!] === prevPending.id)
+
+  const next = rawReducer(state, a)
+  if (!wasViewingPending) return next
+
+  const stillOnSameEngagement = next.ui.activeEngagementId === prevEngId
+  const stillActivePending = next.ui.view === 'workspace'
+    && stillOnSameEngagement
+    && next.ui.activeChatByEngagement[prevEngId!] === prevPending!.id
+    && next.ui.pendingChatByEngagement[prevEngId!]?.id === prevPending!.id
+
+  return stillActivePending ? next : settlePendingChat(next, prevCompanyId!, prevEngId!, prevPending!)
+}
+
 export { chatColors }
