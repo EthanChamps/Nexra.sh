@@ -57,7 +57,8 @@ export function inferFocus(text: string, phases: Phase[]): string {
 
 export const initialUI: UIState = {
   view: 'home', activeCompanyId: null, activeEngagementId: null, activeChatByEngagement: {},
-  draft: '', rightOpen: true, editingName: false, nameDraft: '', colorMenuOpen: false,
+  pendingChatByEngagement: {}, draftByChatId: {},
+  rightOpen: true, editingName: false, nameDraft: '', colorMenuOpen: false,
   newProjectOpen: false, newCompanyName: '', newOpen: false, selectedType: 'aws', newName: '',
   ctxMenu: { open: false, x: 0, y: 0, engId: null, chatId: null },
   renamingCompanyId: null, companyNameDraft: '',
