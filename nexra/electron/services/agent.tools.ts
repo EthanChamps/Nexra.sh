@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 import type { AgentEvent } from './agent.types'
 import type { EngagementScope } from './store.types'
 import { validate, type Target } from './scope'
+import { join } from 'node:path'
 
 // A skill wrapper exits with this code to mean "a runtime prerequisite is
 // missing" (e.g. the ScubaGear module isn't installed) — distinct from a clean
@@ -169,8 +170,6 @@ export const AWS_SKILLS: Record<string, SkillDef> = {
     build: () => ({ command: 'pmapper', args: ['graph', 'create'] }),
   },
 }
-
-import { join } from 'node:path'
 
 // The vendored PowerShell wrapper that connects app-only and runs Invoke-SCuBA.
 // Shipped alongside the services; resolved at runtime.
