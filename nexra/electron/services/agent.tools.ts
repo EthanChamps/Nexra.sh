@@ -192,22 +192,51 @@ export const AWS_SKILLS: Record<string, SkillDef> = {
   },
 }
 
-// The vendored PowerShell wrapper that connects app-only and runs Invoke-SCuBA.
-// Shipped alongside the services; resolved at runtime.
+// The vendored PowerShell wrapper that runs Invoke-SCuBA. Shipped alongside the
+// services; resolved at runtime. Takes -Auth interactive|app to select the
+// delegated sign-in (primary) or app-only certificate (fallback) path.
 export const SCUBA_WRAPPER = join(__dirname, 'scripts', 'run-scubagear.ps1')
 
 // ── M365 tool pack ───────────────────────────────────────────────────────────
-// ScubaGear (CISA M365 Secure Configuration Baseline). App-only certificate auth;
-// creds arrive via the injected child env (M365_TENANT_ID / M365_APP_ID /
-// M365_CERT), never via args. See docs/superpowers/specs/2026-07-07-nexra-m365-vertical-design.md.
+// ScubaGear (CISA M365 Secure Configuration Baseline), two auth paths:
+//   • run_scubagear (PRIMARY) — interactive DELEGATED sign-in with the account
+//     the client provides for the engagement. No app registration and no
+//     certificate: the operator completes one sign-in and ScubaGear drives the
+//     per-product connections. This matches how M365 audits actually start —
+//     the client hands over an account, not a service principal — so there is
+//     nothing to pre-provision or gate on. The tenant is a scope target (the
+//     tenant= arg, enforced by the scope gate), not a credential.
+//   • run_scubagear_appauth (FALLBACK) — app-only certificate / service
+//     principal auth for clients who require a scoped SP instead of a human
+//     account, or fully-unattended runs. Creds arrive via the injected child
+//     env (M365_TENANT_ID / M365_APP_ID / M365_CERT), never via args.
+// See docs/superpowers/specs/2026-07-07-nexra-m365-vertical-design.md.
+
+// Pack-level guidance. Steers the model to the delegated sign-in first and only
+// to the certificate fallback when the client mandates a service principal;
+// either way it never solicits a raw username/password.
+const M365_CRED_HINT = 'M365 assessments authenticate DELEGATED by default: run_scubagear signs in interactively with the account the client provided for the engagement — the operator completes the sign-in themselves, so do NOT ask them to type a username or password into the console. The only value run_scubagear needs is the tenant/organization domain, which is its tenant= argument (a scope target, NOT a secret). Prefer run_scubagear. ONLY when the client requires a scoped service principal instead of a sign-in account, use run_scubagear_appauth and request its credentials with EXACTLY: SKILL_CALL[request_inputs|items=M365_TENANT_ID:Tenant domain:-:r;M365_APP_ID:App registration client ID:-:r;M365_CERT:Certificate (PFX path or thumbprint):s:r]. NEVER ask for a username or password directly.'
+
 export const M365_SKILLS: Record<string, SkillDef> = {
   run_scubagear: {
     name: 'run_scubagear',
+    // No pre-provided secret: delegated auth is completed by the operator at
+    // sign-in time, so there is nothing to gate on. The tenant is enforced by
+    // the scope gate via the tenant= arg, not treated as a credential.
+    installCmd: 'pwsh -c "Install-Module ScubaGear -Scope CurrentUser"',
+    promptLine: 'run_scubagear|tenant=TENANT: Assess the M365 tenant against the CISA SCuBA secure-configuration baseline via ScubaGear, signing in interactively with the client-provided account (no certificate or app registration). Preferred path.',
+    credentialHint: M365_CRED_HINT,
+    build: inv => ({ command: 'pwsh', args: ['-NoProfile', '-File', SCUBA_WRAPPER, '-Tenant', inv.tenant ?? '', '-Auth', 'interactive'] }),
+  },
+  run_scubagear_appauth: {
+    name: 'run_scubagear_appauth',
     requiredEnvVars: ['M365_TENANT_ID', 'M365_APP_ID', 'M365_CERT'],
     installCmd: 'pwsh -c "Install-Module ScubaGear -Scope CurrentUser"',
-    promptLine: 'run_scubagear|tenant=TENANT: Assess the M365 tenant against the CISA SCuBA secure-configuration baseline via ScubaGear.',
-    credentialHint: 'run_scubagear authenticates app-only with a certificate — no interactive login, and NEVER a username or password (M365 password sign-in is unsupported). When you need its credentials, emit this exact call: SKILL_CALL[request_inputs|items=M365_TENANT_ID:Tenant domain:-:r;M365_APP_ID:App registration client ID:-:r;M365_CERT:Certificate (PFX path or thumbprint):s:r]',
-    build: inv => ({ command: 'pwsh', args: ['-NoProfile', '-File', SCUBA_WRAPPER, '-Tenant', inv.tenant ?? ''] }),
+    promptLine: 'run_scubagear_appauth|tenant=TENANT: Same ScubaGear assessment via app-only certificate (service principal) auth. Fallback for clients that require a scoped service principal instead of a sign-in account.',
+    // No credentialHint: the shared M365_CRED_HINT on run_scubagear already
+    // names this fallback and its exact inputs (credHints are de-duped in the
+    // prompt), so a second copy would only add noise.
+    build: inv => ({ command: 'pwsh', args: ['-NoProfile', '-File', SCUBA_WRAPPER, '-Tenant', inv.tenant ?? '', '-Auth', 'app'] }),
   },
 }
 
