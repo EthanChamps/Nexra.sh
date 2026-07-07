@@ -163,3 +163,21 @@ describe('M365 tool pack + resolver', () => {
     expect(cleaned).toEqual({ PATH: '/usr/bin', KEEP: 'ok' })
   })
 })
+
+describe('runSkill — sentinel exit means unavailable', () => {
+  it('maps UNAVAILABLE_EXIT_CODE close to unavailable, not success', async () => {
+    const { events, emit } = collect()
+    const sentinelSkill: SkillDef = {
+      name: 'run_scubagear',
+      installCmd: 'pwsh -c "Install-Module ScubaGear"',
+      build: () => ({ command: process.execPath, args: ['-e', `process.exit(${UNAVAILABLE_EXIT_CODE})`] }),
+    }
+    const result = await runSkill(
+      { skill: 'run_scubagear', companyId: 'c1', engagementId: 'e1', tenant: 't' },
+      sentinelSkill, emit,
+      { getScope: () => ({ mode: 'all', accounts: [], regions: [], tenants: [] }), injectEnv: () => ({}), filledEnvVars: () => [], baseEnv: { PATH: process.env.PATH } },
+    )
+    expect(result.state).toBe('unavailable')
+    expect(events.some(e => e.type === 'skill' && e.state === 'unavailable')).toBe(true)
+  })
+})
