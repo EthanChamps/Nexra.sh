@@ -88,3 +88,17 @@ it('scope: clicking Continue calls onFulfill exactly once, not automatically on 
   fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
   expect(onFulfill).toHaveBeenCalledTimes(1)
 })
+
+it('scope: entering a tenant in allowlist mode includes it in the saved scope', async () => {
+  const setAndValidate = vi.fn(() => Promise.resolve({ success: true }))
+  ;(window as any).nexra = { ...(window as any).nexra, scope: { setAndValidate } }
+  const scopeMsg = { id: 'm2', role: 'assistant', kind: 'request', requestKind: 'scope', engagementId: 'e1' }
+  render(<RequestCard message={scopeMsg} companyId="co1" onFulfill={() => {}} />)
+  fireEvent.click(screen.getByText(/Allowlist/i))
+  const tenantInput = screen.getByPlaceholderText('contoso.onmicrosoft.com')
+  fireEvent.change(tenantInput, { target: { value: 'contoso.onmicrosoft.com' } })
+  fireEvent.click(tenantInput.parentElement!.querySelector('button')!)
+  fireEvent.click(screen.getByRole('button', { name: 'Set Scope' }))
+  await screen.findByRole('button', { name: 'Scope set' })
+  expect(setAndValidate).toHaveBeenCalledWith('e1', expect.objectContaining({ tenants: ['contoso.onmicrosoft.com'] }))
+})

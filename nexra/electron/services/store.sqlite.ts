@@ -43,6 +43,9 @@ export function initSettingsDb(dbPath: string): void {
     accounts TEXT NOT NULL,
     regions TEXT NOT NULL
   )`)
+  // Additive migration: legacy scope rows predate tenants.
+  const scopeCols = (db.prepare(`PRAGMA table_info(scope)`).all() as { name: string }[]).map(c => c.name)
+  if (!scopeCols.includes('tenants')) db.exec(`ALTER TABLE scope ADD COLUMN tenants TEXT NOT NULL DEFAULT '[]'`)
   // Findings + their evidence artifacts (M3c). Pulled forward from M4; chat_id
   // is a plain column now (companies/engagements/chats live in the mock
   // snapshot, not sqlite yet). M4 adds those parent tables + FKs — an additive
@@ -182,15 +185,15 @@ export function getSecretValueBlob(secretId: string, envVar: string): string | u
 // ── scope (M3b) ─────────────────────────────────────────────────────────────
 export function setScopeRow(engagementId: string, s: EngagementScope): void {
   requireDb().prepare(
-    `INSERT INTO scope (engagement_id, mode, accounts, regions) VALUES (?, ?, ?, ?)
-     ON CONFLICT(engagement_id) DO UPDATE SET mode=excluded.mode, accounts=excluded.accounts, regions=excluded.regions`,
-  ).run(engagementId, s.mode, JSON.stringify(s.accounts), JSON.stringify(s.regions))
+    `INSERT INTO scope (engagement_id, mode, accounts, regions, tenants) VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(engagement_id) DO UPDATE SET mode=excluded.mode, accounts=excluded.accounts, regions=excluded.regions, tenants=excluded.tenants`,
+  ).run(engagementId, s.mode, JSON.stringify(s.accounts), JSON.stringify(s.regions), JSON.stringify(s.tenants ?? []))
 }
 
 export function getScopeRow(engagementId: string): EngagementScope | undefined {
-  const r = requireDb().prepare('SELECT mode, accounts, regions FROM scope WHERE engagement_id = ?').get(engagementId) as { mode: string; accounts: string; regions: string } | undefined
+  const r = requireDb().prepare('SELECT mode, accounts, regions, tenants FROM scope WHERE engagement_id = ?').get(engagementId) as { mode: string; accounts: string; regions: string; tenants: string | null } | undefined
   if (!r) return undefined
-  return { mode: r.mode as EngagementScope['mode'], accounts: JSON.parse(r.accounts), regions: JSON.parse(r.regions) }
+  return { mode: r.mode as EngagementScope['mode'], accounts: JSON.parse(r.accounts), regions: JSON.parse(r.regions), tenants: r.tenants ? JSON.parse(r.tenants) : [] }
 }
 
 // ── findings + evidence (M3c) ───────────────────────────────────────────────

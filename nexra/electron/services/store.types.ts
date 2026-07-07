@@ -58,6 +58,7 @@ export interface EngagementScope {
   mode: 'all' | 'allowlist'
   accounts: string[]
   regions: string[]
+  tenants?: string[]   // M365/Azure tenant allowlist; undefined ⇒ [] (legacy rows)
 }
 
 export interface Engagement {

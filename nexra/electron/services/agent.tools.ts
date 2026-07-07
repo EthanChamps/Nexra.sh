@@ -3,6 +3,12 @@ import { randomUUID } from 'node:crypto'
 import type { AgentEvent } from './agent.types'
 import type { EngagementScope } from './store.types'
 import { validate, type Target } from './scope'
+import { join } from 'node:path'
+
+// A skill wrapper exits with this code to mean "a runtime prerequisite is
+// missing" (e.g. the ScubaGear module isn't installed) — distinct from a clean
+// success so runSkill reports `unavailable` with an install hint, not a green run.
+export const UNAVAILABLE_EXIT_CODE = 3
 
 // The typed-skill execution layer (M3b). The agent NEVER gets a freeform shell;
 // it may only invoke one of these fixed skills. That is what makes both the
@@ -17,6 +23,8 @@ export interface SkillDef {
   requiredEnvVars?: string[]
   // Shown to the operator when the tool binary isn't installed (spawn ENOENT).
   installCmd?: string
+  // One-line description rendered into the system prompt's skill menu.
+  promptLine?: string
   // Build the concrete child command from a validated invocation.
   build(inv: SkillInvocation): { command: string; args: string[] }
 }
@@ -57,6 +65,7 @@ export function cleanBaseEnv(env: Record<string, string | undefined>): Record<st
   for (const [k, v] of Object.entries(env)) {
     if (v == null) continue
     if (/^AWS_/.test(k)) continue
+    if (/^M365_/.test(k)) continue
     out[k] = v
   }
   return out
@@ -80,7 +89,7 @@ export function runSkill(
   }
 
   // Gate 2 — target must be in scope. Enforced below the LLM; never spawns.
-  const decision = validate({ account: inv.account, region: inv.region }, scope)
+  const decision = validate({ account: inv.account, region: inv.region, tenant: inv.tenant }, scope)
   if (!decision.allowed) {
     emit({ type: 'skill', id, skill: def.name, state: 'denied', message: decision.reason })
     return Promise.resolve({ state: 'denied', reason: decision.reason ?? 'out of scope' })
@@ -130,6 +139,12 @@ export function runSkill(
     })
     child.on('close', code => {
       const exitCode = code ?? 0
+      if (exitCode === UNAVAILABLE_EXIT_CODE) {
+        const reason = `${command} reported a missing prerequisite`
+        emit({ type: 'skill', id, skill: def.name, state: 'unavailable', command, message: reason, installCmd: def.installCmd })
+        resolve({ state: 'unavailable', reason })
+        return
+      }
       const duration = ((Date.now() - startedAt) / 1000).toFixed(1) + 's'
       emit({ type: 'skill', id, skill: def.name, state: 'success', command, exitCode, duration })
       resolve({ state: 'success', exitCode })
@@ -148,18 +163,49 @@ export const AWS_SKILLS: Record<string, SkillDef> = {
     name: 'run_prowler',
     requiredEnvVars: ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY'],
     installCmd: 'pip install prowler',
+    promptLine: 'run_prowler|account=ID|region=REGION: Enumerate via Prowler.',
     build: inv => ({ command: 'prowler', args: ['aws', ...(inv.region ? ['-f', inv.region] : [])] }),
   },
   run_scoutsuite: {
     name: 'run_scoutsuite',
     requiredEnvVars: ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY'],
     installCmd: 'pip install scoutsuite',
+    promptLine: 'run_scoutsuite|account=ID: Enumerate via ScoutSuite.',
     build: () => ({ command: 'scout', args: ['aws'] }),
   },
   run_pmapper: {
     name: 'run_pmapper',
     requiredEnvVars: ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY'],
     installCmd: 'pip install principalmapper',
+    promptLine: 'run_pmapper|account=ID: Enumerate via PMapper.',
     build: () => ({ command: 'pmapper', args: ['graph', 'create'] }),
   },
+}
+
+// The vendored PowerShell wrapper that connects app-only and runs Invoke-SCuBA.
+// Shipped alongside the services; resolved at runtime.
+export const SCUBA_WRAPPER = join(__dirname, 'scripts', 'run-scubagear.ps1')
+
+// ── M365 tool pack ───────────────────────────────────────────────────────────
+// ScubaGear (CISA M365 Secure Configuration Baseline). App-only certificate auth;
+// creds arrive via the injected child env (M365_TENANT_ID / M365_APP_ID /
+// M365_CERT), never via args. See docs/superpowers/specs/2026-07-07-nexra-m365-vertical-design.md.
+export const M365_SKILLS: Record<string, SkillDef> = {
+  run_scubagear: {
+    name: 'run_scubagear',
+    requiredEnvVars: ['M365_TENANT_ID', 'M365_APP_ID', 'M365_CERT'],
+    installCmd: 'pwsh -c "Install-Module ScubaGear -Scope CurrentUser"',
+    promptLine: 'run_scubagear|tenant=TENANT: Assess the M365 tenant against the CISA SCuBA secure-configuration baseline via ScubaGear.',
+    build: inv => ({ command: 'pwsh', args: ['-NoProfile', '-File', SCUBA_WRAPPER, '-Tenant', inv.tenant ?? ''] }),
+  },
+}
+
+// Resolve the skill pack an engagement may use. Approach A: keyed by type so
+// each vertical (AWS live; M365 here; Azure/pentest later) owns its own pack.
+export function skillsForEngagement(type: string): Record<string, SkillDef> {
+  switch (type) {
+    case 'aws':  return AWS_SKILLS
+    case 'm365': return M365_SKILLS
+    default:     return {}
+  }
 }
