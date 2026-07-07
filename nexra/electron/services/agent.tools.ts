@@ -23,6 +23,8 @@ export interface SkillDef {
   requiredEnvVars?: string[]
   // Shown to the operator when the tool binary isn't installed (spawn ENOENT).
   installCmd?: string
+  // One-line description rendered into the system prompt's skill menu.
+  promptLine?: string
   // Build the concrete child command from a validated invocation.
   build(inv: SkillInvocation): { command: string; args: string[] }
 }
@@ -161,18 +163,21 @@ export const AWS_SKILLS: Record<string, SkillDef> = {
     name: 'run_prowler',
     requiredEnvVars: ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY'],
     installCmd: 'pip install prowler',
+    promptLine: 'run_prowler|account=ID|region=REGION: Enumerate via Prowler.',
     build: inv => ({ command: 'prowler', args: ['aws', ...(inv.region ? ['-f', inv.region] : [])] }),
   },
   run_scoutsuite: {
     name: 'run_scoutsuite',
     requiredEnvVars: ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY'],
     installCmd: 'pip install scoutsuite',
+    promptLine: 'run_scoutsuite|account=ID: Enumerate via ScoutSuite.',
     build: () => ({ command: 'scout', args: ['aws'] }),
   },
   run_pmapper: {
     name: 'run_pmapper',
     requiredEnvVars: ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY'],
     installCmd: 'pip install principalmapper',
+    promptLine: 'run_pmapper|account=ID: Enumerate via PMapper.',
     build: () => ({ command: 'pmapper', args: ['graph', 'create'] }),
   },
 }
@@ -190,6 +195,7 @@ export const M365_SKILLS: Record<string, SkillDef> = {
     name: 'run_scubagear',
     requiredEnvVars: ['M365_TENANT_ID', 'M365_APP_ID', 'M365_CERT'],
     installCmd: 'pwsh -c "Install-Module ScubaGear -Scope CurrentUser"',
+    promptLine: 'run_scubagear|tenant=TENANT: Assess the M365 tenant against the CIS/SCuBA baseline via ScubaGear.',
     build: inv => ({ command: 'pwsh', args: ['-NoProfile', '-File', SCUBA_WRAPPER, '-Tenant', inv.tenant ?? ''] }),
   },
 }
