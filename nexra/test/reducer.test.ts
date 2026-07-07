@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { reducer, initialUI, deriveTitle, inferFocus } from '../src/state/reducer'
-import { activeChat, activeEngagement, chatByGlobalId } from '../src/state/selectors'
+import { activeChat, activeEngagement, chatByGlobalId, getDraft } from '../src/state/selectors'
 import { buildSnapshot } from '../electron/services/store.mock'
 import type { Finding } from '../electron/services/store.types'
 
@@ -307,5 +307,96 @@ describe('reducer — request cards (M3d)', () => {
     expect(msg.kind).toBe('request')
     expect(msg.requestKind).toBe('scope')
     expect(msg.engagementId).toBe('e1')
+  })
+})
+
+describe('pending chat — leave scenarios', () => {
+  it('discards a blank pending chat when switching to a real chat in the same engagement', () => {
+    let s = reducer(boot(), { t: 'openCompany', id: 'c1' })
+    const engId = activeEngagement(s)!.id
+    const otherRealChatId = activeEngagement(s)!.chats[0].id
+    s = reducer(s, { t: 'createChat', engId })
+    const pendingId = activeChat(s)!.id
+    s = reducer(s, { t: 'selectChat', id: otherRealChatId })
+    expect(activeEngagement(s)!.chats.some(c => c.id === pendingId)).toBe(false)
+    expect(activeChat(s)!.id).toBe(otherRealChatId)
+  })
+
+  it('commits a pending chat with a draft when switching to a real chat in the same engagement', () => {
+    let s = reducer(boot(), { t: 'openCompany', id: 'c1' })
+    const engId = activeEngagement(s)!.id
+    const otherRealChatId = activeEngagement(s)!.chats[0].id
+    s = reducer(s, { t: 'createChat', engId })
+    const pendingId = activeChat(s)!.id
+    s = reducer(s, { t: 'setDraft', value: 'unsent question' })
+    s = reducer(s, { t: 'selectChat', id: otherRealChatId })
+    expect(activeEngagement(s)!.chats.some(c => c.id === pendingId)).toBe(true)
+    expect(activeChat(s)!.id).toBe(otherRealChatId) // navigation target is respected, not overridden
+  })
+
+  it('keeps each chat\'s draft independent when switching between them, and restores it on return', () => {
+    let s = reducer(boot(), { t: 'openCompany', id: 'c1' })
+    const eng = activeEngagement(s)!
+    const chatA = eng.chats[0].id
+    const chatB = eng.chats[1].id
+    s = reducer(s, { t: 'selectChat', id: chatA })
+    s = reducer(s, { t: 'setDraft', value: 'draft for A' })
+    s = reducer(s, { t: 'selectChat', id: chatB })
+    expect(getDraft(s)).toBe('')
+    s = reducer(s, { t: 'setDraft', value: 'draft for B' })
+    s = reducer(s, { t: 'selectChat', id: chatA })
+    expect(getDraft(s)).toBe('draft for A')
+    s = reducer(s, { t: 'selectChat', id: chatB })
+    expect(getDraft(s)).toBe('draft for B')
+  })
+
+  it('commits a draft-holding pending chat when switching engagement', () => {
+    let s = reducer(boot(), { t: 'openCompany', id: 'c1' })
+    const engId = activeEngagement(s)!.id
+    const otherEngId = s.data.companies.find(c => c.id === 'c1')!.engagements.find(e => e.id !== engId)!.id
+    s = reducer(s, { t: 'createChat', engId })
+    const pendingId = activeChat(s)!.id
+    s = reducer(s, { t: 'setDraft', value: 'unsent question' })
+    s = reducer(s, { t: 'selectEngagement', id: otherEngId })
+    const eng = s.data.companies.find(c => c.id === 'c1')!.engagements.find(e => e.id === engId)!
+    expect(eng.chats.some(c => c.id === pendingId)).toBe(true)
+  })
+
+  it('discards a blank pending chat when switching companies', () => {
+    let s = reducer(boot(), { t: 'openCompany', id: 'c1' })
+    const engId = activeEngagement(s)!.id
+    s = reducer(s, { t: 'createChat', engId })
+    const pendingId = activeChat(s)!.id
+    s = reducer(s, { t: 'openCompany', id: 'c2' })
+    const eng = s.data.companies.find(c => c.id === 'c1')!.engagements.find(e => e.id === engId)!
+    expect(eng.chats.some(c => c.id === pendingId)).toBe(false)
+  })
+
+  it('commits a draft-holding pending chat when switching companies', () => {
+    // Regression guard: settlePendingChat must resolve the engagement by the
+    // company it actually belongs to (captured before the dispatch), not by
+    // whichever company is active by the time it runs — openCompany has
+    // already flipped activeCompanyId to 'c2' before the wrapper settles.
+    let s = reducer(boot(), { t: 'openCompany', id: 'c1' })
+    const engId = activeEngagement(s)!.id
+    s = reducer(s, { t: 'createChat', engId })
+    const pendingId = activeChat(s)!.id
+    s = reducer(s, { t: 'setDraft', value: 'unsent question' })
+    s = reducer(s, { t: 'openCompany', id: 'c2' })
+    const eng = s.data.companies.find(c => c.id === 'c1')!.engagements.find(e => e.id === engId)!
+    expect(eng.chats.some(c => c.id === pendingId)).toBe(true)
+    expect(s.ui.activeCompanyId).toBe('c2')   // navigation target still respected
+  })
+
+  it('commits a draft-holding pending chat when going Home', () => {
+    let s = reducer(boot(), { t: 'openCompany', id: 'c1' })
+    const engId = activeEngagement(s)!.id
+    s = reducer(s, { t: 'createChat', engId })
+    const pendingId = activeChat(s)!.id
+    s = reducer(s, { t: 'setDraft', value: 'unsent question' })
+    s = reducer(s, { t: 'goHome' })
+    const eng = s.data.companies.find(c => c.id === 'c1')!.engagements.find(e => e.id === engId)!
+    expect(eng.chats.some(c => c.id === pendingId)).toBe(true)
+    expect(s.ui.view).toBe('home')
   })
 })
