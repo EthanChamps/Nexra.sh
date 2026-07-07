@@ -121,6 +121,10 @@ export async function runSend(
         if (c.name === 'request_inputs') {
           const items = parseInputItems(c.args)
           if (items.length) { emit({ type: 'input_request', requestId: randomUUID(), items }); requestedInputs = true }
+          // A request_inputs that parses to zero items would otherwise emit no
+          // card and give the model no feedback — the run silently hangs on
+          // "Requesting inputs". Feed the format back so the model retries.
+          else results.push('[request_inputs produced NO items — the items arg is missing or malformed. Use exactly items=KEY:LABEL:SENS:REQ;... e.g. items=M365_TENANT_ID:Tenant domain:-:r;M365_APP_ID:App registration client ID:-:r;M365_CERT:Certificate:s:r]')
           continue
         }
         if (c.name === 'log_finding') {
