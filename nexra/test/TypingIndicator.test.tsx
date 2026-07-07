@@ -8,4 +8,12 @@ describe('TypingIndicator', () => {
     const status = screen.getByRole('status', { name: /responding/i })
     expect(status.children).toHaveLength(3)
   })
+
+  it('renders a label before the dots when provided', () => {
+    render(<TypingIndicator label="Reviewing scan output…" />)
+    expect(screen.getByText('Reviewing scan output…')).toBeInTheDocument()
+    // dots region is unchanged: still a status region with three children
+    const status = screen.getByRole('status', { name: /responding/i })
+    expect(status.children).toHaveLength(3)
+  })
 })

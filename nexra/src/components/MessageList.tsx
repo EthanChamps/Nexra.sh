@@ -7,6 +7,7 @@ import { TypingIndicator } from './TypingIndicator'
 import { RequestCard } from './RequestCard'
 import { Hoverable } from './Hoverable'
 import { friendlySkillCalls } from '../lib/friendlySkillCalls'
+import { workingLabel } from '../lib/progress'
 
 const BOTTOM_THRESHOLD = 64
 
@@ -90,7 +91,7 @@ export function MessageList({ chat, streaming, onInstall, companyId, onResume }:
             )}
           </div>
         ))}
-        {showTyping && <TypingIndicator />}
+        {showTyping && <TypingIndicator label={workingLabel(chat.messages)} />}
       </div>
       </div>
       {showJump && (
