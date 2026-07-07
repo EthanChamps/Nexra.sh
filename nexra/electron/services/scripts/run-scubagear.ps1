@@ -11,10 +11,13 @@ if (-not (Get-Module -ListAvailable -Name ScubaGear)) {
 $appId    = $env:M365_APP_ID
 $cert     = $env:M365_CERT   # thumbprint (Windows store) or PFX path — resolved by the Task 7 spike
 
-Import-Module ScubaGear
-$out = Join-Path ([System.IO.Path]::GetTempPath()) ("scuba-" + [System.Guid]::NewGuid().ToString('N'))
-
 try {
+  # Everything below runs inside the try so ANY failure — a module-load error,
+  # a bad param, a run failure, or empty results — routes through exit 3 rather
+  # than pwsh's default exit 1, which runSkill would map to a false-green success.
+  Import-Module ScubaGear
+  $out = Join-Path ([System.IO.Path]::GetTempPath()) ("scuba-" + [System.Guid]::NewGuid().ToString('N'))
+
   # App-only certificate auth. On Windows a thumbprint against the cert store works;
   # cross-platform uses a PFX-backed certificate object (Task 7). Invoke-SCuBA drives
   # the connection from these parameters.
