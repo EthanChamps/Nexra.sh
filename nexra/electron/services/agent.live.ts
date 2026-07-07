@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto'
 import type { AgentEvent, AgentSendRequest } from './agent.types'
 import type { Finding, InputRequestItem } from './store.types'
 import { resolveModel, type ProviderConfig } from './providers'
-import { runSkill, AWS_SKILLS, type RunDeps, type SkillInvocation, type SkillDef } from './agent.tools'
+import { runSkill, skillsForEngagement, type RunDeps, type SkillInvocation, type SkillDef } from './agent.tools'
 import { getScope } from './scope'
 import { filledEnvVars, injectEnv } from './secrets.vault'
 import { upsertFinding } from './store.sqlite'
@@ -50,16 +50,15 @@ function parseInputItems(args: Record<string, string>): InputRequestItem[] {
   }).filter(i => i.key)
 }
 
-function systemPrompt(engagementType: string, phaseLabel: string): string {
+export function systemPrompt(engagementType: string, phaseLabel: string, pack: Record<string, SkillDef>): string {
   const phase = phaseLabel ? ` Its current phase is: ${phaseLabel}.` : ''
-  const skills = `
-Available skills — invoke by writing SKILL_CALL[name|arg=value|...]:
-- run_prowler|account=ID|region=REGION: Enumerate via Prowler.
-- run_scoutsuite|account=ID: Enumerate via ScoutSuite.
-- run_pmapper|account=ID: Enumerate via PMapper.
-- log_finding|title=TEXT|sev=Critical|High|Medium|Low|phase=TEXT|rationale=TEXT: Log a finding. Attach evidence in the SAME call with tool_output=SKILL_ID (a prior skill run) or host=HOST|detail=ISSUE.
-- attach_evidence|finding=FINDING_ID|tool_output=SKILL_ID  OR  |host=HOST|detail=ISSUE: Attach evidence to a finding you logged. A finding is UNVERIFIED until evidence is attached; always verify your findings.
-- request_inputs|items=KEY:LABEL:SENS:REQ;...: Ask the operator to supply credentials/config. Each item is env-var KEY, a short LABEL, SENS ('s' secret/masked, default; '-' not secret), and REQ ('r' required, default; '-' optional). Use this instead of listing needed inputs in prose. The run pauses until every required item is filled. Mark anything that is NOT a credential — a region, account id, profile name, or resource name — as not-secret with SENS '-'; reserve 's' for actual secrets (keys, tokens, passwords). Do NOT request values a skill already derives from the AWS credentials you request: the run_* skills authenticate from AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY, so never ask for an AWS/Prowler profile name.`
+  const packLines = Object.values(pack).filter(s => s.promptLine).map(s => `- ${s.promptLine}`).join('\n')
+  const findingLines = [
+    '- log_finding|title=TEXT|sev=Critical|High|Medium|Low|phase=TEXT|rationale=TEXT: Log a finding. Attach evidence in the SAME call with tool_output=SKILL_ID or host=HOST|detail=ISSUE.',
+    '- attach_evidence|finding=FINDING_ID|tool_output=SKILL_ID  OR  |host=HOST|detail=ISSUE: Attach evidence. A finding is UNVERIFIED until evidence is attached.',
+    '- request_inputs|items=KEY:LABEL:SENS:REQ;...: Ask the operator for credentials/config. SENS \'s\'=secret (default), \'-\'=not secret; REQ \'r\'=required (default), \'-\'=optional. Mark non-credentials (tenant, account id, region) as not-secret. Do NOT request values a skill derives from the credentials it already requires.',
+  ].join('\n')
+  const skills = `\nAvailable skills — invoke by writing SKILL_CALL[name|arg=value|...]:\n${packLines}\n${findingLines}`
   return (
     `You are Nexra, an AI assistant embedded in a security consultant's console, ` +
     `helping with a ${engagementType} engagement.${phase} ` +
@@ -96,10 +95,12 @@ export async function runSend(
 
   const persistAndEmit = (f: Finding) => { upsertFinding(req.chatId, f); emit({ type: 'finding', ...f }) }
 
+  const pack = skillsForEngagement(req.engagementType)
+
   try {
     for (let step = 0; step < STEP_CAP; step++) {
       let assistantText = ''
-      const result = streamText({ model, system: systemPrompt(req.engagementType, req.phaseLabel), messages, abortSignal: signal })
+      const result = streamText({ model, system: systemPrompt(req.engagementType, req.phaseLabel, pack), messages, abortSignal: signal })
       for await (const delta of result.textStream) { assistantText += delta; emit({ type: 'text_delta', delta }) }
 
       const calls = parseSkillCalls(assistantText)
@@ -142,10 +143,10 @@ export async function runSend(
         } else if (companyId && engagementId) {
           const skillDef = c.name === 'probe'
             ? { name: 'probe', build: () => ({ command: process.execPath, args: ['-e', `process.stdout.write('probe-output')`] }) }
-            : AWS_SKILLS[c.name]
+            : pack[c.name]
           if (!skillDef) { results.push(`[unknown skill ${c.name}]`); continue }
           const id = randomUUID()
-          const inv: SkillInvocation = { skill: c.name, companyId, engagementId, account: c.args.account, region: c.args.region }
+          const inv: SkillInvocation = { skill: c.name, companyId, engagementId, account: c.args.account, region: c.args.region, tenant: c.args.tenant }
           const deps: RunDeps = { getScope, injectEnv, filledEnvVars }
           const outcome = await runSkill(inv, skillDef as any, recordingEmit, deps, id)
           // Report the ACTUAL outcome to the model — a failed/missing tool must
