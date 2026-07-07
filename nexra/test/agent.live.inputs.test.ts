@@ -57,4 +57,29 @@ describe('runSend request_inputs (M3d)', () => {
     expect(streamText.mock.calls.length).toBe(1)
     expect(events.filter(e => e.type === 'done')).toHaveLength(1)
   })
+
+  // Regression: a request_inputs whose items don't parse (missing/malformed
+  // items arg) used to emit no card and no feedback — the run hung on
+  // "Requesting inputs". Now the model is told the correct format and retries.
+  it('feeds the format back (does not hang) when request_inputs parses to zero items', async () => {
+    // Turn 1: malformed request_inputs (wrong arg, no items=). Turn 2: corrected.
+    streamText.mockReturnValueOnce(fakeStream([
+      'To proceed I need credentials. SKILL_CALL[request_inputs|fields=M365_TENANT_ID,M365_APP_ID,M365_CERT]',
+    ]))
+    streamText.mockReturnValueOnce(fakeStream([
+      'SKILL_CALL[request_inputs|items=M365_TENANT_ID:Tenant domain:-:r;M365_APP_ID:App ID:-:r;M365_CERT:Certificate:s:r]',
+    ]))
+    const events: AgentEvent[] = []
+    await runSend(req, cfg, e => events.push(e), new AbortController().signal)
+
+    // The malformed call did NOT hang: the model was re-invoked (turn 2) and the
+    // corrected call produced exactly one input_request card.
+    expect(streamText.mock.calls.length).toBe(2)
+    const reqEvents = events.filter(e => e.type === 'input_request')
+    expect(reqEvents).toHaveLength(1)
+    expect((reqEvents[0] as any).items.map((i: any) => i.key)).toEqual(['M365_TENANT_ID', 'M365_APP_ID', 'M365_CERT'])
+    // The corrective feedback was sent back to the model on turn 2.
+    const turn2 = streamText.mock.calls[1][0].messages.map((m: any) => m.content).join('\n')
+    expect(turn2).toContain('request_inputs produced NO items')
+  })
 })

@@ -30,10 +30,15 @@ describe('M365 credential guidance — app-only cert, never username/password', 
       expect(p).toContain('M365_TENANT_ID')
       expect(p).toContain('M365_APP_ID')
       expect(p).toContain('M365_CERT')
+      // Gives the model the exact request_inputs grammar to copy, so it can't
+      // slip into a format that parses to zero items (which hangs the run).
+      expect(p).toContain('SKILL_CALL[request_inputs|items=M365_TENANT_ID:')
       // Explicitly steers away from a username/password login.
-      expect(p.toLowerCase()).toContain('never request a username or password')
+      const lower = p.toLowerCase()
+      expect(lower).toContain('never')
+      expect(lower).toContain('username or password')
       // The prompt must not solicit a password field.
-      expect(p.toLowerCase()).not.toContain('password:')
+      expect(lower).not.toContain('password:')
     })
   }
 
