@@ -130,14 +130,16 @@ export function RequestCard({ message, companyId, onFulfill }: RequestCardProps)
     const [mode, setMode] = useState<'all' | 'allowlist'>('all')
     const [accounts, setAccounts] = useState<string[]>([])
     const [regions, setRegions] = useState<string[]>([])
+    const [tenants, setTenants] = useState<string[]>([])
     const [accountInput, setAccountInput] = useState('')
     const [regionInput, setRegionInput] = useState('')
+    const [tenantInput, setTenantInput] = useState('')
     const [scopeSaved, setScopeSaved] = useState(false)
     const [continued, setContinued] = useState(false)
     const continuedRef = useRef(false)
 
     const handleSetScope = async () => {
-      const scope: EngagementScope = { mode, accounts, regions }
+      const scope: EngagementScope = { mode, accounts, regions, tenants }
       setLoading(true)
       try {
         const engagementId = (message as any).engagementId
@@ -187,6 +189,14 @@ export function RequestCard({ message, companyId, onFulfill }: RequestCardProps)
                 <button onClick={() => { if (regionInput) { setRegions([...regions, regionInput]); setRegionInput('') } }} style={{ padding: '6px 8px', background: theme.border, border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>Add</button>
               </div>
               <div>{regions.map(r => <div key={r} style={{ fontSize: '12px', background: theme.bg, padding: '4px', borderRadius: '3px', marginBottom: '4px', display: 'flex', justifyContent: 'space-between' }}>{r} <button onClick={() => setRegions(regions.filter(x => x !== r))} style={{ background: 'none', border: 'none', color: '#f0616d', cursor: 'pointer' }}>×</button></div>)}</div>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', color: theme.muted, marginBottom: '4px' }}>Tenant(s)</label>
+              <div style={{ display: 'flex', gap: '4px', marginBottom: '4px' }}>
+                <input type="text" value={tenantInput} onChange={e => setTenantInput(e.target.value)} placeholder="contoso.onmicrosoft.com" style={{ flex: 1, padding: '6px', background: theme.bg, border: `1px solid ${theme.border}`, borderRadius: '4px', color: theme.text, fontSize: '12px' }} />
+                <button onClick={() => { if (tenantInput) { setTenants([...tenants, tenantInput]); setTenantInput('') } }} style={{ padding: '6px 8px', background: theme.border, border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>Add</button>
+              </div>
+              <div>{tenants.map(t => <div key={t} style={{ fontSize: '12px', background: theme.bg, padding: '4px', borderRadius: '3px', marginBottom: '4px', display: 'flex', justifyContent: 'space-between' }}>{t} <button onClick={() => setTenants(tenants.filter(x => x !== t))} style={{ background: 'none', border: 'none', color: '#f0616d', cursor: 'pointer' }}>×</button></div>)}</div>
             </div>
           </>
         )}
