@@ -39,6 +39,28 @@ describe('scope.validate (pure, below the LLM)', () => {
     const s: EngagementScope = { mode: 'allowlist', accounts: [], regions: [] }
     expect(validate({ account: '111111111111' }, s).allowed).toBe(false)
   })
+
+  it('allowlist permits an in-scope tenant', () => {
+    const s: EngagementScope = { mode: 'allowlist', accounts: [], regions: [], tenants: ['contoso.onmicrosoft.com'] }
+    expect(validate({ tenant: 'contoso.onmicrosoft.com' }, s).allowed).toBe(true)
+  })
+
+  it('allowlist denies an out-of-scope tenant', () => {
+    const s: EngagementScope = { mode: 'allowlist', accounts: [], regions: [], tenants: ['contoso.onmicrosoft.com'] }
+    const d = validate({ tenant: 'evil.onmicrosoft.com' }, s)
+    expect(d.allowed).toBe(false)
+    expect(d.reason).toMatch(/out of scope/i)
+  })
+
+  it('allowlist requires the tenant it restricts', () => {
+    const s: EngagementScope = { mode: 'allowlist', accounts: [], regions: [], tenants: ['contoso.onmicrosoft.com'] }
+    expect(validate({}, s).allowed).toBe(false)
+  })
+
+  it('an allowlist with only tenants still fails closed when target has none', () => {
+    const s: EngagementScope = { mode: 'allowlist', accounts: [], regions: [], tenants: [] }
+    expect(validate({ tenant: 'contoso.onmicrosoft.com' }, s).allowed).toBe(false)
+  })
 })
 
 describe('scope persistence', () => {
@@ -53,12 +75,17 @@ describe('scope persistence', () => {
   it('round-trips a scope record', () => {
     const s: EngagementScope = { mode: 'allowlist', accounts: ['111111111111'], regions: ['us-east-1', 'us-west-2'] }
     setScope('eng1', s)
-    expect(getScope('eng1')).toEqual(s)
+    expect(getScope('eng1')).toEqual({ ...s, tenants: [] })
   })
 
   it('overwrites on repeat set', () => {
     setScope('eng1', { mode: 'allowlist', accounts: ['1'], regions: [] })
     setScope('eng1', { mode: 'all', accounts: [], regions: [] })
     expect(getScope('eng1')?.mode).toBe('all')
+  })
+
+  it('round-trips tenants and defaults a legacy row without them to []', () => {
+    setScope('m365eng', { mode: 'allowlist', accounts: [], regions: [], tenants: ['contoso.onmicrosoft.com'] })
+    expect(getScope('m365eng')).toEqual({ mode: 'allowlist', accounts: [], regions: [], tenants: ['contoso.onmicrosoft.com'] })
   })
 })

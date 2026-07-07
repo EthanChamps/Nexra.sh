@@ -13,7 +13,7 @@ export function setScope(engagementId: string, scope: EngagementScope): void {
   setScopeRow(engagementId, scope)
 }
 
-export interface Target { account?: string; region?: string }
+export interface Target { account?: string; region?: string; tenant?: string }
 export interface Decision { allowed: boolean; reason?: string }
 
 // Validate a typed-skill target against a scope record. `mode:'all'` permits
@@ -23,7 +23,8 @@ export interface Decision { allowed: boolean; reason?: string }
 export function validate(target: Target, scope: EngagementScope): Decision {
   if (scope.mode === 'all') return { allowed: true }
 
-  if (scope.accounts.length === 0 && scope.regions.length === 0)
+  const tenants = scope.tenants ?? []
+  if (scope.accounts.length === 0 && scope.regions.length === 0 && tenants.length === 0)
     return { allowed: false, reason: 'scope allowlist is empty — nothing is in scope' }
 
   if (scope.accounts.length > 0) {
@@ -35,6 +36,11 @@ export function validate(target: Target, scope: EngagementScope): Decision {
     if (!target.region) return { allowed: false, reason: 'target region required by allowlist' }
     if (!scope.regions.includes(target.region))
       return { allowed: false, reason: `region ${target.region} is out of scope` }
+  }
+  if (tenants.length > 0) {
+    if (!target.tenant) return { allowed: false, reason: 'target tenant required by allowlist' }
+    if (!tenants.includes(target.tenant))
+      return { allowed: false, reason: `tenant ${target.tenant} is out of scope` }
   }
   return { allowed: true }
 }
