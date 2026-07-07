@@ -137,6 +137,12 @@ export function runSkill(
     })
     child.on('close', code => {
       const exitCode = code ?? 0
+      if (exitCode === UNAVAILABLE_EXIT_CODE) {
+        const reason = `${command} reported a missing prerequisite`
+        emit({ type: 'skill', id, skill: def.name, state: 'unavailable', command, message: reason, installCmd: def.installCmd })
+        resolve({ state: 'unavailable', reason })
+        return
+      }
       const duration = ((Date.now() - startedAt) / 1000).toFixed(1) + 's'
       emit({ type: 'skill', id, skill: def.name, state: 'success', command, exitCode, duration })
       resolve({ state: 'success', exitCode })
