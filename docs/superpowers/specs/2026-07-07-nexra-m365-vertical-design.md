@@ -1,8 +1,19 @@
 # Nexra M365 Config-Review Vertical — Design
 
 **Date:** 2026-07-07
-**Status:** Approved (design), pending implementation plan
+**Status:** Approved (design); auth model revised 2026-07-07 (see Addendum)
 **Author:** brainstormed with operator (Ethan)
+
+> **Addendum (2026-07-07):** Decision 2 below (app-only cert, non-interactive
+> only) has been superseded. M365 audits in practice start with the client
+> handing over an account, not a service principal — so **interactive
+> delegated sign-in is now the primary auth path**, with app-only certificate
+> auth kept as an explicit fallback for clients who require a scoped service
+> principal. This flips the "Non-goals" rejection of interactive auth below.
+> Implemented in PR #41 (`run_scubagear` / `run_scubagear_appauth`). The
+> sections below are left as originally written for history; treat any text
+> asserting "app-only only" or "interactive rejected" as superseded by this
+> addendum and by the current `agent.tools.ts` / `run-scubagear.ps1`.
 
 ## Goal
 
@@ -27,9 +38,15 @@ execute and no tenant to scope against.
    assessor — the 1:1 analog to Prowler. One invocation (`Invoke-SCuBA`) sweeps
    Entra / Exchange / SharePoint / Teams / Defender and emits a CIS/SCuBA-aligned
    report.
-2. **Auth: service principal + certificate (app-only).** Fully non-interactive,
+2. ~~**Auth: service principal + certificate (app-only).** Fully non-interactive,
    fits the ungated automated model. The vault stores tenant ID, app (client) ID,
-   and a certificate. No human in the loop per run.
+   and a certificate. No human in the loop per run.~~
+   **Superseded — see Addendum.** Primary auth is now **interactive delegated
+   sign-in**: the operator signs in once with the account the client provided
+   for the engagement (no app registration, no certificate, no vault-stored
+   secret). App-only cert + vault-stored `M365_TENANT_ID`/`M365_APP_ID`/
+   `M365_CERT` remains available as an explicit fallback (`run_scubagear_appauth`)
+   for clients who require a scoped service principal instead of a human account.
 3. **Execution platform: cross-platform via PowerShell 7.** M365 reviews must be
    runnable on both macOS and Windows. ScubaGear's current providers are
    Graph/PnP/ExchangeOnlineManagement-module based and run on PS7. App-only
@@ -42,7 +59,12 @@ execute and no tenant to scope against.
 - Azure / internal / external verticals (separate specs; pentest carries a higher
   safety bar and must not be first).
 - Report export / PDF generation (Phase 5, separate).
-- Interactive / device-code auth (rejected — breaks the ungated headless model).
+- ~~Interactive / device-code auth (rejected — breaks the ungated headless model).~~
+  **Superseded — see Addendum.** Interactive delegated sign-in is now the
+  primary auth path (`run_scubagear`); it is not headless/unattended by design,
+  since it is the operator completing a real sign-in with the client-provided
+  account. The fully unattended, ungated posture is preserved by the
+  `run_scubagear_appauth` fallback for engagements that need it.
 - Rewriting the agent loop, evidence model, or findings persistence — all reused
   unchanged.
 
@@ -76,7 +98,55 @@ pack, so an unimplemented type degrades honestly rather than mis-dispatching.
 
 ### Seam 2 — `M365_SKILLS` tool pack (`agent.tools.ts`)
 
-One primary skill, structured exactly like the AWS `SkillDef`s:
+**As implemented (superseding the original one-skill sketch below):** two
+skills sharing one wrapper, selected via `-Auth`:
+
+```ts
+export const M365_SKILLS: Record<string, SkillDef> = {
+  run_scubagear: {                     // PRIMARY — interactive delegated sign-in
+    name: 'run_scubagear',
+    // No requiredEnvVars: nothing to pre-provide. The operator completes the
+    // sign-in themselves at run time with the account the client gave for the
+    // engagement; the tenant is a scope target (tenant= arg), not a secret.
+    installCmd: 'pwsh -c "Install-Module ScubaGear -Scope CurrentUser"',
+    build: inv => ({
+      command: 'pwsh',
+      args: ['-NoProfile', '-File', SCUBA_WRAPPER, '-Tenant', inv.tenant ?? '', '-Auth', 'interactive'],
+    }),
+  },
+  run_scubagear_appauth: {             // FALLBACK — app-only certificate / SP
+    name: 'run_scubagear_appauth',
+    requiredEnvVars: ['M365_TENANT_ID', 'M365_APP_ID', 'M365_CERT'],
+    installCmd: 'pwsh -c "Install-Module ScubaGear -Scope CurrentUser"',
+    build: inv => ({
+      command: 'pwsh',
+      args: ['-NoProfile', '-File', SCUBA_WRAPPER, '-Tenant', inv.tenant ?? '', '-Auth', 'app'],
+    }),
+  },
+}
+```
+
+`SCUBA_WRAPPER` is a small vendored PowerShell script (shipped in the app
+resources, path resolved at runtime) that:
+
+1. Takes `-Auth interactive|app` to select the auth path per invocation.
+   - `interactive` (primary): omits the app-only params entirely — ScubaGear
+     prompts the operator to sign in with the client-provided account, and one
+     sign-in drives the per-product connections.
+   - `app` (fallback): reads tenant / app / certificate from the injected
+     **child env** (never args that could log a secret) and connects app-only.
+2. Verifies the ScubaGear module is importable; if not, exits with a **distinct
+   non-zero code** so the skill reports `unavailable` with the install hint
+   rather than a false green (see Seam 3).
+3. Runs `Invoke-SCuBA` for the product set (currently the full `'*'` sweep;
+   phase-scoped product mapping is a follow-up, not yet implemented).
+4. Reads the ScubaGear results JSON and prints a concise machine-readable
+   pass/fail summary **plus the results path** to stdout. This is what the agent
+   sees and references via `tool_output=SKILL_ID` — the existing evidence path
+   works unchanged; no new evidence type is introduced.
+
+<details>
+<summary>Original one-skill sketch (superseded)</summary>
 
 ```ts
 export const M365_SKILLS: Record<string, SkillDef> = {
@@ -92,21 +162,10 @@ export const M365_SKILLS: Record<string, SkillDef> = {
 }
 ```
 
-`SCUBA_WRAPPER` is a small vendored PowerShell script (shipped in the app
-resources, path resolved at runtime) that:
+This assumed app-only-only auth; see the Addendum and the "as implemented"
+version above.
 
-1. Reads tenant / app / certificate from the injected **child env** (never args
-   that could log a secret).
-2. Verifies the ScubaGear module is importable; if not, exits with a **distinct
-   non-zero code** so the skill reports `unavailable` with the install hint
-   rather than a false green (see Seam 3).
-3. Connects app-only with the certificate and runs `Invoke-SCuBA` for the product
-   set mapped from the engagement phase (Identity→aad, Exchange→exo,
-   SharePoint→sharepoint, Compliance→defender; full-sweep when no phase).
-4. Reads the ScubaGear results JSON and prints a concise machine-readable
-   pass/fail summary **plus the results path** to stdout. This is what the agent
-   sees and references via `tool_output=SKILL_ID` — the existing evidence path
-   works unchanged; no new evidence type is introduced.
+</details>
 
 ### Seam 3 — Requirement preflight
 
@@ -153,28 +212,39 @@ unchanged; covered by a schema/migration test.
 - **`systemPrompt(engagementType, phaseLabel, pack)`** renders the resolved
   pack's skill descriptions instead of the hardcoded AWS list, and swaps the
   AWS-specific credential paragraph ("run_* skills authenticate from
-  AWS_ACCESS_KEY_ID…") for pack-appropriate guidance. For M365: request
-  `M365_TENANT_ID` (not-secret), `M365_APP_ID` (not-secret), `M365_CERT`
-  (secret); do not ask for values ScubaGear derives from these.
+  AWS_ACCESS_KEY_ID…") for pack-appropriate guidance. **As implemented:** the
+  M365 guidance steers the model to `run_scubagear` (delegated sign-in) first —
+  the operator signs in themselves, so the model requests nothing beyond the
+  tenant (a scope target, not a credential) — and only to
+  `run_scubagear_appauth`'s `M365_TENANT_ID` (not-secret) / `M365_APP_ID`
+  (not-secret) / `M365_CERT` (secret) when the client requires a scoped service
+  principal. It never solicits a raw username/password.
 - **`cleanBaseEnv`** (`agent.tools.ts`) strips `M365_*` (and any certificate
   material) in addition to `AWS_*`, so a stray host value can't bleed into a
   child run. The vault overlays the engagement's named secrets on top, as today.
 
 ## Data flow (M365 run)
 
+**As implemented — primary (delegated) path:**
+
 1. Operator opens an M365 engagement chat → `req.engagementType === 'm365'`.
 2. `runSend` resolves `pack = skillsForEngagement('m365')` → `M365_SKILLS`; builds
    the system prompt from that pack.
-3. Agent emits `SKILL_CALL[run_scubagear|tenant=contoso.onmicrosoft.com]` (or the
-   phase-scoped variant).
-4. `runSkill` gates: scope exists → tenant in scope → `M365_TENANT_ID/APP_ID/CERT`
-   all filled. Any gate unmet → `scope_request` / `denied` / `input_request`, no
-   spawn.
-5. All gates pass → spawn `pwsh` with creds injected into the **child env only**;
-   the wrapper connects app-only, runs `Invoke-SCuBA`, prints summary + results
-   path to stdout.
+3. Agent emits `SKILL_CALL[run_scubagear|tenant=contoso.onmicrosoft.com]`.
+4. `runSkill` gates: scope exists → tenant in scope. `run_scubagear` has no
+   `requiredEnvVars`, so there is no credential gate — the sign-in itself
+   happens at spawn time. Scope unmet → `scope_request` / `denied`, no spawn.
+5. Gate passes → spawn `pwsh -Auth interactive`; the wrapper omits the app-only
+   params so ScubaGear prompts the operator to sign in with the client-provided
+   account, then runs `Invoke-SCuBA`, printing summary + results path to stdout.
 6. Agent reads the summary, logs findings with `tool_output=<skill id>` evidence;
    `computeVerified` marks them verified. Findings persist via `upsertFinding`.
+
+**Fallback (app-only) path:** identical, except the agent calls
+`run_scubagear_appauth`, `runSkill` additionally gates on
+`M365_TENANT_ID`/`M365_APP_ID`/`M365_CERT` all filled (`input_request` if not),
+and the wrapper runs with `-Auth app` using creds injected into the **child env
+only**.
 
 ## Testing & done-criteria
 
@@ -184,8 +254,12 @@ live tenant is needed for CI:
 
 - **Scope deny:** a `run_scubagear` against a tenant not in the allowlist returns
   `denied`, never spawns.
-- **Missing-credential block:** absent `M365_CERT` → `input_request` for the
-  missing var(s), `blocked`, never spawns.
+- **Delegated primary needs no pre-provided secret:** `run_scubagear` has
+  `requiredEnvVars: []` — nothing gates the run beyond scope; the sign-in
+  happens at spawn time.
+- **Missing-credential block (fallback):** absent `M365_CERT` on
+  `run_scubagear_appauth` → `input_request` for the missing var(s), `blocked`,
+  never spawns.
 - **Unavailable (pwsh missing):** spawn ENOENT → `unavailable` + install hint.
 - **Unavailable (module missing):** wrapper sentinel exit → `unavailable` + hint,
   **not** `success`.
@@ -200,35 +274,50 @@ live tenant is needed for CI:
 **Ship-ready is met when:**
 
 1. All of the above pass on **macOS and Windows** (`npm test` green on both).
-2. A real ScubaGear run against a live **E5 tenant** (app-only cert auth) produces
-   at least one evidence-backed, verified finding — on both OSes, or the macOS
-   spike (below) is formally descoped with the cross-platform decision revisited.
+2. A real ScubaGear run against a live **E5 tenant** produces at least one
+   evidence-backed, verified finding via the primary delegated path — on both
+   OSes, or the macOS interactive-auth spike (below) is formally descoped with
+   the cross-platform decision revisited. The app-only fallback should be
+   verified separately if a client engagement requires it.
 3. The scope-setting UI accepts and persists a **tenant** for an M365 engagement.
-4. The M365 seed phases map to ScubaGear product groups (verified in the wrapper's
-   phase→product mapping).
+4. The M365 seed phases map to ScubaGear product groups — **not yet
+   implemented**; both auth paths currently run the full `'*'` product sweep
+   regardless of phase. Tracked as a follow-up, not a blocker for the auth
+   model change in PR #41.
 
 ## Risks
 
-- **App-only certificate auth on PS7 / non-Windows (primary spike).** ScubaGear's
-  historically common path is `-CertificateThumbprint` against the Windows cert
-  store. Cross-platform app-only auth needs the certificate delivered as an
-  injected PFX (path + password, or base64 in env) and the modules connected with
-  an explicit certificate object before `Invoke-SCuBA`. First implementation task
-  should be a spike proving a live cross-platform app-only connection; if a
-  ScubaGear provider has no Mac path, fall back to the "Windows-run, gate cleanly
-  on macOS" posture and revisit decision 3 with the operator. The `M365_CERT`
-  env-var name is intentionally abstract to accommodate either thumbprint or PFX.
+- **Interactive sign-in needs a display (new, from the Addendum).** MSAL's
+  browser-based interactive auth (what ScubaGear's non-`-AppID` path uses)
+  assumes a display the operator can complete a login in. Nexra is a desktop
+  app, so this holds today; it becomes a constraint only if a headless/CI
+  execution mode is added later, at which point the `run_scubagear_appauth`
+  fallback is the intended path for that case.
+- **Per-product sign-in prompts.** ScubaGear's interactive mode may prompt once
+  per product on first connect within a run (not once per run). Acceptable for
+  an operator-attended review; worth surfacing in the UI if it proves confusing
+  in practice.
+- ~~**App-only certificate auth on PS7 / non-Windows (primary spike).**~~
+  **Downgraded — no longer the primary path per the Addendum**, so this is only
+  a risk for the fallback (`run_scubagear_appauth`), not the default flow.
+  ScubaGear's historically common path is `-CertificateThumbprint` against the
+  Windows cert store. Cross-platform app-only auth needs the certificate
+  delivered as an injected PFX (path + password, or base64 in env) and the
+  modules connected with an explicit certificate object before `Invoke-SCuBA`.
+  If a client mandates the fallback on macOS, prove a live cross-platform
+  app-only connection before relying on it; the `M365_CERT` env-var name is
+  intentionally abstract to accommodate either thumbprint or PFX.
 - **ScubaGear runtime & module install weight.** Large module set; the `unavailable`
   + `installCmd` path must be genuinely actionable, and CI must never depend on a
   live tenant (fake spawn only).
-- **Secret handling for the certificate.** A PFX/password is more sensitive than
-  an access key; ensure it is only ever in the child env and stripped from the
-  base env (`cleanBaseEnv`), never in skill args or logged output.
+- **Secret handling for the certificate (fallback path only).** A PFX/password is
+  more sensitive than an access key; ensure it is only ever in the child env and
+  stripped from the base env (`cleanBaseEnv`), never in skill args or logged
+  output.
 
 ## Out of scope for this vertical (explicit)
 
-Report export, Azure/pentest verticals, multi-agent orchestration, interactive
-auth. Follows the AWS vertical's process: spec → writing-plans → subagent-driven
-implementation with reviewer per task → whole-branch review → finish-branch.
-</content>
-</invoke>
+Report export, Azure/pentest verticals, multi-agent orchestration, phase→product
+scoping (currently a full sweep regardless of phase). Follows the AWS vertical's
+process: spec → writing-plans → subagent-driven implementation with reviewer per
+task → whole-branch review → finish-branch.
