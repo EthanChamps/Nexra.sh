@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { spawn as nodeSpawn } from 'node:child_process'
 import { EventEmitter } from 'node:events'
 import { runSkill, cleanBaseEnv, type SkillDef, type SkillInvocation, type RunDeps } from '../electron/services/agent.tools'
+import { M365_SKILLS, skillsForEngagement, UNAVAILABLE_EXIT_CODE, AWS_SKILLS } from '../electron/services/agent.tools'
 import type { AgentEvent } from '../electron/services/agent.types'
 import type { EngagementScope } from '../electron/services/store.types'
 
@@ -133,5 +134,28 @@ describe('cleanBaseEnv', () => {
   })
   it('drops undefined values', () => {
     expect(cleanBaseEnv({ A: 'x', B: undefined })).toEqual({ A: 'x' })
+  })
+})
+
+describe('M365 tool pack + resolver', () => {
+  it('resolves the M365 pack for m365 engagements and AWS for aws', () => {
+    expect(skillsForEngagement('m365')).toBe(M365_SKILLS)
+    expect(skillsForEngagement('aws')).toBe(AWS_SKILLS)
+    expect(skillsForEngagement('internal')).toEqual({})
+  })
+
+  it('run_scubagear requires tenant/app/cert credentials', () => {
+    expect(M365_SKILLS.run_scubagear.requiredEnvVars).toEqual(['M365_TENANT_ID', 'M365_APP_ID', 'M365_CERT'])
+  })
+
+  it('run_scubagear builds a pwsh invocation carrying the tenant', () => {
+    const built = M365_SKILLS.run_scubagear.build({ skill: 'run_scubagear', companyId: 'c1', engagementId: 'e1', tenant: 'contoso.onmicrosoft.com' })
+    expect(built.command).toBe('pwsh')
+    expect(built.args).toContain('contoso.onmicrosoft.com')
+  })
+
+  it('cleanBaseEnv strips M365_* as well as AWS_*', () => {
+    const cleaned = cleanBaseEnv({ PATH: '/usr/bin', AWS_SECRET_ACCESS_KEY: 'x', M365_CERT: 'y', M365_APP_ID: 'z', KEEP: 'ok' })
+    expect(cleaned).toEqual({ PATH: '/usr/bin', KEEP: 'ok' })
   })
 })
