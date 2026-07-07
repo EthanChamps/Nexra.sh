@@ -195,7 +195,7 @@ export const M365_SKILLS: Record<string, SkillDef> = {
     name: 'run_scubagear',
     requiredEnvVars: ['M365_TENANT_ID', 'M365_APP_ID', 'M365_CERT'],
     installCmd: 'pwsh -c "Install-Module ScubaGear -Scope CurrentUser"',
-    promptLine: 'run_scubagear|tenant=TENANT: Assess the M365 tenant against the CIS/SCuBA baseline via ScubaGear.',
+    promptLine: 'run_scubagear|tenant=TENANT: Assess the M365 tenant against the CISA SCuBA secure-configuration baseline via ScubaGear.',
     build: inv => ({ command: 'pwsh', args: ['-NoProfile', '-File', SCUBA_WRAPPER, '-Tenant', inv.tenant ?? ''] }),
   },
 }
