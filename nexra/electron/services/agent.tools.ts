@@ -25,6 +25,11 @@ export interface SkillDef {
   installCmd?: string
   // One-line description rendered into the system prompt's skill menu.
   promptLine?: string
+  // Tells the model EXACTLY which inputs this skill authenticates from, so it
+  // requests those (and nothing else) via request_inputs instead of inventing a
+  // generic login. Rendered into the prompt's Credentials block; pack-level, so
+  // it is identical across every phase of an engagement.
+  credentialHint?: string
   // Build the concrete child command from a validated invocation.
   build(inv: SkillInvocation): { command: string; args: string[] }
 }
@@ -158,12 +163,15 @@ export function runSkill(
 // _SESSION_TOKEN). Executing them for real needs the tools installed + an AWS
 // account (the milestone "Done when"); the runSkill plumbing + guarantee above
 // is exercised by tests with a fake skill.
+const AWS_CRED_HINT = 'The AWS skills authenticate from AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY (both secret; AWS_SESSION_TOKEN optional). When you need AWS credentials, request_inputs EXACTLY those; never ask for a profile name.'
+
 export const AWS_SKILLS: Record<string, SkillDef> = {
   run_prowler: {
     name: 'run_prowler',
     requiredEnvVars: ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY'],
     installCmd: 'pip install prowler',
     promptLine: 'run_prowler|account=ID|region=REGION: Enumerate via Prowler.',
+    credentialHint: AWS_CRED_HINT,
     build: inv => ({ command: 'prowler', args: ['aws', ...(inv.region ? ['-f', inv.region] : [])] }),
   },
   run_scoutsuite: {
@@ -171,6 +179,7 @@ export const AWS_SKILLS: Record<string, SkillDef> = {
     requiredEnvVars: ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY'],
     installCmd: 'pip install scoutsuite',
     promptLine: 'run_scoutsuite|account=ID: Enumerate via ScoutSuite.',
+    credentialHint: AWS_CRED_HINT,
     build: () => ({ command: 'scout', args: ['aws'] }),
   },
   run_pmapper: {
@@ -178,6 +187,7 @@ export const AWS_SKILLS: Record<string, SkillDef> = {
     requiredEnvVars: ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY'],
     installCmd: 'pip install principalmapper',
     promptLine: 'run_pmapper|account=ID: Enumerate via PMapper.',
+    credentialHint: AWS_CRED_HINT,
     build: () => ({ command: 'pmapper', args: ['graph', 'create'] }),
   },
 }
@@ -196,6 +206,7 @@ export const M365_SKILLS: Record<string, SkillDef> = {
     requiredEnvVars: ['M365_TENANT_ID', 'M365_APP_ID', 'M365_CERT'],
     installCmd: 'pwsh -c "Install-Module ScubaGear -Scope CurrentUser"',
     promptLine: 'run_scubagear|tenant=TENANT: Assess the M365 tenant against the CISA SCuBA secure-configuration baseline via ScubaGear.',
+    credentialHint: 'run_scubagear authenticates app-only with a certificate — no interactive login. When you need its credentials, request_inputs EXACTLY these three: M365_TENANT_ID (tenant domain or id, not-secret), M365_APP_ID (app-registration client id, not-secret), M365_CERT (certificate, secret). NEVER request a username or password — M365 password sign-in is unsupported here.',
     build: inv => ({ command: 'pwsh', args: ['-NoProfile', '-File', SCUBA_WRAPPER, '-Tenant', inv.tenant ?? ''] }),
   },
 }
