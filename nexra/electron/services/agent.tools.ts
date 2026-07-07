@@ -206,7 +206,7 @@ export const M365_SKILLS: Record<string, SkillDef> = {
     requiredEnvVars: ['M365_TENANT_ID', 'M365_APP_ID', 'M365_CERT'],
     installCmd: 'pwsh -c "Install-Module ScubaGear -Scope CurrentUser"',
     promptLine: 'run_scubagear|tenant=TENANT: Assess the M365 tenant against the CISA SCuBA secure-configuration baseline via ScubaGear.',
-    credentialHint: 'run_scubagear authenticates app-only with a certificate — no interactive login. When you need its credentials, request_inputs EXACTLY these three: M365_TENANT_ID (tenant domain or id, not-secret), M365_APP_ID (app-registration client id, not-secret), M365_CERT (certificate, secret). NEVER request a username or password — M365 password sign-in is unsupported here.',
+    credentialHint: 'run_scubagear authenticates app-only with a certificate — no interactive login, and NEVER a username or password (M365 password sign-in is unsupported). When you need its credentials, emit this exact call: SKILL_CALL[request_inputs|items=M365_TENANT_ID:Tenant domain:-:r;M365_APP_ID:App registration client ID:-:r;M365_CERT:Certificate (PFX path or thumbprint):s:r]',
     build: inv => ({ command: 'pwsh', args: ['-NoProfile', '-File', SCUBA_WRAPPER, '-Tenant', inv.tenant ?? ''] }),
   },
 }
