@@ -58,7 +58,14 @@ export function systemPrompt(engagementType: string, phaseLabel: string, pack: R
     '- attach_evidence|finding=FINDING_ID|tool_output=SKILL_ID  OR  |host=HOST|detail=ISSUE: Attach evidence. A finding is UNVERIFIED until evidence is attached.',
     '- request_inputs|items=KEY:LABEL:SENS:REQ;...: Ask the operator for credentials/config. SENS \'s\'=secret (default), \'-\'=not secret; REQ \'r\'=required (default), \'-\'=optional. Mark non-credentials (tenant, account id, region) as not-secret. Do NOT request values a skill derives from the credentials it already requires.',
   ].join('\n')
-  const skills = `\nAvailable skills — invoke by writing SKILL_CALL[name|arg=value|...]:\n${packLines}\n${findingLines}`
+  // Pack-level credential guidance (same for every phase): tells the model
+  // exactly what each skill authenticates from so it never invents a generic
+  // login (e.g. asking for an M365 username/password the skill would ignore).
+  const credHints = [...new Set(Object.values(pack).map(s => s.credentialHint).filter(Boolean))]
+  const credBlock = credHints.length
+    ? `\nCredentials — when a skill needs authentication, request_inputs EXACTLY the inputs named below and nothing else:\n${credHints.map(h => `- ${h}`).join('\n')}`
+    : ''
+  const skills = `\nAvailable skills — invoke by writing SKILL_CALL[name|arg=value|...]:\n${packLines}\n${findingLines}${credBlock}`
   return (
     `You are Nexra, an AI assistant embedded in a security consultant's console, ` +
     `helping with a ${engagementType} engagement.${phase} ` +

@@ -16,3 +16,30 @@ describe('systemPrompt is pack-aware', () => {
     expect(p).not.toContain('run_scubagear')
   })
 })
+
+describe('M365 credential guidance — app-only cert, never username/password', () => {
+  // Every phase of an M365 engagement must steer the model to the three
+  // app-only inputs and away from an interactive login. Guidance is pack-level,
+  // so it must appear regardless of which phase the prompt is built for.
+  const M365_PHASES = ['Identity', 'Exchange', 'SharePoint', 'Compliance', '']
+
+  for (const phase of M365_PHASES) {
+    it(`names the three app-only inputs and forbids a password in the ${phase || '(no)'} phase`, () => {
+      const p = systemPrompt('m365', phase, skillsForEngagement('m365'))
+      // Requests exactly tenant id + app id + certificate.
+      expect(p).toContain('M365_TENANT_ID')
+      expect(p).toContain('M365_APP_ID')
+      expect(p).toContain('M365_CERT')
+      // Explicitly steers away from a username/password login.
+      expect(p.toLowerCase()).toContain('never request a username or password')
+      // The prompt must not solicit a password field.
+      expect(p.toLowerCase()).not.toContain('password:')
+    })
+  }
+
+  it('an aws engagement gets AWS credential guidance, not M365 vars', () => {
+    const p = systemPrompt('aws', 'IAM', skillsForEngagement('aws'))
+    expect(p).toContain('AWS_ACCESS_KEY_ID')
+    expect(p).not.toContain('M365_CERT')
+  })
+})
