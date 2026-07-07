@@ -4,6 +4,11 @@ import type { AgentEvent } from './agent.types'
 import type { EngagementScope } from './store.types'
 import { validate, type Target } from './scope'
 
+// A skill wrapper exits with this code to mean "a runtime prerequisite is
+// missing" (e.g. the ScubaGear module isn't installed) — distinct from a clean
+// success so runSkill reports `unavailable` with an install hint, not a green run.
+export const UNAVAILABLE_EXIT_CODE = 3
+
 // The typed-skill execution layer (M3b). The agent NEVER gets a freeform shell;
 // it may only invoke one of these fixed skills. That is what makes both the
 // scope guarantee and the "agent can't see the credential" guarantee real:
@@ -57,6 +62,7 @@ export function cleanBaseEnv(env: Record<string, string | undefined>): Record<st
   for (const [k, v] of Object.entries(env)) {
     if (v == null) continue
     if (/^AWS_/.test(k)) continue
+    if (/^M365_/.test(k)) continue
     out[k] = v
   }
   return out
@@ -162,4 +168,33 @@ export const AWS_SKILLS: Record<string, SkillDef> = {
     installCmd: 'pip install principalmapper',
     build: () => ({ command: 'pmapper', args: ['graph', 'create'] }),
   },
+}
+
+import { join } from 'node:path'
+
+// The vendored PowerShell wrapper that connects app-only and runs Invoke-SCuBA.
+// Shipped alongside the services; resolved at runtime.
+export const SCUBA_WRAPPER = join(__dirname, 'scripts', 'run-scubagear.ps1')
+
+// ── M365 tool pack ───────────────────────────────────────────────────────────
+// ScubaGear (CISA M365 Secure Configuration Baseline). App-only certificate auth;
+// creds arrive via the injected child env (M365_TENANT_ID / M365_APP_ID /
+// M365_CERT), never via args. See docs/superpowers/specs/2026-07-07-nexra-m365-vertical-design.md.
+export const M365_SKILLS: Record<string, SkillDef> = {
+  run_scubagear: {
+    name: 'run_scubagear',
+    requiredEnvVars: ['M365_TENANT_ID', 'M365_APP_ID', 'M365_CERT'],
+    installCmd: 'pwsh -c "Install-Module ScubaGear -Scope CurrentUser"',
+    build: inv => ({ command: 'pwsh', args: ['-NoProfile', '-File', SCUBA_WRAPPER, '-Tenant', inv.tenant ?? ''] }),
+  },
+}
+
+// Resolve the skill pack an engagement may use. Approach A: keyed by type so
+// each vertical (AWS live; M365 here; Azure/pentest later) owns its own pack.
+export function skillsForEngagement(type: string): Record<string, SkillDef> {
+  switch (type) {
+    case 'aws':  return AWS_SKILLS
+    case 'm365': return M365_SKILLS
+    default:     return {}
+  }
 }
