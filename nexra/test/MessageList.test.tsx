@@ -29,6 +29,7 @@ describe('MessageList', () => {
     const chat = { ...baseChat, messages: [{ id: 'u1', role: 'user', kind: 'text', content: 'hi' }] } as unknown as Chat
     render(<MessageList chat={chat} streaming />)
     expect(screen.getByRole('status', { name: /responding/i })).toBeInTheDocument()
+    expect(screen.getByText('Working…')).toBeInTheDocument()
   })
 
   it('hides the typing indicator once an assistant message has started', () => {
@@ -50,6 +51,7 @@ describe('MessageList', () => {
     } as unknown as Chat
     render(<MessageList chat={chat} streaming />)
     expect(screen.getByRole('status', { name: /responding/i })).toBeInTheDocument()
+    expect(screen.getByText('Resuming…')).toBeInTheDocument()
   })
 
   it('hides the typing indicator when not streaming', () => {
