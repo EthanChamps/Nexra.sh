@@ -144,6 +144,10 @@ describe('M365 tool pack + resolver', () => {
     expect(skillsForEngagement('internal')).toEqual({})
   })
 
+  it('exposes the unavailable sentinel exit code', () => {
+    expect(UNAVAILABLE_EXIT_CODE).toBe(3)
+  })
+
   it('run_scubagear requires tenant/app/cert credentials', () => {
     expect(M365_SKILLS.run_scubagear.requiredEnvVars).toEqual(['M365_TENANT_ID', 'M365_APP_ID', 'M365_CERT'])
   })
