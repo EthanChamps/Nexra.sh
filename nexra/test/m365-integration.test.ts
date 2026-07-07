@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { EventEmitter } from 'node:events'
 
 const streamText = vi.fn()
 vi.mock('ai', () => ({ streamText: (o: any) => streamText(o) }))
@@ -17,22 +16,29 @@ vi.mock('electron', () => ({
   },
 }))
 
-// Fake spawn: intercepts the pwsh ScubaGear wrapper invocation and reports a
-// scripted finding instead of actually shelling out. Never called for the
-// out-of-scope case (asserted below) since runSkill denies before spawning.
-const spawnSpy = vi.fn((_command: string, _args: string[], _options: any) => {
-  const child: any = new EventEmitter()
-  child.stdout = new EventEmitter()
-  child.stderr = new EventEmitter()
-  process.nextTick(() => {
-    child.stdout.emit('data', Buffer.from('Legacy authentication protocols are enabled for contoso.onmicrosoft.com'))
-    child.emit('close', 0)
-  })
-  return child
-})
-vi.mock('node:child_process', async importOriginal => {
-  const actual = await importOriginal<typeof import('node:child_process')>()
-  return { ...actual, spawn: (...a: any[]) => (spawnSpy as any)(...a) }
+// The real run_scubagear skill shells out to `pwsh` running the ScubaGear
+// PowerShell wrapper — not available (and not hermetic) in a unit run. We keep
+// the ENTIRE production skill pipeline (scope gate, credential gate, real
+// spawn, stdout capture into the run registry, success/denied events) and only
+// swap the concrete command to a deterministic node one-liner that prints a
+// finding-shaped line and exits 0 — exactly how the existing `probe`
+// special-case and agent.tools.test.ts stand in for a real tool with
+// process.execPath. Everything under test (tenant scope enforcement,
+// credential injection gating, verified-finding wiring) is genuine production
+// code. A module-path mock (unlike a node-builtin mock) reaches agent.tools
+// inside runSend's own module graph, which a `node:child_process` mock does not.
+const SCUBA_OUTPUT = 'ScubaGear: Legacy authentication protocols are ENABLED for contoso.onmicrosoft.com'
+vi.mock('../electron/services/agent.tools', async importActual => {
+  const actual = await importActual<typeof import('../electron/services/agent.tools')>()
+  const fakeScuba = {
+    ...actual.M365_SKILLS.run_scubagear,
+    build: () => ({ command: process.execPath, args: ['-e', `process.stdout.write(${JSON.stringify(SCUBA_OUTPUT)})`] }),
+  }
+  return {
+    ...actual,
+    M365_SKILLS: { run_scubagear: fakeScuba },
+    skillsForEngagement: (type: string) => (type === 'm365' ? { run_scubagear: fakeScuba } : actual.skillsForEngagement(type)),
+  }
 })
 
 import { initSettingsDb } from '../electron/services/store.sqlite'
@@ -48,10 +54,18 @@ function fakeStream(parts: string[]) {
   return { textStream: (async function* () { for (const p of parts) yield p })(), usage: Promise.resolve({ totalTokens: 3 }) }
 }
 
+function seedM365Secret() {
+  const secret = createSecret({
+    companyId: 'c1', name: 'm365',
+    fields: [{ envVar: 'M365_TENANT_ID' }, { envVar: 'M365_APP_ID' }, { envVar: 'M365_CERT' }],
+    createdBy: 'operator',
+  })
+  fillSecret(secret.id, { M365_TENANT_ID: 'contoso.onmicrosoft.com', M365_APP_ID: 'app-1', M365_CERT: 'cert-1' })
+}
+
 let dir: string
 beforeEach(() => {
   state.available = true
-  spawnSpy.mockClear()
   streamText.mockReset()
   dir = mkdtempSync(join(tmpdir(), 'nexra-m365-int-'))
   initSettingsDb(join(dir, 'nexra.db'))
@@ -61,16 +75,12 @@ afterEach(() => rmSync(dir, { recursive: true, force: true }))
 describe('M365 vertical end-to-end', () => {
   it('runs ScubaGear in-scope and logs a verified finding', async () => {
     setScope('e1', { mode: 'allowlist', accounts: [], regions: [], tenants: ['contoso.onmicrosoft.com'] })
-    const secret = createSecret({
-      companyId: 'c1', name: 'm365',
-      fields: [{ envVar: 'M365_TENANT_ID' }, { envVar: 'M365_APP_ID' }, { envVar: 'M365_CERT' }],
-      createdBy: 'operator',
-    })
-    fillSecret(secret.id, { M365_TENANT_ID: 'contoso.onmicrosoft.com', M365_APP_ID: 'app-1', M365_CERT: 'cert-1' })
+    seedM365Secret()
 
-    // Turn 1: model calls run_scubagear. Turn 2: after seeing the skill id in
-    // the tool-result message, references it as tool_output=<id> so the
-    // finding it logs resolves against the run registry and comes back
+    // Turn 1: model calls run_scubagear against the in-scope tenant. Turn 2:
+    // after runSend feeds back "reference its output with tool_output=<id>",
+    // the model logs a finding citing that id, so evidenceFromArgs resolves the
+    // captured stdout from the run registry and the finding comes back
     // verified. This mirrors agent.live.findings.test.ts's evidence wiring.
     streamText.mockImplementationOnce(() => fakeStream(['SKILL_CALL[run_scubagear|tenant=contoso.onmicrosoft.com]']))
     streamText.mockImplementationOnce((opts: any) => {
@@ -88,7 +98,7 @@ describe('M365 vertical end-to-end', () => {
     const skill = events.find(e => e.type === 'skill' && (e as any).skill === 'run_scubagear')
     expect(skill).toBeTruthy()
     expect(events.some(e => e.type === 'skill' && (e as any).state === 'denied')).toBe(false)
-    expect(spawnSpy).toHaveBeenCalled()
+    expect(events.some(e => e.type === 'skill' && (e as any).state === 'success')).toBe(true)
 
     const finding = events.find(e => e.type === 'finding') as any
     expect(finding).toBeTruthy()
@@ -97,12 +107,7 @@ describe('M365 vertical end-to-end', () => {
 
   it('denies ScubaGear against an out-of-scope tenant, never spawning', async () => {
     setScope('e1', { mode: 'allowlist', accounts: [], regions: [], tenants: ['contoso.onmicrosoft.com'] })
-    const secret = createSecret({
-      companyId: 'c1', name: 'm365',
-      fields: [{ envVar: 'M365_TENANT_ID' }, { envVar: 'M365_APP_ID' }, { envVar: 'M365_CERT' }],
-      createdBy: 'operator',
-    })
-    fillSecret(secret.id, { M365_TENANT_ID: 'contoso.onmicrosoft.com', M365_APP_ID: 'app-1', M365_CERT: 'cert-1' })
+    seedM365Secret()
 
     streamText.mockImplementationOnce(() => fakeStream(['SKILL_CALL[run_scubagear|tenant=evil.onmicrosoft.com]']))
     streamText.mockImplementationOnce(() => fakeStream(['Understood.']))
@@ -112,7 +117,9 @@ describe('M365 vertical end-to-end', () => {
     await runSend(req, cfg, e => events.push(e), new AbortController().signal, 'c1', 'e1')
 
     expect(events.some(e => e.type === 'skill' && (e as any).state === 'denied')).toBe(true)
+    // Never spawned: the tenant-scope gate short-circuits before any child
+    // runs, so there is no running/output/success event for the skill.
     expect(events.some(e => e.type === 'skill' && (e as any).state === 'success')).toBe(false)
-    expect(spawnSpy).not.toHaveBeenCalled()
+    expect(events.some(e => e.type === 'skill' && (e as any).state === 'running')).toBe(false)
   })
 })
