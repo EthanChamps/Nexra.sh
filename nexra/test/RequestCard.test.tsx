@@ -67,28 +67,6 @@ it('toggling "not a secret" unmasks the field and saves it as non-sensitive', as
   expect(fulfill).toHaveBeenCalledWith('co1', 'AWS_ACCESS_KEY_ID', 'plain', false)
 })
 
-it('scope: Continue is disabled until Set Scope succeeds, then enabled', async () => {
-  ;(window as any).nexra = { ...(window as any).nexra, scope: { setAndValidate: vi.fn(() => Promise.resolve({ success: true })) } }
-  const scopeMsg = { id: 'm2', role: 'assistant', kind: 'request', requestKind: 'scope', engagementId: 'e1' }
-  render(<RequestCard message={scopeMsg} companyId="co1" onFulfill={() => {}} />)
-  expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled()
-  fireEvent.click(screen.getByRole('button', { name: 'Set Scope' }))
-  await screen.findByRole('button', { name: 'Scope set' })
-  expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled()
-})
-
-it('scope: clicking Continue calls onFulfill exactly once, not automatically on Set Scope', async () => {
-  ;(window as any).nexra = { ...(window as any).nexra, scope: { setAndValidate: vi.fn(() => Promise.resolve({ success: true })) } }
-  const onFulfill = vi.fn()
-  const scopeMsg = { id: 'm2', role: 'assistant', kind: 'request', requestKind: 'scope', engagementId: 'e1' }
-  render(<RequestCard message={scopeMsg} companyId="co1" onFulfill={onFulfill} />)
-  fireEvent.click(screen.getByRole('button', { name: 'Set Scope' }))
-  await screen.findByRole('button', { name: 'Scope set' })
-  expect(onFulfill).not.toHaveBeenCalled()
-  fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
-  expect(onFulfill).toHaveBeenCalledTimes(1)
-})
-
 it('scope_proposal: prefills the proposed item, adds on confirm, resumes with "added"', async () => {
   const add = vi.fn(() => Promise.resolve({ id: 'i9' }))
   ;(window as any).nexra = { projectScope: { add } }

@@ -8,10 +8,10 @@ import { runTitle } from './services/agent.title'
 import { initSettingsDb, getSetting, setSetting, listFindingsByChat } from './services/store.sqlite'
 import { encryptSecret, decryptSecret } from './services/secrets'
 import { createSecret, fillSecret, tieSecret, listSecrets, deleteSecret, upsertFilledInput } from './services/secrets.vault'
-import { getScope, setScope, getProjectScope, addScopeItem, removeScopeItem, setScopeNotes } from './services/scope'
+import { getProjectScope, addScopeItem, removeScopeItem, setScopeNotes } from './services/scope'
 import { track, untrack } from './services/inflight'
 import type { ProviderConfig } from './services/providers'
-import type { EngagementScope, SecretField, Company, ScopeItemType } from './services/store.types'
+import type { SecretField, Company, ScopeItemType } from './services/store.types'
 import { shellTabs, createSession, writeToSession, resizeSession, killSession, killAllSessions } from './services/shell.pty'
 
 const __dirname2 = path.dirname(fileURLToPath(import.meta.url))
@@ -108,10 +108,6 @@ app.whenReady().then(() => {
   ipcMain.handle('secrets:tie', (_ev, { id, aliasOf }: { id: string; aliasOf: string }) => tieSecret(id, aliasOf))
   ipcMain.handle('secrets:delete', (_ev, id: string) => deleteSecret(id))
 
-  // ── engagement scope (M3b) ──
-  ipcMain.handle('scope:get', (_ev, engagementId: string) => getScope(engagementId))
-  ipcMain.handle('scope:set', (_ev, { engagementId, scope }: { engagementId: string; scope: EngagementScope }) => setScope(engagementId, scope))
-
   // ── project scope (company-shared, enforced) ──
   ipcMain.handle('projectScope:get', (_ev, companyId: string) => getProjectScope(companyId))
   ipcMain.handle('projectScope:add', (_ev, { companyId, input }: { companyId: string; input: { type: ScopeItemType; value: string; source: 'user' | 'agent' } }) => addScopeItem(companyId, input))
@@ -139,15 +135,6 @@ app.whenReady().then(() => {
       return { success: false, error: (err as Error).message }
     }
   })
-  ipcMain.handle('scope:set-and-validate', (_ev, { engagementId, scope }: { engagementId: string; scope: EngagementScope }) => {
-    try {
-      setScope(engagementId, scope)
-      return { success: true }
-    } catch (err) {
-      return { success: false, error: (err as Error).message }
-    }
-  })
-
   ipcMain.handle('shell:tabs', () => shellTabs())
   ipcMain.handle('shell:create', (_ev, { shell, cols, rows, companyId }: { shell: any; cols: number; rows: number; companyId?: string }) => {
     const sessionId = companyId ? `${companyId}:${shell}` : shell

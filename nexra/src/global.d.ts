@@ -1,4 +1,4 @@
-import type { Snapshot, Secret, SecretField, EngagementScope, Finding, ProjectScope, ScopeItem, ScopeItemType } from '../electron/services/store.types'
+import type { Snapshot, Secret, SecretField, Finding, ProjectScope, ScopeItem, ScopeItemType } from '../electron/services/store.types'
 import type { AgentEvent, AgentSendRequest, AgentInstallRequest, AgentTitleRequest } from '../electron/services/agent.types'
 import type { ShellId, ShellTab, ShellCreateResult } from '../electron/services/shell.types'
 
@@ -36,11 +36,6 @@ export interface NexraApi {
   // Agent-requested inputs (M3d) — plaintext travels renderer→main once (mirrors secrets).
   inputs: {
     fulfill(companyId: string, key: string, value: string, sensitive: boolean): Promise<{ success: boolean; error?: string }>
-  }
-  scope: {
-    get(engagementId: string): Promise<EngagementScope | undefined>
-    set(engagementId: string, scope: EngagementScope): Promise<void>
-    setAndValidate(engagementId: string, scope: EngagementScope): Promise<{ success: boolean; error?: string }>
   }
   projectScope: {
     get(companyId: string): Promise<ProjectScope>

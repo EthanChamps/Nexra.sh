@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import type { EngagementScope, SecretField, InputRequestItem, ScopeItemType } from '../../electron/services/store.types'
+import type { SecretField, InputRequestItem, ScopeItemType } from '../../electron/services/store.types'
 import { theme } from '../theme'
 
 export interface RequestCardProps {
@@ -123,87 +123,6 @@ export function RequestCard({ message, companyId, onFulfill, onScopeResolve }: R
         <button onClick={handleFill} disabled={loading} style={{ marginTop: '8px', padding: '6px 12px', background: theme.accent, color: theme.bg, border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
           {loading ? 'Filling...' : 'Fill Now'}
         </button>
-      </div>
-    )
-  }
-
-  if (message.requestKind === 'scope') {
-    const [mode, setMode] = useState<'all' | 'allowlist'>('all')
-    const [accounts, setAccounts] = useState<string[]>([])
-    const [regions, setRegions] = useState<string[]>([])
-    const [accountInput, setAccountInput] = useState('')
-    const [regionInput, setRegionInput] = useState('')
-    const [scopeSaved, setScopeSaved] = useState(false)
-    const [continued, setContinued] = useState(false)
-    const continuedRef = useRef(false)
-
-    const handleSetScope = async () => {
-      const scope: EngagementScope = { mode, accounts, regions }
-      setLoading(true)
-      try {
-        const engagementId = (message as any).engagementId
-        if (!engagementId) throw new Error('No engagement ID')
-        await window.nexra.scope.setAndValidate(engagementId, scope)
-        setScopeSaved(true)
-      } catch (err) {
-        setError((err as Error).message)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    const handleContinue = () => {
-      if (continuedRef.current) return
-      continuedRef.current = true
-      setContinued(true)
-      onFulfill()
-    }
-
-    return (
-      <div style={{ background: theme.card, border: `1px solid ${theme.accent}`, borderRadius: '6px', padding: '12px', marginTop: '8px' }}>
-        <div style={{ fontWeight: 500, marginBottom: '8px' }}>Scope Required</div>
-        {error && <div style={{ color: '#f0616d', fontSize: '12px', marginBottom: '8px' }}>{error}</div>}
-        <div style={{ marginBottom: '8px' }}>
-          <label style={{ display: 'block', fontSize: '12px', marginBottom: '4px' }}>
-            <input type="radio" checked={mode === 'all'} onChange={() => setMode('all')} /> All (no restrictions)
-          </label>
-          <label style={{ display: 'block', fontSize: '12px' }}>
-            <input type="radio" checked={mode === 'allowlist'} onChange={() => setMode('allowlist')} /> Allowlist
-          </label>
-        </div>
-        {mode === 'allowlist' && (
-          <>
-            <div style={{ marginBottom: '8px' }}>
-              <label style={{ display: 'block', fontSize: '12px', color: theme.muted, marginBottom: '4px' }}>AWS Accounts</label>
-              <div style={{ display: 'flex', gap: '4px', marginBottom: '4px' }}>
-                <input type="text" value={accountInput} onChange={e => setAccountInput(e.target.value)} placeholder="111111111111" style={{ flex: 1, padding: '6px', background: theme.bg, border: `1px solid ${theme.border}`, borderRadius: '4px', color: theme.text, fontSize: '12px' }} />
-                <button onClick={() => { if (accountInput) { setAccounts([...accounts, accountInput]); setAccountInput('') } }} style={{ padding: '6px 8px', background: theme.border, border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>Add</button>
-              </div>
-              <div>{accounts.map(a => <div key={a} style={{ fontSize: '12px', background: theme.bg, padding: '4px', borderRadius: '3px', marginBottom: '4px', display: 'flex', justifyContent: 'space-between' }}>{a} <button onClick={() => setAccounts(accounts.filter(x => x !== a))} style={{ background: 'none', border: 'none', color: '#f0616d', cursor: 'pointer' }}>×</button></div>)}</div>
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '12px', color: theme.muted, marginBottom: '4px' }}>Regions</label>
-              <div style={{ display: 'flex', gap: '4px', marginBottom: '4px' }}>
-                <input type="text" value={regionInput} onChange={e => setRegionInput(e.target.value)} placeholder="us-east-1" style={{ flex: 1, padding: '6px', background: theme.bg, border: `1px solid ${theme.border}`, borderRadius: '4px', color: theme.text, fontSize: '12px' }} />
-                <button onClick={() => { if (regionInput) { setRegions([...regions, regionInput]); setRegionInput('') } }} style={{ padding: '6px 8px', background: theme.border, border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>Add</button>
-              </div>
-              <div>{regions.map(r => <div key={r} style={{ fontSize: '12px', background: theme.bg, padding: '4px', borderRadius: '3px', marginBottom: '4px', display: 'flex', justifyContent: 'space-between' }}>{r} <button onClick={() => setRegions(regions.filter(x => x !== r))} style={{ background: 'none', border: 'none', color: '#f0616d', cursor: 'pointer' }}>×</button></div>)}</div>
-            </div>
-          </>
-        )}
-        <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-          <button onClick={handleSetScope} disabled={loading || scopeSaved} style={{ padding: '6px 12px', background: theme.accent, color: theme.bg, border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
-            {scopeSaved ? 'Scope set' : loading ? 'Setting...' : 'Set Scope'}
-          </button>
-          <button
-            type="button"
-            onClick={handleContinue}
-            disabled={!scopeSaved || continued}
-            style={{ padding: '6px 12px', background: theme.accent, color: theme.bg, border: 'none', borderRadius: '4px', cursor: scopeSaved && !continued ? 'pointer' : 'not-allowed', fontSize: '12px', opacity: scopeSaved && !continued ? 1 : 0.5 }}
-          >
-            {continued ? 'Continuing…' : 'Continue'}
-          </button>
-        </div>
       </div>
     )
   }

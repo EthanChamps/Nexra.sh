@@ -41,11 +41,6 @@ contextBridge.exposeInMainWorld('nexra', {
     fulfill: (companyId: string, key: string, value: string, sensitive: boolean) =>
       ipcRenderer.invoke('inputs:fulfill', { companyId, key, value, sensitive }),
   },
-  scope: {
-    get: (engagementId: string) => ipcRenderer.invoke('scope:get', engagementId),
-    set: (engagementId: string, scope: any) => ipcRenderer.invoke('scope:set', { engagementId, scope }),
-    setAndValidate: (engagementId: string, scope: any) => ipcRenderer.invoke('scope:set-and-validate', { engagementId, scope }),
-  },
   projectScope: {
     get: (companyId: string) => ipcRenderer.invoke('projectScope:get', companyId),
     add: (companyId: string, input: { type: string; value: string; source: 'user' | 'agent' }) => ipcRenderer.invoke('projectScope:add', { companyId, input }),

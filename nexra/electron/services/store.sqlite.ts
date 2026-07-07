@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3'
-import type { Secret, SecretField, EngagementScope, Finding, Evidence, ScopeItem } from './store.types'
+import type { Secret, SecretField, Finding, Evidence, ScopeItem } from './store.types'
 
 let db: Database.Database | null = null
 
@@ -36,13 +36,8 @@ export function initSettingsDb(dbPath: string): void {
     blob TEXT NOT NULL,
     PRIMARY KEY (secret_id, env_var)
   )`)
-  // Typed, enforced engagement scope.
-  db.exec(`CREATE TABLE IF NOT EXISTS scope (
-    engagement_id TEXT PRIMARY KEY,
-    mode TEXT NOT NULL,
-    accounts TEXT NOT NULL,
-    regions TEXT NOT NULL
-  )`)
+  // Legacy per-engagement enforced scope — removed (replaced by project_scope).
+  db.exec('DROP TABLE IF EXISTS scope')
   // Project-level (company-shared) enforced scope. Flat authorized-target list.
   db.exec(`CREATE TABLE IF NOT EXISTS project_scope (
     id TEXT PRIMARY KEY,
@@ -183,20 +178,6 @@ export function setSecretValue(secretId: string, envVar: string, blob: string): 
 export function getSecretValueBlob(secretId: string, envVar: string): string | undefined {
   const r = requireDb().prepare('SELECT blob FROM secret_values WHERE secret_id = ? AND env_var = ?').get(secretId, envVar) as { blob: string } | undefined
   return r?.blob
-}
-
-// ── scope (M3b) ─────────────────────────────────────────────────────────────
-export function setScopeRow(engagementId: string, s: EngagementScope): void {
-  requireDb().prepare(
-    `INSERT INTO scope (engagement_id, mode, accounts, regions) VALUES (?, ?, ?, ?)
-     ON CONFLICT(engagement_id) DO UPDATE SET mode=excluded.mode, accounts=excluded.accounts, regions=excluded.regions`,
-  ).run(engagementId, s.mode, JSON.stringify(s.accounts), JSON.stringify(s.regions))
-}
-
-export function getScopeRow(engagementId: string): EngagementScope | undefined {
-  const r = requireDb().prepare('SELECT mode, accounts, regions FROM scope WHERE engagement_id = ?').get(engagementId) as { mode: string; accounts: string; regions: string } | undefined
-  if (!r) return undefined
-  return { mode: r.mode as EngagementScope['mode'], accounts: JSON.parse(r.accounts), regions: JSON.parse(r.regions) }
 }
 
 // ── project scope (company-shared, enforced) ────────────────────────────────

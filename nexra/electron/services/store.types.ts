@@ -23,7 +23,7 @@ export interface Message {
   toolName?: string; command?: string; output?: string; duration?: string
   reason?: string; installCmd?: string; state?: ToolState
   // request cards (M3d): the agent asks the operator for inputs or scope
-  requestKind?: 'inputs' | 'scope' | 'scope_proposal'; requestId?: string; items?: InputRequestItem[]; engagementId?: string
+  requestKind?: 'inputs' | 'scope_proposal'; requestId?: string; items?: InputRequestItem[]; engagementId?: string
   proposeItem?: { type: ScopeItemType; value: string }
 }
 
@@ -52,15 +52,6 @@ export interface Chat {
   messages: Message[]; findings: Finding[]
 }
 
-// Typed, ENFORCED scope for an engagement (distinct from the freeform `scope`
-// display rows below). `mode:'all'` = the agent may touch anything the injected
-// credential can reach; `mode:'allowlist'` = only the listed accounts/regions.
-export interface EngagementScope {
-  mode: 'all' | 'allowlist'
-  accounts: string[]
-  regions: string[]
-}
-
 // Project-level (company-shared) enforced scope. A flat list of authorized
 // targets — everything listed is in scope (there are no out-of-scope
 // exclusions). `source` records whether the operator hand-added it or the
@@ -85,7 +76,6 @@ export interface ProjectScope {
 export interface Engagement {
   id: string; type: ReviewTypeId; name: string; status: EngagementStatus
   updated: string; linear: boolean; phases: Phase[]; scope: ScopeRow[]; chats: Chat[]
-  enforcement?: EngagementScope
 }
 
 // A per-project credential slot. This is the METADATA the renderer/agent may
