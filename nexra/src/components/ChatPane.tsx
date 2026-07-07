@@ -4,7 +4,7 @@ import { MessageList } from './MessageList'
 import { Composer } from './Composer'
 import { theme } from '../theme'
 import type { AppState } from '../state/selectors'
-import { activeCompany, activeEngagement, activeChat, phaseLabel } from '../state/selectors'
+import { activeCompany, activeEngagement, activeChat, getDraft, phaseLabel } from '../state/selectors'
 import type { Action } from '../state/reducer'
 import type { Message } from '../../electron/services/store.types'
 import { sendMessage, installTool, cancelStream, resumeAfterInputs } from '../ipc'
@@ -22,7 +22,7 @@ export function ChatPane({
   if (!eng || !chat) return null
 
   const onSend = () => {
-    sendMessage(dispatch, chat, eng, state.ui.draft, company?.id)
+    sendMessage(dispatch, chat, eng, getDraft(state), company?.id)
     dispatch({ t: 'setDraft', value: '' })
   }
   const onInstall = (msg: Message) => installTool(dispatch, chat, msg)
@@ -96,7 +96,7 @@ export function ChatPane({
       <MessageList chat={chat} streaming={!!state.ui.streamingChats[chat.id]} onInstall={onInstall} companyId={company?.id} onResume={() => resumeAfterInputs(dispatch, chat, eng, company?.id)} />
 
       <Composer
-        draft={state.ui.draft}
+        draft={getDraft(state)}
         placeholder={composerPlaceholder}
         dispatch={dispatch}
         onSend={onSend}

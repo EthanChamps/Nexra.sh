@@ -18,6 +18,8 @@ export function Sidebar({ state, dispatch }: { state: AppState; dispatch: Dispat
     ? company.engagements.map(e => {
         const activeChatId = state.ui.activeChatByEngagement[e.id]
         const isActiveEng = e.id === state.ui.activeEngagementId
+        const pending = state.ui.pendingChatByEngagement[e.id]
+        const pendingActive = isActiveEng && !!pending && pending.id === activeChatId
         return {
           id: e.id,
           name: e.name,
@@ -25,7 +27,8 @@ export function Sidebar({ state, dispatch }: { state: AppState; dispatch: Dispat
           chatCountLabel: e.chats.length + (e.chats.length === 1 ? ' chat' : ' chats'),
           isActive: isActiveEng,
           statusColor: statusColor(e.status),
-          noChats: e.chats.length === 0,
+          noChats: e.chats.length === 0 && !pendingActive,
+          pendingChatId: pendingActive ? pending!.id : null,
           chats: e.chats.map(ch => {
             const on = isActiveEng && ch.id === activeChatId
             return {
@@ -122,6 +125,14 @@ export function Sidebar({ state, dispatch }: { state: AppState; dispatch: Dispat
 
             {p.isActive && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 1, margin: '3px 0 9px', paddingLeft: 19, borderLeft: '1px solid rgba(255,255,255,0.06)', marginLeft: 15 }}>
+                {p.pendingChatId && (
+                  <div
+                    style={{ position: 'relative', width: '100%', display: 'flex', gap: 9, alignItems: 'center', padding: '7px 10px', borderRadius: 8, border: '1px solid rgba(111,123,240,0.26)', background: 'rgba(111,123,240,0.12)' }}
+                  >
+                    <span style={{ flex: 'none', width: 7, height: 7, borderRadius: 2, background: '#6f7bf0' }} />
+                    <span style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 500, color: '#e7e9ec', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>New chat</span>
+                  </div>
+                )}
                 {p.chats.map(ch => (
                   <Hoverable
                     key={ch.id}
