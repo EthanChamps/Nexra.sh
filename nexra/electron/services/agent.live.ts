@@ -158,6 +158,11 @@ export async function runSend(
             : AWS_SKILLS[c.name]
           if (!skillDef) { results.push(`[unknown skill ${c.name}]`); continue }
           const id = randomUUID()
+          // Only account/region are populated here because today's AWS_SKILLS only
+          // target cloud accounts/regions. matchesScope (agent.tools.ts) also gates
+          // on ip/hostname/url — when network/pentest skills are added, their target
+          // args must be parsed into the matching SkillInvocation field here too, or
+          // the scope gate will silently deny every invocation.
           const inv: SkillInvocation = { skill: c.name, companyId, engagementId, account: c.args.account, region: c.args.region }
           const deps: RunDeps = { getScope: getProjectScope, injectEnv, filledEnvVars }
           const outcome = await runSkill(inv, skillDef as any, recordingEmit, deps, id)

@@ -22,7 +22,7 @@ export interface Message {
   content?: string
   toolName?: string; command?: string; output?: string; duration?: string
   reason?: string; installCmd?: string; state?: ToolState
-  // request cards (M3d): the agent asks the operator for inputs or scope
+  // request cards (M3d): the agent asks the operator for inputs or a scope proposal
   requestKind?: 'inputs' | 'scope_proposal'; requestId?: string; items?: InputRequestItem[]; engagementId?: string
   proposeItem?: { type: ScopeItemType; value: string }
 }

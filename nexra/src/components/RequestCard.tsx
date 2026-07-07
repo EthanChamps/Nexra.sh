@@ -128,6 +128,11 @@ export function RequestCard({ message, companyId, onFulfill, onScopeResolve }: R
   }
 
   if (message.requestKind === 'scope_proposal') {
+    // Like the input_request card above, `added`/resolved state here is
+    // component-local (useState), not persisted to the message. If the app
+    // restarts after a proposal was accepted, the card remounts with
+    // `added`/`resolvedRef` reset and renders actionable again — accepted
+    // transient behavior, not a bug to fix here.
     const proposed = (message.proposeItem ?? { type: 'other', value: '' }) as { type: ScopeItemType; value: string }
     const TYPES: ScopeItemType[] = ['cidr', 'ip', 'hostname', 'url', 'cloud_account', 'tenant_id', 'region', 'other']
     const [type, setType] = useState<ScopeItemType>(proposed.type)

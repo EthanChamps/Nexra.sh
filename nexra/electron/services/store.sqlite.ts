@@ -6,9 +6,9 @@ let db: Database.Database | null = null
 // Opens (creating if needed) the app DB and ensures the schema exists.
 // Idempotent: safe to call again on an already-initialized path.
 //
-// M3a stood this up "for settings only"; M3b extends it to settings + secrets +
-// scope (both config-like and must survive restart — engagement/message/finding
-// persistence is still M4). New tables ride the same idempotent CREATE path.
+// M3a stood this up "for settings only"; it now covers settings + secrets +
+// project_scope + findings/evidence + companies/engagements/chats/messages
+// (all must survive restart). New tables ride the same idempotent CREATE path.
 export function initSettingsDb(dbPath: string): void {
   if (db) db.close()
   db = new Database(dbPath)
