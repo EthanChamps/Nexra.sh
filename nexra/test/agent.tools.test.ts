@@ -148,14 +148,28 @@ describe('M365 tool pack + resolver', () => {
     expect(UNAVAILABLE_EXIT_CODE).toBe(3)
   })
 
-  it('run_scubagear requires tenant/app/cert credentials', () => {
-    expect(M365_SKILLS.run_scubagear.requiredEnvVars).toEqual(['M365_TENANT_ID', 'M365_APP_ID', 'M365_CERT'])
+  it('run_scubagear (primary, delegated) needs NO pre-provided secret — the operator signs in interactively', () => {
+    // Delegated auth is completed at sign-in time, so there is nothing to gate
+    // on; the tenant is a scope target, not a credential.
+    expect(M365_SKILLS.run_scubagear.requiredEnvVars ?? []).toEqual([])
   })
 
-  it('run_scubagear builds a pwsh invocation carrying the tenant', () => {
+  it('run_scubagear_appauth (fallback) requires tenant/app/cert credentials', () => {
+    expect(M365_SKILLS.run_scubagear_appauth.requiredEnvVars).toEqual(['M365_TENANT_ID', 'M365_APP_ID', 'M365_CERT'])
+  })
+
+  it('run_scubagear builds an interactive pwsh invocation carrying the tenant', () => {
     const built = M365_SKILLS.run_scubagear.build({ skill: 'run_scubagear', companyId: 'c1', engagementId: 'e1', tenant: 'contoso.onmicrosoft.com' })
     expect(built.command).toBe('pwsh')
     expect(built.args).toContain('contoso.onmicrosoft.com')
+    expect(built.args).toEqual(expect.arrayContaining(['-Auth', 'interactive']))
+  })
+
+  it('run_scubagear_appauth builds an app-only pwsh invocation carrying the tenant', () => {
+    const built = M365_SKILLS.run_scubagear_appauth.build({ skill: 'run_scubagear_appauth', companyId: 'c1', engagementId: 'e1', tenant: 'contoso.onmicrosoft.com' })
+    expect(built.command).toBe('pwsh')
+    expect(built.args).toContain('contoso.onmicrosoft.com')
+    expect(built.args).toEqual(expect.arrayContaining(['-Auth', 'app']))
   })
 
   it('cleanBaseEnv strips M365_* as well as AWS_*', () => {
