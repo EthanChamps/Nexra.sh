@@ -8,7 +8,7 @@
     "dev": "vite",
     "typecheck": "tsc -p tsconfig.json",
     "build": "npm run typecheck && tsc -p tsconfig.node.json && vite build && npm run copy:scripts",
-    "copy:scripts": "node -e \"require('node:fs').cpSync('electron/services/scripts','dist-electron/scripts',{recursive:true})\"",
+    "copy:scripts": "node -e \"const fs=require('node:fs');fs.cpSync('electron/services/scripts','dist-electron/scripts',{recursive:true});fs.cpSync('electron/services/assets','dist-electron/assets',{recursive:true})\"",
     "pretest": "npm rebuild better-sqlite3",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -45,7 +45,8 @@
     "react-dom": "^18.3.0",
     "react-markdown": "^10.1.0",
     "remark-breaks": "^4.0.0",
-    "remark-gfm": "^4.0.1"
+    "remark-gfm": "^4.0.1",
+    "zod": "^4.4.3"
   },
   "allowScripts": {
     "better-sqlite3@12.11.1": true,

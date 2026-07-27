@@ -17,6 +17,7 @@ export type AgentEvent =
   | { type: 'input_request'; requestId: string; items: InputRequestItem[] }
   | { type: 'scope_request'; engagementId: string }
   | { type: 'finding'; id: string; title: string; sev: Severity; phase: string; time: string; rationale: string; evidence: Evidence[]; verified: boolean }
+  | { type: 'checkpoint'; phase: string; nextPhase?: string; note?: string }
   | { type: 'error'; message: string }
   | { type: 'done' }
 

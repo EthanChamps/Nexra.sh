@@ -1,4 +1,4 @@
-export type ReviewTypeId = 'aws' | 'azure' | 'm365' | 'internal' | 'external'
+export type ReviewTypeId = 'aws' | 'azure' | 'm365' | 'internal' | 'external' | 'web'
 export type Severity = 'Critical' | 'High' | 'Medium' | 'Low'
 export type EngagementStatus = 'In Progress' | 'Complete'
 
@@ -59,6 +59,10 @@ export interface EngagementScope {
   accounts: string[]
   regions: string[]
   tenants?: string[]   // M365/Azure tenant allowlist; undefined ⇒ [] (legacy rows)
+  hosts?: string[]        // exact hostnames in scope (web)
+  wildcards?: string[]    // "*.acme.com" suffix patterns (web)
+  urlPrefixes?: string[]  // optional path scoping (web)
+  exclusions?: string[]   // hosts/URL prefixes NEVER in scope; win over allow (web)
 }
 
 export interface Engagement {
