@@ -61,6 +61,12 @@ describe('scope.validate (pure, below the LLM)', () => {
     const s: EngagementScope = { mode: 'allowlist', accounts: [], regions: [], tenants: [] }
     expect(validate({ tenant: 'contoso.onmicrosoft.com' }, s).allowed).toBe(false)
   })
+
+  it('routes to web validation when the scope has web dimensions', () => {
+    const s: EngagementScope = { mode: 'allowlist', accounts: [], regions: [], hosts: ['app.acme.com'], wildcards: [], urlPrefixes: [], exclusions: [] }
+    expect(validate({ url: 'https://app.acme.com/x' }, s).allowed).toBe(true)
+    expect(validate({ url: 'https://evil.com/' }, s).allowed).toBe(false)
+  })
 })
 
 describe('scope persistence', () => {
@@ -75,7 +81,8 @@ describe('scope persistence', () => {
   it('round-trips a scope record', () => {
     const s: EngagementScope = { mode: 'allowlist', accounts: ['111111111111'], regions: ['us-east-1', 'us-west-2'] }
     setScope('eng1', s)
-    expect(getScope('eng1')).toEqual({ ...s, tenants: [] })
+    // toMatchObject: getScopeRow now also returns empty web-scope arrays.
+    expect(getScope('eng1')).toMatchObject({ ...s, tenants: [] })
   })
 
   it('overwrites on repeat set', () => {
@@ -86,6 +93,6 @@ describe('scope persistence', () => {
 
   it('round-trips tenants and defaults a legacy row without them to []', () => {
     setScope('m365eng', { mode: 'allowlist', accounts: [], regions: [], tenants: ['contoso.onmicrosoft.com'] })
-    expect(getScope('m365eng')).toEqual({ mode: 'allowlist', accounts: [], regions: [], tenants: ['contoso.onmicrosoft.com'] })
+    expect(getScope('m365eng')).toMatchObject({ mode: 'allowlist', accounts: [], regions: [], tenants: ['contoso.onmicrosoft.com'] })
   })
 })

@@ -39,6 +39,20 @@ export function buildTypes(): Record<ReviewTypeId, ReviewTypeConfig> {
     external: { label: 'External Pen Test', short: 'EXT', linear: true,
       phases: [{ id: 'recon', label: 'Recon' }, { id: 'exploit', label: 'Exploit' }],
       scope: [{ label: 'Domains', value: 'acme.com, *.acme.io' }, { label: 'ASN', value: 'AS40021' }, { label: 'Ranges', value: '198.51.100.0/24' }, { label: 'Rules', value: 'No DoS · business hrs' }] },
+    web: { label: 'Web App Pen Test', short: 'WEB', linear: true,
+      phases: [
+        { id: 'map', label: 'Map' },
+        { id: 'discover', label: 'Discover' },
+        { id: 'scan', label: 'Scan' },
+        { id: 'verify', label: 'Verify' },
+        { id: 'report', label: 'Report' },
+      ],
+      scope: [
+        { label: 'Target URL', value: 'https://app.acme.com' },
+        { label: 'In-scope hosts', value: 'app.acme.com, *.acme.com' },
+        { label: 'Exclusions', value: 'admin.acme.com' },
+        { label: 'Auth', value: 'Session cookie (operator-provided)' },
+      ] },
   }
 }
 

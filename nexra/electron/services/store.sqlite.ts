@@ -46,6 +46,10 @@ export function initSettingsDb(dbPath: string): void {
   // Additive migration: legacy scope rows predate tenants.
   const scopeCols = (db.prepare(`PRAGMA table_info(scope)`).all() as { name: string }[]).map(c => c.name)
   if (!scopeCols.includes('tenants')) db.exec(`ALTER TABLE scope ADD COLUMN tenants TEXT NOT NULL DEFAULT '[]'`)
+  // Additive migration: web scope dimensions (hosts/wildcards/urlprefixes/exclusions).
+  for (const col of ['hosts', 'wildcards', 'urlprefixes', 'exclusions']) {
+    if (!scopeCols.includes(col)) db.exec(`ALTER TABLE scope ADD COLUMN ${col} TEXT NOT NULL DEFAULT '[]'`)
+  }
   // Findings + their evidence artifacts (M3c). Pulled forward from M4; chat_id
   // is a plain column now (companies/engagements/chats live in the mock
   // snapshot, not sqlite yet). M4 adds those parent tables + FKs — an additive
@@ -107,6 +111,13 @@ export function initSettingsDb(dbPath: string): void {
 function requireDb(): Database.Database {
   if (!db) throw new Error('settings db not initialized — call initSettingsDb first')
   return db
+}
+
+// Close and drop the singleton handle. Real use: clean shutdown. Test use: on
+// Windows an open sqlite handle blocks deleting the DB's temp dir, so tests call
+// this before rmSync. Idempotent.
+export function closeDb(): void {
+  if (db) { db.close(); db = null }
 }
 
 // Shared handle for sibling persistence modules (store.graph.ts, coverage/memory).
@@ -185,15 +196,28 @@ export function getSecretValueBlob(secretId: string, envVar: string): string | u
 // ── scope (M3b) ─────────────────────────────────────────────────────────────
 export function setScopeRow(engagementId: string, s: EngagementScope): void {
   requireDb().prepare(
-    `INSERT INTO scope (engagement_id, mode, accounts, regions, tenants) VALUES (?, ?, ?, ?, ?)
-     ON CONFLICT(engagement_id) DO UPDATE SET mode=excluded.mode, accounts=excluded.accounts, regions=excluded.regions, tenants=excluded.tenants`,
-  ).run(engagementId, s.mode, JSON.stringify(s.accounts), JSON.stringify(s.regions), JSON.stringify(s.tenants ?? []))
+    `INSERT INTO scope (engagement_id, mode, accounts, regions, tenants, hosts, wildcards, urlprefixes, exclusions)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(engagement_id) DO UPDATE SET mode=excluded.mode, accounts=excluded.accounts, regions=excluded.regions,
+       tenants=excluded.tenants, hosts=excluded.hosts, wildcards=excluded.wildcards, urlprefixes=excluded.urlprefixes, exclusions=excluded.exclusions`,
+  ).run(
+    engagementId, s.mode, JSON.stringify(s.accounts), JSON.stringify(s.regions), JSON.stringify(s.tenants ?? []),
+    JSON.stringify(s.hosts ?? []), JSON.stringify(s.wildcards ?? []), JSON.stringify(s.urlPrefixes ?? []), JSON.stringify(s.exclusions ?? []),
+  )
 }
 
 export function getScopeRow(engagementId: string): EngagementScope | undefined {
-  const r = requireDb().prepare('SELECT mode, accounts, regions, tenants FROM scope WHERE engagement_id = ?').get(engagementId) as { mode: string; accounts: string; regions: string; tenants: string | null } | undefined
+  const r = requireDb().prepare(
+    'SELECT mode, accounts, regions, tenants, hosts, wildcards, urlprefixes, exclusions FROM scope WHERE engagement_id = ?',
+  ).get(engagementId) as
+    { mode: string; accounts: string; regions: string; tenants: string | null; hosts: string | null; wildcards: string | null; urlprefixes: string | null; exclusions: string | null } | undefined
   if (!r) return undefined
-  return { mode: r.mode as EngagementScope['mode'], accounts: JSON.parse(r.accounts), regions: JSON.parse(r.regions), tenants: r.tenants ? JSON.parse(r.tenants) : [] }
+  const arr = (v: string | null) => (v ? JSON.parse(v) : [])
+  return {
+    mode: r.mode as EngagementScope['mode'],
+    accounts: JSON.parse(r.accounts), regions: JSON.parse(r.regions), tenants: r.tenants ? JSON.parse(r.tenants) : [],
+    hosts: arr(r.hosts), wildcards: arr(r.wildcards), urlPrefixes: arr(r.urlprefixes), exclusions: arr(r.exclusions),
+  }
 }
 
 // ── findings + evidence (M3c) ───────────────────────────────────────────────
