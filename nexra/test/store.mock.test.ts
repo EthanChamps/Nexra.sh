@@ -16,7 +16,7 @@ describe('store mock seed', () => {
     const all = buildSnapshot().companies.flatMap(c => c.engagements)
     expect(all.some(e => e.chats.length === 0)).toBe(true)
   })
-  it('exposes all five review types', () => {
-    expect(Object.keys(buildSnapshot().types).sort()).toEqual(['aws','azure','external','internal','m365'])
+  it('exposes all six review types', () => {
+    expect(Object.keys(buildSnapshot().types).sort()).toEqual(['aws','azure','external','internal','m365','web'])
   })
 })
