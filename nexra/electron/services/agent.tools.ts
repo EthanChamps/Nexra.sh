@@ -240,12 +240,50 @@ export const M365_SKILLS: Record<string, SkillDef> = {
   },
 }
 
+// ── Web tool pack ────────────────────────────────────────────────────────────
+// Every web skill runs in a pinned Docker container. Session auth reaches the
+// tool via `docker run -e WEB_AUTH_HEADER` (env-var NAME only in argv); the
+// VALUE is injected into the docker child's env by the vault and expanded to a
+// header INSIDE the container by the shell — so it never appears in any emitted
+// command/output event. The target URL is passed positionally (never string-
+// interpolated), and is scope-validated below the LLM before this ever spawns.
+export function dockerRun(opts: { image: string; script: string; positional: string[]; envPassthrough?: string[]; volumes?: string[] }): { command: string; args: string[] } {
+  const env = (opts.envPassthrough ?? []).flatMap(v => ['-e', v])
+  const vols = (opts.volumes ?? []).flatMap(v => ['-v', v])
+  return { command: 'docker', args: ['run', '--rm', ...env, ...vols, '--entrypoint', 'sh', opts.image, '-c', opts.script, 'nexra', ...opts.positional] }
+}
+
+const WEB_AUTH_ENV = 'WEB_AUTH_HEADER'
+const WEB_CRED_HINT = `Web assessments authenticate with STATIC session material the operator provides — a session cookie or Authorization header. When authenticated testing is needed, request_inputs EXACTLY: SKILL_CALL[request_inputs|items=${WEB_AUTH_ENV}:Session header e.g. "Authorization: Bearer <token>" or "Cookie: session=...":s:r]. Never ask for a username or password. Unauthenticated skills need no credential.`
+// Header flag added only when the operator supplied one: ${VAR:+ -H "$VAR"}.
+const authHeaderExpr = `\${${WEB_AUTH_ENV}:+ -H "\$${WEB_AUTH_ENV}"}`
+
+export const WEB_SKILLS: Record<string, SkillDef> = {
+  web_probe: {
+    name: 'web_probe',
+    installCmd: 'docker pull projectdiscovery/httpx:latest',
+    promptLine: 'web_probe|url=URL: Probe the target (status, title, tech) with httpx. Phase: Map.',
+    credentialHint: WEB_CRED_HINT,
+    build: inv => dockerRun({ image: 'projectdiscovery/httpx:latest', envPassthrough: [WEB_AUTH_ENV],
+      script: `httpx -u "$1" -json -silent -tech-detect -status-code -title${authHeaderExpr}`, positional: [inv.url ?? ''] }),
+  },
+  web_scan: {
+    name: 'web_scan',
+    installCmd: 'docker pull projectdiscovery/nuclei:latest',
+    promptLine: 'web_scan|url=URL: Templated vulnerability scan with nuclei. Phase: Scan.',
+    credentialHint: WEB_CRED_HINT,
+    build: inv => dockerRun({ image: 'projectdiscovery/nuclei:latest', envPassthrough: [WEB_AUTH_ENV],
+      script: `nuclei -u "$1" -jsonl -silent -rl 50 -timeout 10${authHeaderExpr}`, positional: [inv.url ?? ''] }),
+  },
+}
+
 // Resolve the skill pack an engagement may use. Approach A: keyed by type so
 // each vertical (AWS live; M365 here; Azure/pentest later) owns its own pack.
 export function skillsForEngagement(type: string): Record<string, SkillDef> {
   switch (type) {
     case 'aws':  return AWS_SKILLS
     case 'm365': return M365_SKILLS
+    case 'web':  return WEB_SKILLS
     default:     return {}
   }
 }
