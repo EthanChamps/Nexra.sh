@@ -75,6 +75,27 @@ export function summarizeSkill(skill: string, raw: string): { summary: string; c
   switch (skill) {
     case 'web_scan': return parseNucleiJsonl(raw)
     case 'web_probe': return parseHttpxJson(raw)
+    case 'web_crawl': {
+      const eps = jsonLines(raw).map(r => r?.endpoint ?? r?.url).filter(Boolean)
+      return { summary: `katana: ${eps.length} endpoint(s) discovered${eps.length ? ` (e.g. ${eps.slice(0, 3).join(', ')})` : ''}`, candidates: [] }
+    }
+    case 'web_content_discovery': {
+      let paths: string[] = []
+      try { paths = (JSON.parse(raw)?.results ?? []).map((r: any) => r.url).filter(Boolean) } catch { /* ignore */ }
+      return { summary: `ffuf: ${paths.length} path(s) found${paths.length ? ` (e.g. ${paths.slice(0, 3).join(', ')})` : ''}`, candidates: [] }
+    }
+    case 'web_headers_tls': {
+      let d: any = {}; try { d = JSON.parse(raw) } catch { /* ignore */ }
+      const cands: WebCandidate[] = (d.missing ?? []).map((h: string) => ({ title: `Missing security header: ${h}`, sev: normalizeSev('low'), host: d.host ?? '', detail: `${h} not set on ${d.host ?? ''}` }))
+      if (d?.tls?.weak) cands.push({ title: 'Weak TLS configuration', sev: normalizeSev('medium'), host: d.host ?? '', detail: `weak TLS on ${d.host ?? ''}` })
+      return { summary: `headers/tls: ${cands.length} issue(s)${cands.length ? ` — ${cands.map(c => c.title).slice(0, 4).join('; ')}` : ''}`, candidates: cands }
+    }
+    case 'web_sqli': {
+      const injectable = /is vulnerable|sqlmap identified the following injection/i.test(raw)
+      return injectable
+        ? { summary: 'sqlmap: injection CONFIRMED on the tested parameter.', candidates: [{ title: 'SQL injection confirmed', sev: normalizeSev('high'), host: '', detail: 'sqlmap confirmed an injectable parameter' }] }
+        : { summary: 'sqlmap: no injection confirmed on the tested URL.', candidates: [] }
+    }
     default: {
       const first = raw.split('\n').map(l => l.trim()).find(Boolean) ?? ''
       return { summary: `${skill}: ${first.slice(0, 200) || 'completed, no parsable output'}`, candidates: [] }
