@@ -1,4 +1,4 @@
-export type ReviewTypeId = 'aws' | 'azure' | 'm365' | 'internal' | 'external'
+export type ReviewTypeId = 'aws' | 'azure' | 'm365' | 'internal' | 'external' | 'web'
 export type Severity = 'Critical' | 'High' | 'Medium' | 'Low'
 export type EngagementStatus = 'In Progress' | 'Complete'
 
