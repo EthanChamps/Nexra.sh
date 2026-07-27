@@ -1,0 +1,76 @@
+#!/usr/bin/env python3
+"""Emit a JSON summary of a URL's security-header + TLS posture.
+
+Usage: check-headers-tls <url> [-H "Header: value" ...]
+Output (one JSON line):
+  {"host": "app.acme.com", "missing": ["Content-Security-Policy"], "tls": {"weak": false}}
+
+Intentionally deterministic and small: the agent never parses raw output, only
+the structured record the wrapper's parser turns into candidate findings.
+"""
+import json
+import ssl
+import subprocess
+import sys
+from urllib.parse import urlparse
+
+# Security headers we expect on a hardened app response.
+EXPECTED = [
+    "Content-Security-Policy",
+    "Strict-Transport-Security",
+    "X-Content-Type-Options",
+    "X-Frame-Options",
+    "Referrer-Policy",
+]
+
+# TLS versions considered weak if the server negotiates them.
+WEAK_TLS = {"TLSv1", "TLSv1.1", "SSLv3", "SSLv2"}
+
+
+def fetch_headers(url, extra_args):
+    # -sI: silent head request; -D -: dump headers; follow no redirects out of scope.
+    cmd = ["curl", "-sS", "-o", "/dev/null", "-D", "-", "--max-time", "20"] + extra_args + [url]
+    out = subprocess.run(cmd, capture_output=True, text=True).stdout
+    present = set()
+    for line in out.splitlines():
+        if ":" in line:
+            present.add(line.split(":", 1)[0].strip().lower())
+    return present
+
+
+def tls_weak(host, port):
+    for proto in ("TLSv1", "TLSv1.1"):
+        try:
+            ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            ctx.minimum_version = ssl.TLSVersion.TLSv1
+            ctx.maximum_version = ssl.TLSVersion.TLSv1_1
+            with ctx.wrap_socket(__import__("socket").create_connection((host, port), timeout=10),
+                                 server_hostname=host) as s:
+                if s.version() in WEAK_TLS:
+                    return True
+        except Exception:
+            continue
+    return False
+
+
+def main():
+    if len(sys.argv) < 2:
+        print(json.dumps({"error": "usage: check-headers-tls <url>"}))
+        return
+    url = sys.argv[1]
+    extra = sys.argv[2:]  # e.g. -H "Authorization: Bearer ..."
+    parsed = urlparse(url)
+    host = parsed.hostname or ""
+    port = parsed.port or (443 if parsed.scheme == "https" else 80)
+
+    present = fetch_headers(url, extra)
+    missing = [h for h in EXPECTED if h.lower() not in present]
+    weak = tls_weak(host, port) if parsed.scheme == "https" else False
+
+    print(json.dumps({"host": host, "missing": missing, "tls": {"weak": weak}}))
+
+
+if __name__ == "__main__":
+    main()
