@@ -61,6 +61,12 @@ describe('scope.validate (pure, below the LLM)', () => {
     const s: EngagementScope = { mode: 'allowlist', accounts: [], regions: [], tenants: [] }
     expect(validate({ tenant: 'contoso.onmicrosoft.com' }, s).allowed).toBe(false)
   })
+
+  it('routes to web validation when the scope has web dimensions', () => {
+    const s: EngagementScope = { mode: 'allowlist', accounts: [], regions: [], hosts: ['app.acme.com'], wildcards: [], urlPrefixes: [], exclusions: [] }
+    expect(validate({ url: 'https://app.acme.com/x' }, s).allowed).toBe(true)
+    expect(validate({ url: 'https://evil.com/' }, s).allowed).toBe(false)
+  })
 })
 
 describe('scope persistence', () => {

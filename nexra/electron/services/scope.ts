@@ -1,5 +1,6 @@
 import { getScopeRow, setScopeRow } from './store.sqlite'
 import type { EngagementScope } from './store.types'
+import { validateWebTarget } from './scope.web'
 
 // Engagement scope: the trusted, structured allowlist enforced BELOW the LLM.
 // The agent may ask the operator to populate it (scope_request), but the
@@ -13,7 +14,7 @@ export function setScope(engagementId: string, scope: EngagementScope): void {
   setScopeRow(engagementId, scope)
 }
 
-export interface Target { account?: string; region?: string; tenant?: string }
+export interface Target { account?: string; region?: string; tenant?: string; url?: string }
 export interface Decision { allowed: boolean; reason?: string }
 
 // Validate a typed-skill target against a scope record. `mode:'all'` permits
@@ -22,6 +23,10 @@ export interface Decision { allowed: boolean; reason?: string }
 // unconfigured allowlist must not silently permit everything).
 export function validate(target: Target, scope: EngagementScope): Decision {
   if (scope.mode === 'all') return { allowed: true }
+
+  // Web scopes carry host/URL dimensions; route them to the web validator.
+  const hasWeb = (scope.hosts?.length || scope.wildcards?.length || scope.urlPrefixes?.length || scope.exclusions?.length)
+  if (hasWeb) return validateWebTarget(target.url, scope)
 
   const tenants = scope.tenants ?? []
   if (scope.accounts.length === 0 && scope.regions.length === 0 && tenants.length === 0)
