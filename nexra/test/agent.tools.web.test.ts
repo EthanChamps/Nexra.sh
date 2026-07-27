@@ -27,3 +27,22 @@ describe('WEB_SKILLS', () => {
     expect(b.args.join(' ')).not.toMatch(/Bearer|Cookie:/i)
   })
 })
+
+describe('WEB_SKILLS (full pack)', () => {
+  const inv = (skill: string) => ({ skill, companyId: 'c', engagementId: 'e', url: 'https://app.acme.com' })
+  it('exposes all six skills', () => {
+    expect(Object.keys(WEB_SKILLS).sort()).toEqual(
+      ['web_content_discovery', 'web_crawl', 'web_headers_tls', 'web_probe', 'web_scan', 'web_sqli'])
+  })
+  it('web_content_discovery mounts a read-only wordlist volume', () => {
+    const b = WEB_SKILLS.web_content_discovery.build(inv('web_content_discovery') as any)
+    expect(b.args).toContain('-v')
+    expect(b.args.join(' ')).toMatch(/:ro\b/)
+    expect(b.args.join(' ')).toContain('ffuf')
+  })
+  it('web_sqli lives behind Verify and runs sqlmap on the url', () => {
+    const b = WEB_SKILLS.web_sqli.build(inv('web_sqli') as any)
+    expect(b.args.join(' ')).toContain('sqlmap')
+    expect(b.args.join(' ')).toContain('https://app.acme.com')
+  })
+})

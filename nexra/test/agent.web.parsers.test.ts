@@ -30,3 +30,18 @@ describe('summarizeSkill', () => {
     expect(r.summary.length).toBeGreaterThan(0)
   })
 })
+
+describe('summarizeSkill (full pack)', () => {
+  it('ffuf output → discovered paths summary, no candidates', () => {
+    const ffuf = JSON.stringify({ results: [{ url: 'https://app.acme.com/admin', status: 200 }, { url: 'https://app.acme.com/backup', status: 200 }] })
+    const r = summarizeSkill('web_content_discovery', ffuf)
+    expect(r.candidates).toEqual([])
+    expect(r.summary).toMatch(/2 path/i)
+  })
+  it('headers/tls checker output → candidate findings for gaps', () => {
+    const hdr = JSON.stringify({ host: 'app.acme.com', missing: ['Content-Security-Policy'], tls: { weak: false } })
+    const r = summarizeSkill('web_headers_tls', hdr)
+    expect(r.candidates.length).toBeGreaterThan(0)
+    expect(r.candidates[0].detail).toMatch(/Content-Security-Policy/)
+  })
+})

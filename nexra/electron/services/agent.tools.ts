@@ -275,6 +275,39 @@ export const WEB_SKILLS: Record<string, SkillDef> = {
     build: inv => dockerRun({ image: 'projectdiscovery/nuclei:latest', envPassthrough: [WEB_AUTH_ENV],
       script: `nuclei -u "$1" -jsonl -silent -rl 50 -timeout 10${authHeaderExpr}`, positional: [inv.url ?? ''] }),
   },
+  web_crawl: {
+    name: 'web_crawl',
+    installCmd: 'docker pull projectdiscovery/katana:latest',
+    promptLine: 'web_crawl|url=URL: Crawl the app for endpoints with katana. Phase: Discover.',
+    credentialHint: WEB_CRED_HINT,
+    build: inv => dockerRun({ image: 'projectdiscovery/katana:latest', envPassthrough: [WEB_AUTH_ENV],
+      script: `katana -u "$1" -jsonl -silent -depth 3${authHeaderExpr}`, positional: [inv.url ?? ''] }),
+  },
+  web_content_discovery: {
+    name: 'web_content_discovery',
+    installCmd: 'docker pull ffuf/ffuf:latest',
+    promptLine: 'web_content_discovery|url=URL: Content discovery with ffuf against the bundled wordlist. Phase: Discover.',
+    credentialHint: WEB_CRED_HINT,
+    build: inv => dockerRun({ image: 'ffuf/ffuf:latest', envPassthrough: [WEB_AUTH_ENV],
+      volumes: [`${join(__dirname, 'assets', 'web-wordlist.txt')}:/wl.txt:ro`],
+      script: `ffuf -w /wl.txt -u "$1/FUZZ" -of json -o /dev/stdout -s -rate 50${authHeaderExpr}`, positional: [inv.url ?? ''] }),
+  },
+  web_headers_tls: {
+    name: 'web_headers_tls',
+    installCmd: 'docker pull nexra/web-headers-tls:latest',
+    promptLine: 'web_headers_tls|url=URL: Check security headers + TLS posture. Phase: Scan.',
+    credentialHint: WEB_CRED_HINT,
+    build: inv => dockerRun({ image: 'nexra/web-headers-tls:latest', envPassthrough: [WEB_AUTH_ENV],
+      script: `check-headers-tls "$1"${authHeaderExpr}`, positional: [inv.url ?? ''] }),
+  },
+  web_sqli: {
+    name: 'web_sqli',
+    installCmd: 'docker pull ghcr.io/sqlmapproject/sqlmap:latest',
+    promptLine: 'web_sqli|url=URL: Confirm SQL injection on a specific candidate URL with sqlmap. Phase: Verify (aggressive).',
+    credentialHint: WEB_CRED_HINT,
+    build: inv => dockerRun({ image: 'ghcr.io/sqlmapproject/sqlmap:latest', envPassthrough: [WEB_AUTH_ENV],
+      script: `sqlmap -u "$1" --batch --level 2 --risk 1 --answers="quit=N" --disable-coloring${authHeaderExpr}`, positional: [inv.url ?? ''] }),
+  },
 }
 
 // Resolve the skill pack an engagement may use. Approach A: keyed by type so
