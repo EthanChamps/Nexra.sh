@@ -27,6 +27,17 @@ describe('hostMatches', () => {
   })
 })
 
+describe('isExcluded', () => {
+  it('matches an excluded host and its subdomains', () => {
+    expect(isExcluded('admin.acme.com', 'https://admin.acme.com/', ['admin.acme.com'])).toBe(true)
+    expect(isExcluded('x.admin.acme.com', 'https://x.admin.acme.com/', ['admin.acme.com'])).toBe(true)
+    expect(isExcluded('app.acme.com', 'https://app.acme.com/', ['admin.acme.com'])).toBe(false)
+  })
+  it('matches an excluded URL prefix', () => {
+    expect(isExcluded('app.acme.com', 'https://app.acme.com/internal/x', ['https://app.acme.com/internal'])).toBe(true)
+  })
+})
+
 describe('validateWebTarget', () => {
   it('allows an in-scope host', () => { expect(validateWebTarget('https://app.acme.com/x', base).allowed).toBe(true) })
   it('denies an out-of-scope host', () => {
