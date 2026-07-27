@@ -75,7 +75,8 @@ describe('scope persistence', () => {
   it('round-trips a scope record', () => {
     const s: EngagementScope = { mode: 'allowlist', accounts: ['111111111111'], regions: ['us-east-1', 'us-west-2'] }
     setScope('eng1', s)
-    expect(getScope('eng1')).toEqual({ ...s, tenants: [] })
+    // toMatchObject: getScopeRow now also returns empty web-scope arrays.
+    expect(getScope('eng1')).toMatchObject({ ...s, tenants: [] })
   })
 
   it('overwrites on repeat set', () => {
@@ -86,6 +87,6 @@ describe('scope persistence', () => {
 
   it('round-trips tenants and defaults a legacy row without them to []', () => {
     setScope('m365eng', { mode: 'allowlist', accounts: [], regions: [], tenants: ['contoso.onmicrosoft.com'] })
-    expect(getScope('m365eng')).toEqual({ mode: 'allowlist', accounts: [], regions: [], tenants: ['contoso.onmicrosoft.com'] })
+    expect(getScope('m365eng')).toMatchObject({ mode: 'allowlist', accounts: [], regions: [], tenants: ['contoso.onmicrosoft.com'] })
   })
 })
