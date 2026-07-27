@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import type { Severity } from './store.types'
 import { normalizeSev } from './agent.findings'
 
@@ -29,6 +30,45 @@ export function parseHttpxJson(raw: string): { summary: string; candidates: WebC
   const r = rows[0]
   const tech = Array.isArray(r?.tech) ? r.tech.join(', ') : (r?.tech ?? '')
   return { summary: `httpx: ${r?.url ?? ''} → ${r?.status_code ?? '?'} "${r?.title ?? ''}"${tech ? ` [${tech}]` : ''}`, candidates: [] }
+}
+
+// ── Phase methodology + constrained-action schema ────────────────────────────
+// The web engagement is a linear playbook; each phase exposes only its own
+// skills to the model (a guardrail, not single-stepping) plus the always-present
+// control actions. Aggressive tools (web_sqli) live in Verify so they cannot
+// fire before the operator's phase checkpoint.
+export const WEB_PHASES = [
+  { id: 'map',      label: 'Map',      skills: ['web_probe'], budget: 3 },
+  { id: 'discover', label: 'Discover', skills: ['web_crawl', 'web_content_discovery'], budget: 6 },
+  { id: 'scan',     label: 'Scan',     skills: ['web_scan', 'web_headers_tls'], budget: 6 },
+  { id: 'verify',   label: 'Verify',   skills: ['web_sqli'], budget: 6 },
+  { id: 'report',   label: 'Report',   skills: [], budget: 2 },
+] as const
+
+const CONTROL_ACTIONS = ['log_finding', 'attach_evidence', 'request_inputs', 'checkpoint', 'done']
+
+export function allowedActionsForPhase(phaseLabel: string): string[] {
+  const p = WEB_PHASES.find(p => p.label.toLowerCase() === phaseLabel.toLowerCase())
+  return [...(p?.skills ?? []), ...CONTROL_ACTIONS]
+}
+
+export interface WebAction { action: string; url?: string; finding?: { title: string; sev: string; rationale: string; evidenceRef?: string }; note?: string }
+
+export function webActionSchema(phaseLabel: string) {
+  const actions = allowedActionsForPhase(phaseLabel)
+  return z.object({
+    action: z.enum(actions as [string, ...string[]]),
+    url: z.string().optional(),
+    finding: z.object({ title: z.string(), sev: z.string(), rationale: z.string(), evidenceRef: z.string().optional() }).optional(),
+    note: z.string().optional(),
+  })
+}
+
+export function parseStructuredAction(raw: string, phaseLabel: string): WebAction | null {
+  let obj: unknown
+  try { obj = JSON.parse(raw) } catch { return null }
+  const parsed = webActionSchema(phaseLabel).safeParse(obj)
+  return parsed.success ? parsed.data as WebAction : null
 }
 
 export function summarizeSkill(skill: string, raw: string): { summary: string; candidates: WebCandidate[] } {
