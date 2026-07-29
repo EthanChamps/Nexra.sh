@@ -246,6 +246,10 @@ async function runWebSend(
 
   try {
     let stopped = false
+    // Skills already run this turn (keyed by skill+target). A small model will
+    // otherwise re-issue the same expensive scan repeatedly, burning the phase
+    // budget on minutes-long duplicate runs. Re-runs are fed back as no-ops.
+    const ran = new Set<string>()
     for (let step = 0; step < phase.budget; step++) {
       let action = await decideWebAction({ generate, system: sys, messages, phaseLabel: req.phaseLabel, signal })
       if (!action) {   // bounded repair: one correction, then re-decide
@@ -270,6 +274,13 @@ async function runWebSend(
       // re-validate it against scope (below the LLM) before spawn.
       const id = randomUUID()
       const realUrl = action.url ? aliaser.resolveUrl(action.url) : undefined
+      // Skip a duplicate skill+target: its results are already in the transcript.
+      const runKey = `${action.action}|${realUrl ?? ''}`
+      if (ran.has(runKey)) {
+        messages.push({ role: 'user', content: `[${action.action} already ran on this target; its results are above. Choose a different action or {"action":"checkpoint"}.]` })
+        continue
+      }
+      ran.add(runKey)
       const inv: SkillInvocation = { skill: action.action, companyId: companyId!, engagementId: engagementId!, url: realUrl }
       const deps: RunDeps = { getScope, injectEnv, filledEnvVars }
       const outcome = await runSkill(inv, pack[action.action] as SkillDef, recordingEmit, deps, id)
