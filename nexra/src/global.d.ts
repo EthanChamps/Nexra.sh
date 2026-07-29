@@ -22,6 +22,7 @@ export interface NexraApi {
     get(): Promise<{ provider: string; model: string; baseUrl: string; hasKey: boolean }>
     set(partial: { provider?: string; model?: string; baseUrl?: string }): Promise<void>
     setKey(provider: string, plaintext: string): Promise<void>
+    testConnection(): Promise<{ ok: boolean; detail: string }>
   }
   // Credential vault (M3b). list/create/delete deal in METADATA only; fill/tie
   // send plaintext renderer→main once and it is never returned.

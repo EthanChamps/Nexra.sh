@@ -42,6 +42,7 @@ export function Settings({ state: _state, dispatch }: { state: AppState; dispatc
   const [apiKeys, setApiKeys] = useState<Record<ProviderId, string>>({ anthropic: '', openai: '', google: '', ollama: '' })
   const [baseUrl, setBaseUrl] = useState('http://localhost:11434')
   const [keySet, setKeySet] = useState<Record<string, boolean>>({})
+  const [conn, setConn] = useState<{ testing: boolean; ok?: boolean; detail?: string }>({ testing: false })
 
   useEffect(() => {
     window.nexra.settings.get().then(s => {
@@ -61,6 +62,16 @@ export function Settings({ state: _state, dispatch }: { state: AppState; dispatc
   }
 
   const setApiKey = (value: string) => setApiKeys(prev => ({ ...prev, [provider]: value }))
+
+  const testConnection = async () => {
+    setConn({ testing: true })
+    try {
+      const r = await window.nexra.settings.testConnection()
+      setConn({ testing: false, ok: r.ok, detail: r.detail })
+    } catch (err) {
+      setConn({ testing: false, ok: false, detail: (err as Error).message })
+    }
+  }
 
   const isOllama = provider === 'ollama'
   const cfg = PROVIDERS[provider]
@@ -151,13 +162,35 @@ export function Settings({ state: _state, dispatch }: { state: AppState; dispatc
           )}
         </div>
 
-        <div style={{ padding: '4px 22px 18px' }}>
+        <div style={{ padding: '4px 22px 8px' }}>
           <div style={{ fontSize: 11.5, lineHeight: 1.5, color: theme.dim2 }}>
             Saved locally. API key stored in your OS keychain.
           </div>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 9, padding: '14px 22px 20px' }}>
+        <div style={{ padding: '0 22px 10px', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Hoverable
+            as="button"
+            type="button"
+            onClick={testConnection}
+            disabled={conn.testing}
+            baseStyle={{
+              padding: '7px 14px', borderRadius: 9, border: `1px solid ${theme.border2}`, background: theme.input,
+              color: theme.text, fontFamily: 'inherit', fontSize: 12, fontWeight: 500,
+              cursor: conn.testing ? 'default' : 'pointer', opacity: conn.testing ? 0.6 : 1, transition: 'background .12s',
+            }}
+            hoverStyle={{ background: theme.card }}
+          >
+            {conn.testing ? 'Testing…' : 'Test connection'}
+          </Hoverable>
+          {conn.ok !== undefined && (
+            <div style={{ fontSize: 12, lineHeight: 1.4, color: conn.ok ? '#3aa980' : '#f0616d', flex: 1 }}>
+              {conn.ok ? '✓ ' : '✗ '}{conn.detail}
+            </div>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 9, padding: '4px 22px 20px' }}>
           <Hoverable
             as="button"
             type="button"

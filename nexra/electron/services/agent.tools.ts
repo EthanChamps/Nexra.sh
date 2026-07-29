@@ -94,7 +94,9 @@ export function runSkill(
   }
 
   // Gate 2 — target must be in scope. Enforced below the LLM; never spawns.
-  const decision = validate({ account: inv.account, region: inv.region, tenant: inv.tenant }, scope)
+  // `url` carries the web target: validate routes web scopes to the host/URL
+  // validator, so it must be forwarded or every web skill is denied.
+  const decision = validate({ account: inv.account, region: inv.region, tenant: inv.tenant, url: inv.url }, scope)
   if (!decision.allowed) {
     emit({ type: 'skill', id, skill: def.name, state: 'denied', message: decision.reason })
     return Promise.resolve({ state: 'denied', reason: decision.reason ?? 'out of scope' })
