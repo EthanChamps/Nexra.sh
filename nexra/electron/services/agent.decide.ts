@@ -25,9 +25,24 @@ export async function decideWebAction(deps: DecideDeps): Promise<WebAction | nul
 // OpenAI-compatible Ollama path this maps to response_format json_schema. If the
 // provider ignores it, decideWebAction still returns null on invalid output and
 // the caller repairs — so this is a reliability boost, not a correctness gate.
+//
+// reasoningEffort:'none' disables thinking on hybrid-reasoning local models
+// (e.g. Qwen3.5). The action decision is a below-the-LLM classification, not a
+// task that benefits from chain-of-thought — and on the OpenAI-compat endpoint
+// Ollama emits reasoning inline unless told otherwise, which pollutes the JSON
+// the parser expects. The option is namespaced to `ollama`, so cloud providers
+// (Anthropic) ignore it. Verified: this maps to the `reasoning_effort` body
+// field, the one switch Ollama honors over /v1/chat/completions.
 export function defaultGenerate(model: any, schema: z.ZodType) {
   return async (opts: { system: string; messages: any[]; signal: AbortSignal }) => {
-    const r = await generateText({ model, system: opts.system, messages: opts.messages, abortSignal: opts.signal, experimental_output: Output.object({ schema }) })
+    const r = await generateText({
+      model,
+      system: opts.system,
+      messages: opts.messages,
+      abortSignal: opts.signal,
+      experimental_output: Output.object({ schema }),
+      providerOptions: { ollama: { reasoningEffort: 'none' } },
+    })
     return { text: JSON.stringify((r as any).experimental_output ?? {}) }
   }
 }
