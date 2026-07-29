@@ -63,3 +63,63 @@ switch that skill to a shell-bearing tag and record it in `agent.tools.ts`.
       structured per-skill summaries do.
 
 Record the result (screenshots + `docker ps -a`) alongside this file.
+
+## Secure split-compute setup (model on separate hardware)
+
+The Windows box lacks the compute to host the LLM, so the model runs on a
+separate machine (e.g. a Mac mini) while all execution, data, and findings stay
+on the Windows box. The app supports this with **no code change** — set
+provider `ollama` and `baseUrl` to the model host. What follows keeps that split
+secure. The in-app controls (host de-identification, cleartext-transport
+warning, local titling, container hardening) are already wired; these are the
+operator/infra steps that can't be automated from the app.
+
+**What already protects you in-app (implemented):**
+- **Host de-identification** — every real hostname is replaced with an opaque
+  handle (`hN.masked.local`) before any prompt leaves the box, and resolved back
+  locally before a skill spawns (`agent.alias.ts`). The model sees
+  `h1.masked.local/admin → 200 [nginx]`, never the client's domain. Findings are
+  stored locally with the **real** host; only model-bound text is masked.
+- **Cleartext-transport warning** — if `baseUrl` is plain `http://` to a
+  non-loopback host, the app logs a warning (`modelTransportWarning`). Treat it
+  as a blocker: set up the tunnel below.
+- **Local chat titles** — titles are derived on-device for the local provider,
+  so the first message is never shipped just to name a chat.
+- **Container hardening** — every tool container runs `--cap-drop ALL
+  --security-opt no-new-privileges --pids-limit 512`, `--rm`, and a read-only
+  wordlist mount.
+
+**Operator steps (do these before a real engagement):**
+
+1. **Encrypt + authenticate the model channel.** Do NOT expose Ollama on the open
+   LAN. Preferred: a **WireGuard** tunnel between the two machines (or `ssh -L
+   11434:localhost:11434 mini`), then bind Ollama to loopback only and point the
+   app at the tunnel:
+   ```bash
+   # On the mini — bind to localhost, reachable only through the tunnel:
+   launchctl setenv OLLAMA_HOST "127.0.0.1:11434"      # NOT 0.0.0.0
+   # App baseUrl on Windows → the tunnel endpoint, e.g. http://localhost:11434
+   ```
+   With the tunnel terminating on localhost, the cleartext-transport warning
+   stays silent (loopback) and the traffic is encrypted end to end.
+2. **Firewall the mini** to accept the model/tunnel port only from the Windows
+   box's address. Everything else denied.
+3. **Encrypt data at rest on both ends.** Windows: BitLocker on the drive holding
+   `%APPDATA%\nexra\nexra.db` (the single file with all engagement data +
+   DPAPI-encrypted secrets). Mini: FileVault on, so any transient prompt buffers
+   / Ollama logs sit on an encrypted volume.
+4. **Trim the model host's logging.** Ollama request logs can retain prompts
+   (de-identified, but still) — disable or rotate them; the mini keeps no
+   engagement record you didn't intend.
+5. **Destroy after.** Close the app, delete `%APPDATA%\nexra\nexra.db`, and
+   `docker image prune -a`. Nothing durable survives.
+
+**Known v1 limitation:** container egress is unrestricted (a tool can reach the
+internet, not just the target). Full egress allowlisting needs per-target
+network rules and is deferred. Mitigate by running engagements from a network
+segment you control.
+
+- [ ] Tunnel up; `baseUrl` points at the loopback tunnel endpoint; no cleartext
+      warning in the log.
+- [ ] Capture one outbound prompt (app log / tunnel) and confirm it contains
+      `masked.local` handles and **no** real client hostname.
