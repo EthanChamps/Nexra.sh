@@ -1,4 +1,4 @@
-import { useState, type Dispatch } from 'react'
+import { useState, useEffect, type Dispatch } from 'react'
 import { Hoverable } from './Hoverable'
 import { SecretsPanel } from './SecretsPanel'
 import { SecretModal } from './modals/SecretModal'
@@ -6,6 +6,20 @@ import { theme } from '../theme'
 import type { AppState } from '../state/selectors'
 import { activeEngagement, activeCompany, activeChat, phaseLabel, sevColor } from '../state/selectors'
 import type { Action } from '../state/reducer'
+import type { EngagementScope } from '../../electron/services/store.types'
+
+// Render the REAL, enforced scope record (never a placeholder). Only non-empty
+// dimensions are shown; `mode:'all'` means the gate is off.
+function toScopeRows(sc: EngagementScope | undefined): { label: string; value: string }[] {
+  if (!sc) return []
+  if (sc.mode === 'all') return [{ label: 'Mode', value: 'All (no restrictions)' }]
+  const rows: { label: string; value: string }[] = []
+  const add = (label: string, arr?: string[]) => { if (arr && arr.length) rows.push({ label, value: arr.join(', ') }) }
+  add('Hosts', sc.hosts); add('Wildcards', sc.wildcards); add('URL prefixes', sc.urlPrefixes)
+  add('Accounts', sc.accounts); add('Regions', sc.regions); add('Tenants', sc.tenants)
+  add('Exclusions', sc.exclusions)
+  return rows
+}
 
 export function ContextPanel({ state, dispatch }: { state: AppState; dispatch: Dispatch<Action> }) {
   const eng = activeEngagement(state)
@@ -17,6 +31,15 @@ export function ContextPanel({ state, dispatch }: { state: AppState; dispatch: D
   const [tab, setTab] = useState<'scope' | 'secrets' | 'findings'>('scope')
   const [secretModalOpen, setSecretModalOpen] = useState(false)
   const [expandedFinding, setExpandedFinding] = useState<string | null>(null)
+  const [realScope, setRealScope] = useState<EngagementScope | undefined>(undefined)
+  useEffect(() => {
+    let off = false
+    const id = eng?.id
+    const p = id ? window.nexra?.scope?.get(id) : undefined
+    if (p) p.then(sc => { if (!off) setRealScope(sc) })
+    else setRealScope(undefined)
+    return () => { off = true }
+  }, [eng?.id, chat?.id])
   const { rightOpen } = state.ui
   const toggleRight = () => dispatch({ t: 'toggleRight' })
 
@@ -37,7 +60,7 @@ export function ContextPanel({ state, dispatch }: { state: AppState; dispatch: D
   }
 
   const chatFocusLabel = phaseLabel(eng, chat!.phaseId)
-  const scope = eng!.scope
+  const scopeRows = toScopeRows(realScope)
   const findings = chat!.findings.map(f => ({ ...f, color: sevColor(f.sev) }))
   const findingsCount = findings.length
   const findingsEmpty = findings.length === 0
@@ -86,14 +109,18 @@ export function ContextPanel({ state, dispatch }: { state: AppState; dispatch: D
         {tab === 'scope' && (
           <>
             <div style={{ fontSize: 10.5, fontWeight: 500, letterSpacing: '0.1em', color: theme.dim2, textTransform: 'uppercase', marginBottom: 10 }}>Scope</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: theme.card, border: `1px solid ${theme.border}`, borderRadius: 9, overflow: 'hidden', marginBottom: 24 }}>
-              {scope.map((s, i) => (
-                <div key={i} style={{ display: 'flex', gap: 10, padding: '9px 12px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                  <span style={{ flex: 'none', width: 82, fontSize: 11.5, color: theme.dim }}>{s.label}</span>
-                  <span style={{ flex: 1, fontFamily: theme.mono, fontSize: 11.5, color: theme.textDim, wordBreak: 'break-word' }}>{s.value}</span>
-                </div>
-              ))}
-            </div>
+            {scopeRows.length === 0 ? (
+              <div style={{ padding: '16px 12px', border: '1px dashed rgba(255,255,255,0.09)', borderRadius: 9, textAlign: 'center', fontSize: 12, color: theme.dim2, marginBottom: 24 }}>No scope set yet — the agent will ask before it runs.</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: theme.card, border: `1px solid ${theme.border}`, borderRadius: 9, overflow: 'hidden', marginBottom: 24 }}>
+                {scopeRows.map((s, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 10, padding: '9px 12px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <span style={{ flex: 'none', width: 82, fontSize: 11.5, color: theme.dim }}>{s.label}</span>
+                    <span style={{ flex: 1, fontFamily: theme.mono, fontSize: 11.5, color: theme.textDim, wordBreak: 'break-word' }}>{s.value}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </>
         )}
 

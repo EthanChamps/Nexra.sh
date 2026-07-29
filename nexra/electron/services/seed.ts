@@ -22,23 +22,27 @@ export const chatColors = [
   { id: 'plum', bg: '#130a19', dot: '#a765d0' },
 ]
 
+// Review-type config is code, not data: phases + methodology per engagement
+// type. `scope` is intentionally empty — the real, enforced scope is set by the
+// operator (scope_request → scope.setAndValidate) and shown from that record,
+// never from a canned placeholder.
 export function buildTypes(): Record<ReviewTypeId, ReviewTypeConfig> {
   return {
     aws: { label: 'AWS Config Review', short: 'AWS', linear: false,
       phases: [{ id: 'iam', label: 'IAM' }, { id: 'storage', label: 'Storage (S3)' }, { id: 'network', label: 'Network (VPC)' }, { id: 'logging', label: 'Logging & Monitoring' }],
-      scope: [{ label: 'Account', value: '4821-9930-1174' }, { label: 'Regions', value: 'us-east-1, us-west-2' }, { label: 'Environment', value: 'Production' }, { label: 'Benchmark', value: 'CIS AWS v3.0' }] },
+      scope: [] },
     azure: { label: 'Azure Config Review', short: 'AZ', linear: false,
       phases: [{ id: 'entra', label: 'Entra ID' }, { id: 'storage', label: 'Storage' }, { id: 'network', label: 'Network' }, { id: 'logging', label: 'Logging & Monitoring' }],
-      scope: [{ label: 'Tenant', value: 'contoso.onmicrosoft.com' }, { label: 'Subscription', value: 'prod-01' }, { label: 'Regions', value: 'eastus, westeu' }, { label: 'Benchmark', value: 'CIS Azure v2.1' }] },
+      scope: [] },
     m365: { label: 'M365 Config Review', short: 'M365', linear: false,
       phases: [{ id: 'identity', label: 'Identity' }, { id: 'exchange', label: 'Exchange' }, { id: 'sharepoint', label: 'SharePoint' }, { id: 'compliance', label: 'Compliance' }],
-      scope: [{ label: 'Tenant', value: 'contoso.onmicrosoft.com' }, { label: 'Licenses', value: 'E5 · 1,240 seats' }, { label: 'Benchmark', value: 'CIS M365 v4.0' }] },
+      scope: [] },
     internal: { label: 'Internal Pen Test', short: 'INT', linear: true,
       phases: [{ id: 'recon', label: 'Recon' }, { id: 'exploit', label: 'Exploit' }],
-      scope: [{ label: 'Subnet', value: '10.10.0.0/16' }, { label: 'Domain', value: 'CORP.LOCAL' }, { label: 'DC', value: '10.10.0.5' }, { label: 'Exclusions', value: '10.10.9.0/24' }] },
+      scope: [] },
     external: { label: 'External Pen Test', short: 'EXT', linear: true,
       phases: [{ id: 'recon', label: 'Recon' }, { id: 'exploit', label: 'Exploit' }],
-      scope: [{ label: 'Domains', value: 'acme.com, *.acme.io' }, { label: 'ASN', value: 'AS40021' }, { label: 'Ranges', value: '198.51.100.0/24' }, { label: 'Rules', value: 'No DoS · business hrs' }] },
+      scope: [] },
     web: { label: 'Web App Pen Test', short: 'WEB', linear: true,
       phases: [
         { id: 'map', label: 'Map' },
@@ -47,12 +51,7 @@ export function buildTypes(): Record<ReviewTypeId, ReviewTypeConfig> {
         { id: 'verify', label: 'Verify' },
         { id: 'report', label: 'Report' },
       ],
-      scope: [
-        { label: 'Target URL', value: 'https://app.acme.com' },
-        { label: 'In-scope hosts', value: 'app.acme.com, *.acme.com' },
-        { label: 'Exclusions', value: 'admin.acme.com' },
-        { label: 'Auth', value: 'Session cookie (operator-provided)' },
-      ] },
+      scope: [] },
   }
 }
 
