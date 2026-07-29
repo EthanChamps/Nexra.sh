@@ -10,6 +10,13 @@ describe('dockerRun', () => {
     expect(built.args).toContain('https://app.acme.com')
     expect(built.args).toContain('--entrypoint'); expect(built.args).toContain('sh')
   })
+  it('applies blast-radius hardening flags to every container', () => {
+    const built = dockerRun({ image: 'x', script: 'true', positional: [] })
+    const j = built.args.join(' ')
+    expect(j).toContain('--cap-drop ALL')
+    expect(j).toContain('--security-opt no-new-privileges')
+    expect(built.args).toEqual(expect.arrayContaining(['--pids-limit', '512']))
+  })
 })
 
 describe('WEB_SKILLS', () => {
