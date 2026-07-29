@@ -18,7 +18,11 @@ export function resolveModel(cfg: ProviderConfig): LanguageModel {
   }
   if (cfg.provider === 'ollama') {
     const baseURL = (cfg.baseUrl ?? 'http://localhost:11434') + '/v1'
-    return createOpenAICompatible({ name: 'ollama', baseURL })(cfg.model)
+    // supportsStructuredOutputs makes the SDK actually SEND the json_schema
+    // response_format to Ollama (verified: Ollama honors it over /v1). Without
+    // it the SDK silently drops the schema and only warns, leaving the model
+    // unconstrained — the root cause of off-schema actions and target drift.
+    return createOpenAICompatible({ name: 'ollama', baseURL, supportsStructuredOutputs: true })(cfg.model)
   }
   throw new Error(`Provider "${cfg.provider}" is not wired in M3a`)
 }
