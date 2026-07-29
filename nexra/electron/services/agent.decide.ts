@@ -35,14 +35,24 @@ export async function decideWebAction(deps: DecideDeps): Promise<WebAction | nul
 // field, the one switch Ollama honors over /v1/chat/completions.
 export function defaultGenerate(model: any, schema: z.ZodType) {
   return async (opts: { system: string; messages: any[]; signal: AbortSignal }) => {
-    const r = await generateText({
-      model,
-      system: opts.system,
-      messages: opts.messages,
-      abortSignal: opts.signal,
-      experimental_output: Output.object({ schema }),
-      providerOptions: { ollama: { reasoningEffort: 'none' } },
-    })
-    return { text: JSON.stringify((r as any).experimental_output ?? {}) }
+    try {
+      const r = await generateText({
+        model,
+        system: opts.system,
+        messages: opts.messages,
+        abortSignal: opts.signal,
+        experimental_output: Output.object({ schema }),
+        providerOptions: { ollama: { reasoningEffort: 'none' } },
+      })
+      return { text: JSON.stringify((r as any).experimental_output ?? {}) }
+    } catch (err) {
+      // A small local model periodically emits output that doesn't satisfy the
+      // schema; the AI SDK then throws NoObjectGeneratedError. That's exactly the
+      // "invalid decision" case the caller already handles — return empty so
+      // decideWebAction yields null and the bounded repair path runs, instead of
+      // the whole turn dying. A real cancel (abort) must still propagate.
+      if (opts.signal.aborted || (err as any)?.name === 'AbortError') throw err
+      return { text: '{}' }
+    }
   }
 }

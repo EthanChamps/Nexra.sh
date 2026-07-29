@@ -34,4 +34,18 @@ describe('defaultGenerate — thinking disabled on the local model', () => {
     await call()
     expect(generateText.mock.calls[0][0].experimental_output).toBeDefined()
   })
+
+  it('returns empty JSON (→ bounded repair) when the model output fails schema validation', async () => {
+    generateText.mockRejectedValueOnce(Object.assign(new Error('No object generated: response did not match schema'), { name: 'NoObjectGeneratedError' }))
+    const gen = defaultGenerate({ tag: 'fake' }, z.object({ action: z.string() }))
+    const r = await gen({ system: 's', messages: [], signal: new AbortController().signal })
+    expect(r.text).toBe('{}')
+  })
+
+  it('rethrows on abort — a real cancel must not be swallowed as a bad decision', async () => {
+    const ac = new AbortController(); ac.abort()
+    generateText.mockRejectedValueOnce(Object.assign(new Error('aborted'), { name: 'AbortError' }))
+    const gen = defaultGenerate({ tag: 'fake' }, z.object({ action: z.string() }))
+    await expect(gen({ system: 's', messages: [], signal: ac.signal })).rejects.toThrow()
+  })
 })
