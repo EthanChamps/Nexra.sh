@@ -103,6 +103,19 @@ it('scope: entering a tenant in allowlist mode includes it in the saved scope', 
   expect(setAndValidate).toHaveBeenCalledWith('e1', expect.objectContaining({ tenants: ['contoso.onmicrosoft.com'] }))
 })
 
+it('scope (web): captures a typed-but-not-Added host on Set Scope (no silent drop)', async () => {
+  const setAndValidate = vi.fn(() => Promise.resolve({ success: true }))
+  ;(window as any).nexra = { ...(window as any).nexra, scope: { setAndValidate } }
+  const scopeMsg = { id: 'm5', role: 'assistant', kind: 'request', requestKind: 'scope', engagementId: 'e1', engagementType: 'web' }
+  render(<RequestCard message={scopeMsg} companyId="co1" onFulfill={() => {}} />)
+  fireEvent.click(screen.getByText(/Allowlist/i))
+  // Type a host but do NOT click Add — the previous footgun.
+  fireEvent.change(screen.getByPlaceholderText('app.acme.com'), { target: { value: 'host.docker.internal' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Set Scope' }))
+  await screen.findByRole('button', { name: 'Scope set' })
+  expect(setAndValidate).toHaveBeenCalledWith('e1', expect.objectContaining({ hosts: ['host.docker.internal'] }))
+})
+
 it('scope (web): shows host fields (not AWS accounts) and saves an entered host under hosts', async () => {
   const setAndValidate = vi.fn(() => Promise.resolve({ success: true }))
   ;(window as any).nexra = { ...(window as any).nexra, scope: { setAndValidate } }
