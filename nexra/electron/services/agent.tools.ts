@@ -247,10 +247,18 @@ export const M365_SKILLS: Record<string, SkillDef> = {
 // header INSIDE the container by the shell — so it never appears in any emitted
 // command/output event. The target URL is passed positionally (never string-
 // interpolated), and is scope-validated below the LLM before this ever spawns.
+// Blast-radius hardening applied to every skill container: drop all Linux
+// capabilities (these are userland HTTP clients — they need none), forbid
+// privilege escalation, and cap process count against a fork bomb. Cheap,
+// broadly compatible, and independent of the tool. (Egress restriction — the
+// real anti-exfil control — needs per-target network rules and is a documented
+// v1 limitation, not done here.)
+const DOCKER_HARDENING = ['--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--pids-limit', '512']
+
 export function dockerRun(opts: { image: string; script: string; positional: string[]; envPassthrough?: string[]; volumes?: string[] }): { command: string; args: string[] } {
   const env = (opts.envPassthrough ?? []).flatMap(v => ['-e', v])
   const vols = (opts.volumes ?? []).flatMap(v => ['-v', v])
-  return { command: 'docker', args: ['run', '--rm', ...env, ...vols, '--entrypoint', 'sh', opts.image, '-c', opts.script, 'nexra', ...opts.positional] }
+  return { command: 'docker', args: ['run', '--rm', ...DOCKER_HARDENING, ...env, ...vols, '--entrypoint', 'sh', opts.image, '-c', opts.script, 'nexra', ...opts.positional] }
 }
 
 const WEB_AUTH_ENV = 'WEB_AUTH_HEADER'
