@@ -8,8 +8,7 @@ describe('web engagement type', () => {
     expect(web.linear).toBe(true)
     expect(web.phases.map(p => p.id)).toEqual(['map', 'discover', 'scan', 'verify', 'report'])
   })
-  it('carries web scope display rows', () => {
-    const labels = buildTypes().web.scope.map(s => s.label)
-    expect(labels).toEqual(expect.arrayContaining(['In-scope hosts', 'Exclusions']))
+  it('ships no canned scope — the enforced scope is set by the operator', () => {
+    expect(buildTypes().web.scope).toEqual([])
   })
 })
