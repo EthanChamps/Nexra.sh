@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { WEB_SKILLS, dockerRun, skillsForEngagement } from '../electron/services/agent.tools'
+import { WEB_SKILLS, dockerRun, skillsForEngagement, runSkill } from '../electron/services/agent.tools'
 
 describe('dockerRun', () => {
   it('builds a docker run that passes an env NAME (not value) and the target positionally', () => {
@@ -32,6 +32,28 @@ describe('WEB_SKILLS', () => {
     expect(b.args).toEqual(expect.arrayContaining(['-e', 'WEB_AUTH_HEADER']))
     expect(b.args.join(' ')).toContain('nuclei')
     expect(b.args.join(' ')).not.toMatch(/Bearer|Cookie:/i)
+  })
+})
+
+describe('runSkill — web scope gate (regression: the target url must reach validate)', () => {
+  // This is the gate that shipped broken: validate routes web scopes to the
+  // host/URL validator, but runSkill wasn't forwarding inv.url, so every web
+  // skill was denied. A trivial no-op command stands in for the real container.
+  const webScope: any = { mode: 'allowlist', accounts: [], regions: [], hosts: ['app.acme.com'], wildcards: [], urlPrefixes: [], exclusions: [] }
+  const deps: any = { getScope: () => webScope, injectEnv: () => ({}), filledEnvVars: () => [] }
+  const def: any = { name: 'web_probe', build: () => ({ command: process.execPath, args: ['-e', 'process.exit(0)'] }) }
+
+  it('spawns a web skill whose url is in scope (not denied)', async () => {
+    const events: any[] = []
+    const res = await runSkill({ skill: 'web_probe', companyId: 'c', engagementId: 'e', url: 'https://app.acme.com/rest' }, def, e => events.push(e), deps, 'id1')
+    expect(events.some(e => e.state === 'denied')).toBe(false)
+    expect(res.state).toBe('success')
+  })
+
+  it('denies a web skill whose url is out of scope', async () => {
+    const events: any[] = []
+    const res = await runSkill({ skill: 'web_probe', companyId: 'c', engagementId: 'e', url: 'https://evil.example' }, def, e => events.push(e), deps, 'id2')
+    expect(res.state).toBe('denied')
   })
 })
 
