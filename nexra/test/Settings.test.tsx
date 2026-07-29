@@ -2,10 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { Settings } from '../src/components/Settings'
 
-const api = { get: vi.fn(), set: vi.fn(() => Promise.resolve()), setKey: vi.fn(() => Promise.resolve()) }
+const api = { get: vi.fn(), set: vi.fn(() => Promise.resolve()), setKey: vi.fn(() => Promise.resolve()), testConnection: vi.fn() }
 beforeEach(() => {
   api.get.mockReset().mockResolvedValue({ provider: 'ollama', model: 'llama3.3', baseUrl: 'http://localhost:11434', hasKey: false })
-  api.set.mockClear(); api.setKey.mockClear()
+  api.set.mockClear(); api.setKey.mockClear(); api.testConnection.mockReset()
   ;(window as any).nexra = { settings: api }
 })
 
@@ -31,5 +31,22 @@ describe('Settings persistence', () => {
     render(<Settings state={{} as any} dispatch={() => {}} />)
     const key = await screen.findByPlaceholderText('•••••••• (set — type to replace)')
     expect(key).toHaveValue('')
+  })
+
+  it('Test connection calls the backend and surfaces the result', async () => {
+    api.testConnection.mockResolvedValue({ ok: true, detail: 'Connected — qwen3.5:9b ready' })
+    render(<Settings state={{} as any} dispatch={() => {}} />)
+    await waitFor(() => expect(api.get).toHaveBeenCalled())
+    fireEvent.click(screen.getByRole('button', { name: 'Test connection' }))
+    await waitFor(() => expect(api.testConnection).toHaveBeenCalled())
+    expect(await screen.findByText(/Connected — qwen3\.5:9b ready/)).toBeTruthy()
+  })
+
+  it('Test connection shows a failure detail when unreachable', async () => {
+    api.testConnection.mockResolvedValue({ ok: false, detail: 'Cannot reach model host' })
+    render(<Settings state={{} as any} dispatch={() => {}} />)
+    await waitFor(() => expect(api.get).toHaveBeenCalled())
+    fireEvent.click(screen.getByRole('button', { name: 'Test connection' }))
+    expect(await screen.findByText(/Cannot reach model host/)).toBeTruthy()
   })
 })

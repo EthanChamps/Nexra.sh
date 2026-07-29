@@ -25,6 +25,7 @@ contextBridge.exposeInMainWorld('nexra', {
     get: () => ipcRenderer.invoke('settings:get'),
     set: (partial: any) => ipcRenderer.invoke('settings:set', partial),
     setKey: (provider: string, plaintext: string) => ipcRenderer.invoke('settings:setKey', { provider, plaintext }),
+    testConnection: () => ipcRenderer.invoke('settings:test-connection'),
   },
   // Credential vault — list/create/delete deal in METADATA only; fill/tie send
   // plaintext renderer→main once and it is never returned (mirrors setKey).
