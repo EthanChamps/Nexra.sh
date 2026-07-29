@@ -11,6 +11,7 @@ import { setPhaseCoverage } from './store.memory'
 import { createRunRegistry, evidenceFromArgs, computeVerified, normalizeSev } from './agent.findings'
 import { WEB_PHASES, allowedActionsForPhase, summarizeSkill, webActionSchema } from './agent.web'
 import { decideWebAction, defaultGenerate } from './agent.decide'
+import { createAliaser } from './agent.alias'
 
 const STEP_CAP = 6
 
@@ -213,7 +214,14 @@ async function runWebSend(
   const registry = createRunRegistry()
   const recordingEmit = (e: AgentEvent) => { registry.record(e); emit(e) }
   const pack = skillsForEngagement('web')
-  const messages: { role: 'user' | 'assistant'; content: string }[] = [{ role: 'user', content: req.text }]
+  // De-identify everything bound for the (possibly remote) model: real hosts are
+  // replaced with opaque handles on the way out and resolved back before a skill
+  // spawns. Seed from the scope so the target is aliased from the very first turn.
+  const aliaser = createAliaser()
+  const scope0 = engagementId ? getScope(engagementId) : undefined
+  for (const h of scope0?.hosts ?? []) aliaser.registerHost(h)
+  for (const w of scope0?.wildcards ?? []) aliaser.registerHost(w.replace(/^\*\./, ''))
+  const messages: { role: 'user' | 'assistant'; content: string }[] = [{ role: 'user', content: aliaser.mask(req.text) }]
   const allowed = allowedActionsForPhase(req.phaseLabel)
   const sys = webSystemPrompt(req.phaseLabel, allowed, pack)
   const generate = defaultGenerate(model, webActionSchema(req.phaseLabel))
@@ -228,7 +236,10 @@ async function runWebSend(
         action = await decideWebAction({ generate, system: sys, messages, phaseLabel: req.phaseLabel, signal })
         if (!action) break
       }
-      if (action.note) emit({ type: 'text_delta', delta: action.note })
+      // The model only ever saw handles, so its note references them — reveal
+      // real hosts for the operator's display. The assistant turn we feed back
+      // stays masked (consistent with what the model produced).
+      if (action.note) emit({ type: 'text_delta', delta: aliaser.unmask(action.note) })
       messages.push({ role: 'assistant', content: JSON.stringify(action) })
 
       if (action.action === 'done' || action.action === 'checkpoint') {
@@ -238,13 +249,15 @@ async function runWebSend(
       }
       if (!pack[action.action]) { messages.push({ role: 'user', content: `[unknown or unsupported action ${action.action}]` }); continue }
 
-      // runSkill re-validates action.url against scope (below the LLM) before spawn.
+      // Resolve the model's handle URL back to the real target, then let runSkill
+      // re-validate it against scope (below the LLM) before spawn.
       const id = randomUUID()
-      const inv: SkillInvocation = { skill: action.action, companyId: companyId!, engagementId: engagementId!, url: action.url }
+      const realUrl = action.url ? aliaser.resolveUrl(action.url) : undefined
+      const inv: SkillInvocation = { skill: action.action, companyId: companyId!, engagementId: engagementId!, url: realUrl }
       const deps: RunDeps = { getScope, injectEnv, filledEnvVars }
       const outcome = await runSkill(inv, pack[action.action] as SkillDef, recordingEmit, deps, id)
       if (outcome.state !== 'success') {
-        messages.push({ role: 'user', content: `[skill ${action.action} did not run: ${outcome.reason}]` })
+        messages.push({ role: 'user', content: aliaser.mask(`[skill ${action.action} did not run: ${outcome.reason}]`) })
         continue
       }
 
@@ -257,7 +270,9 @@ async function runWebSend(
         upsertFinding(req.chatId, f); emit({ type: 'finding', ...f })
       }
       if (engagementId) setPhaseCoverage(engagementId, req.phaseLabel, 'in_progress')
-      messages.push({ role: 'user', content: summary })
+      // Findings are stored locally with REAL hosts (above); only the model-bound
+      // summary is de-identified.
+      messages.push({ role: 'user', content: aliaser.mask(summary) })
     }
     // Budget exhausted with no explicit checkpoint → force one so the operator drives the next phase.
     if (!stopped) emit({ type: 'checkpoint', phase: phase.label, nextPhase })

@@ -10,7 +10,7 @@ import { encryptSecret, decryptSecret } from './services/secrets'
 import { createSecret, fillSecret, tieSecret, listSecrets, deleteSecret, upsertFilledInput } from './services/secrets.vault'
 import { getScope, setScope } from './services/scope'
 import { track, untrack } from './services/inflight'
-import type { ProviderConfig } from './services/providers'
+import { modelTransportWarning, type ProviderConfig } from './services/providers'
 import type { EngagementScope, SecretField, Company } from './services/store.types'
 import { shellTabs, createSession, writeToSession, resizeSession, killSession, killAllSessions } from './services/shell.pty'
 
@@ -60,7 +60,10 @@ function loadConfig(): ProviderConfig {
   const blob = getSetting('secret.apikey.' + provider)
   let apiKey: string | undefined
   if (blob) { try { apiKey = decryptSecret(blob) } catch { apiKey = undefined } }
-  return { provider, model, baseUrl, apiKey }
+  const cfg: ProviderConfig = { provider, model, baseUrl, apiKey }
+  const warning = modelTransportWarning(cfg)
+  if (warning) console.warn('[nexra] insecure model transport: ' + warning)
+  return cfg
 }
 
 app.whenReady().then(() => {
