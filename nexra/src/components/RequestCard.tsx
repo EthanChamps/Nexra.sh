@@ -164,9 +164,27 @@ export function RequestCard({ message, companyId, onFulfill }: RequestCardProps)
     )
 
     const handleSetScope = async () => {
+      // Fold in any value still sitting in an input box that wasn't "Add"-ed —
+      // otherwise a typed-but-unadded host is silently dropped and the scope
+      // saves empty, re-triggering the scope request.
+      const withPending = (list: string[], pending: string) => {
+        const v = pending.trim()
+        return v && !list.includes(v) ? [...list, v] : list
+      }
       const scope: EngagementScope = isWeb
-        ? { mode, accounts: [], regions: [], tenants: [], hosts, wildcards, urlPrefixes, exclusions }
-        : { mode, accounts, regions, tenants }
+        ? {
+            mode, accounts: [], regions: [], tenants: [],
+            hosts: withPending(hosts, hostInput),
+            wildcards: withPending(wildcards, wildcardInput),
+            urlPrefixes: withPending(urlPrefixes, prefixInput),
+            exclusions: withPending(exclusions, exclusionInput),
+          }
+        : {
+            mode,
+            accounts: withPending(accounts, accountInput),
+            regions: withPending(regions, regionInput),
+            tenants: withPending(tenants, tenantInput),
+          }
       setLoading(true)
       try {
         const engagementId = (message as any).engagementId
