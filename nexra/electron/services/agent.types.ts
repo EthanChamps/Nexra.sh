@@ -15,7 +15,7 @@ export type AgentEvent =
   | { type: 'tool_call'; state: ToolState; toolName: string; command?: string; output?: string; duration?: string; reason?: string; installCmd?: string }
   | { type: 'skill'; id: string; skill: string; state: SkillState; command?: string; chunk?: string; message?: string; exitCode?: number; duration?: string; installCmd?: string }
   | { type: 'input_request'; requestId: string; items: InputRequestItem[] }
-  | { type: 'scope_request'; engagementId: string }
+  | { type: 'scope_request'; engagementId: string; engagementType?: string }
   | { type: 'finding'; id: string; title: string; sev: Severity; phase: string; time: string; rationale: string; evidence: Evidence[]; verified: boolean }
   | { type: 'checkpoint'; phase: string; nextPhase?: string; note?: string }
   | { type: 'error'; message: string }

@@ -118,7 +118,7 @@ export type Action =
   | { t: 'appendError'; chatId: string; message: string }
   | { t: 'appendSkillEvent'; chatId: string; skillEvent: AgentEvent }
   | { t: 'appendInputRequest'; chatId: string; requestId: string; items: InputRequestItem[] }
-  | { t: 'appendScopeRequest'; chatId: string; engagementId: string }
+  | { t: 'appendScopeRequest'; chatId: string; engagementId: string; engagementType?: string }
   | { t: 'fulfillSecretRequest'; chatId: string; secretId: string; values: Record<string, string> }
   | { t: 'fulfillScopeRequest'; engagementId: string; scope: EngagementScope }
   | { t: 'setStreaming'; chatId: string; on: boolean }
@@ -295,7 +295,7 @@ export function reducer(state: AppState, a: Action): AppState {
     }
     case 'appendScopeRequest': {
       const c = chatByGlobalId(s, a.chatId); if (!c) return state
-      c.messages.push({ id: nextId('m'), role: 'assistant', kind: 'request', requestKind: 'scope', engagementId: a.engagementId })
+      c.messages.push({ id: nextId('m'), role: 'assistant', kind: 'request', requestKind: 'scope', engagementId: a.engagementId, engagementType: a.engagementType })
       return s
     }
     case 'fulfillSecretRequest': {

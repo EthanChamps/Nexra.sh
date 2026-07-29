@@ -102,3 +102,19 @@ it('scope: entering a tenant in allowlist mode includes it in the saved scope', 
   await screen.findByRole('button', { name: 'Scope set' })
   expect(setAndValidate).toHaveBeenCalledWith('e1', expect.objectContaining({ tenants: ['contoso.onmicrosoft.com'] }))
 })
+
+it('scope (web): shows host fields (not AWS accounts) and saves an entered host under hosts', async () => {
+  const setAndValidate = vi.fn(() => Promise.resolve({ success: true }))
+  ;(window as any).nexra = { ...(window as any).nexra, scope: { setAndValidate } }
+  const scopeMsg = { id: 'm4', role: 'assistant', kind: 'request', requestKind: 'scope', engagementId: 'e1', engagementType: 'web' }
+  render(<RequestCard message={scopeMsg} companyId="co1" onFulfill={() => {}} />)
+  fireEvent.click(screen.getByText(/Allowlist/i))
+  // web card shows In-scope hosts, not the cloud AWS Accounts field
+  expect(screen.queryByText('AWS Accounts')).toBeNull()
+  const hostInput = screen.getByPlaceholderText('app.acme.com')
+  fireEvent.change(hostInput, { target: { value: 'localhost' } })
+  fireEvent.click(hostInput.parentElement!.querySelector('button')!)
+  fireEvent.click(screen.getByRole('button', { name: 'Set Scope' }))
+  await screen.findByRole('button', { name: 'Scope set' })
+  expect(setAndValidate).toHaveBeenCalledWith('e1', expect.objectContaining({ hosts: ['localhost'], accounts: [] }))
+})

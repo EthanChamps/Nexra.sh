@@ -10,7 +10,7 @@ import { encryptSecret, decryptSecret } from './services/secrets'
 import { createSecret, fillSecret, tieSecret, listSecrets, deleteSecret, upsertFilledInput } from './services/secrets.vault'
 import { getScope, setScope } from './services/scope'
 import { track, untrack } from './services/inflight'
-import { modelTransportWarning, type ProviderConfig } from './services/providers'
+import { modelTransportWarning, testConnection, type ProviderConfig } from './services/providers'
 import type { EngagementScope, SecretField, Company } from './services/store.types'
 import { shellTabs, createSession, writeToSession, resizeSession, killSession, killAllSessions } from './services/shell.pty'
 
@@ -87,6 +87,7 @@ app.whenReady().then(() => {
     }
   })
   ipcMain.handle('agent:title', (_ev, req) => runTitle(req, loadConfig()))
+  ipcMain.handle('settings:test-connection', () => testConnection(loadConfig()))
   ipcMain.handle('agent:cancel', (_ev, chatId: string) => { inflight.get(chatId)?.abort() })
   ipcMain.handle('agent:install', (ev, req) =>
     ev.sender.send('agent:event:' + req.chatId, { type: 'error', message: 'Tool install arrives with agent execution in M3b' }))
