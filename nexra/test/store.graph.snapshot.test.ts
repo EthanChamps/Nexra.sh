@@ -10,14 +10,14 @@ beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'nexra-snap-')); initSetting
 afterEach(() => rmSync(dir, { recursive: true, force: true }))
 
 describe('readSnapshot', () => {
-  it('seeds an empty db once and returns companies + types', () => {
+  it('starts empty — no demo seeding — but still returns the review types', () => {
     expect(isEmptyGraph()).toBe(true)
     const snap = readSnapshot()
-    expect(snap.companies.length).toBeGreaterThan(0)
+    expect(snap.companies).toEqual([])
     expect(Object.keys(snap.types)).toContain('aws')
-    expect(isEmptyGraph()).toBe(false)
+    expect(isEmptyGraph()).toBe(true)   // reading never writes seed data
   })
-  it('does not re-seed a non-empty db', () => {
+  it('returns exactly the persisted graph, nothing injected', () => {
     saveGraph([{ id: 'only', name: 'Only Co', updated: 'now', engagements: [] }])
     const snap = readSnapshot()
     expect(snap.companies.map(c => c.id)).toEqual(['only'])
