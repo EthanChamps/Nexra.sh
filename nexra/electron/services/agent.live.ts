@@ -219,6 +219,15 @@ async function runWebSend(
   // spawns. Seed from the scope so the target is aliased from the very first turn.
   const aliaser = createAliaser()
   const scope0 = engagementId ? getScope(engagementId) : undefined
+  // No usable web scope ⇒ the gate is fail-closed and every skill would be denied
+  // with no way for the operator to fix it. Prompt for scope and stop the turn,
+  // rather than looping into silent denials. mode:'all' is an explicit operator
+  // opt-out and proceeds. (Below the LLM the same gate still re-validates each spawn.)
+  const hasWebScope = !!(scope0 && (scope0.hosts?.length || scope0.wildcards?.length || scope0.urlPrefixes?.length))
+  if (engagementId && scope0?.mode !== 'all' && !hasWebScope) {
+    emit({ type: 'scope_request', engagementId, engagementType: 'web' })
+    return
+  }
   for (const h of scope0?.hosts ?? []) aliaser.registerHost(h)
   for (const w of scope0?.wildcards ?? []) aliaser.registerHost(w.replace(/^\*\./, ''))
   const messages: { role: 'user' | 'assistant'; content: string }[] = [{ role: 'user', content: aliaser.mask(req.text) }]
