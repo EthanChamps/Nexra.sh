@@ -2,13 +2,13 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { initSettingsDb, upsertFinding, listFindingsByChat } from '../electron/services/store.sqlite'
+import { closeDb, initSettingsDb, upsertFinding, listFindingsByChat } from '../electron/services/store.sqlite'
 import { saveGraph, readGraph, deleteChatGraph, deleteCompanyGraph } from '../electron/services/store.graph'
 import type { Company } from '../electron/services/store.types'
 
 let dir: string
 beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'nexra-del-')); initSettingsDb(join(dir, 'nexra.db')) })
-afterEach(() => rmSync(dir, { recursive: true, force: true }))
+afterEach(() => { closeDb(); rmSync(dir, { recursive: true, force: true }) })
 
 const two = (): Company[] => ([
   { id: 'c1', name: 'Acme', updated: 'now', engagements: [

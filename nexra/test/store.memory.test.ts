@@ -2,12 +2,12 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { initSettingsDb } from '../electron/services/store.sqlite'
+import { closeDb, initSettingsDb } from '../electron/services/store.sqlite'
 import { setPhaseCoverage, listPhaseCoverage, appendMemory, listMemory } from '../electron/services/store.memory'
 
 let dir: string
 beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'nexra-mem-')); initSettingsDb(join(dir, 'nexra.db')) })
-afterEach(() => rmSync(dir, { recursive: true, force: true }))
+afterEach(() => { closeDb(); rmSync(dir, { recursive: true, force: true }) })
 
 describe('phase coverage', () => {
   it('upserts status per (engagement, phase)', () => {

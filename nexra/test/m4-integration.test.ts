@@ -2,19 +2,19 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { initSettingsDb, upsertFinding } from '../electron/services/store.sqlite'
+import { closeDb, initSettingsDb, upsertFinding } from '../electron/services/store.sqlite'
 import { readSnapshot, saveGraph } from '../electron/services/store.graph'
 import type { Company } from '../electron/services/store.types'
 
 let dir: string, dbPath: string
 beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'nexra-m4-')); dbPath = join(dir, 'nexra.db'); initSettingsDb(dbPath) })
-afterEach(() => rmSync(dir, { recursive: true, force: true }))
+afterEach(() => { closeDb(); rmSync(dir, { recursive: true, force: true }) })
 
 describe('M4 done-when: a full engagement survives restart', () => {
   it('persists company→engagement→chat→messages→findings across a reopen', () => {
-    // 1. seed on first boot
+    // 1. a fresh workspace is empty; demo data is never injected into real storage
     const first = readSnapshot()
-    expect(first.companies.length).toBeGreaterThan(0)
+    expect(first.companies).toEqual([])
 
     // 2. operator builds a new engagement graph and it autosaves
     const graph: Company[] = [{

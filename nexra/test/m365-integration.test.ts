@@ -41,7 +41,7 @@ vi.mock('../electron/services/agent.tools', async importActual => {
   }
 })
 
-import { initSettingsDb } from '../electron/services/store.sqlite'
+import { closeDb, initSettingsDb } from '../electron/services/store.sqlite'
 import { createSecret, fillSecret } from '../electron/services/secrets.vault'
 import { setScope } from '../electron/services/scope'
 import { runSend } from '../electron/services/agent.live'
@@ -70,7 +70,7 @@ beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'nexra-m365-int-'))
   initSettingsDb(join(dir, 'nexra.db'))
 })
-afterEach(() => rmSync(dir, { recursive: true, force: true }))
+afterEach(() => { closeDb(); rmSync(dir, { recursive: true, force: true }) })
 
 describe('M365 vertical end-to-end', () => {
   it('runs ScubaGear in-scope and logs a verified finding', async () => {

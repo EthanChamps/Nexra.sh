@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { initSettingsDb } from '../electron/services/store.sqlite'
+import { closeDb, initSettingsDb } from '../electron/services/store.sqlite'
 import { createSecret, fillSecret } from '../electron/services/secrets.vault'
 import { setScope } from '../electron/services/scope'
 import type { AgentEvent } from '../electron/services/agent.types'
@@ -23,7 +23,7 @@ beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'nexra-m3b-int-'))
   initSettingsDb(join(dir, 'nexra.db'))
 })
-afterEach(() => rmSync(dir, { recursive: true, force: true }))
+afterEach(() => { closeDb(); rmSync(dir, { recursive: true, force: true }) })
 
 describe('M3b end-to-end', () => {
   it('blocks a skill awaiting a secret, then runs after fulfillment', async () => {

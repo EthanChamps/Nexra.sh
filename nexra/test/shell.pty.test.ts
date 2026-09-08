@@ -1,4 +1,8 @@
-import { describe, it, expect, afterEach } from 'vitest'
+// @vitest-environment node
+import { describe, it, expect, afterEach, vi } from 'vitest'
+// This is a real Node PTY test, not an Electron runtime. No vault access is
+// needed for global sessions; stub the Electron-only encryption boundary.
+vi.mock('electron', () => ({ safeStorage: {} }))
 import { createSession, writeToSession, resizeSession, killSession, getSessionPid } from '../electron/services/shell.pty'
 
 // 'cmd' resolves on win32, 'shell' (the login-shell tab) resolves everywhere else —

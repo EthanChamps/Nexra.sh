@@ -2,11 +2,11 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { initSettingsDb, getSetting, setSetting, insertSecretMeta, getSecretMeta } from '../electron/services/store.sqlite'
+import { closeDb, initSettingsDb, getSetting, setSetting, insertSecretMeta, getSecretMeta } from '../electron/services/store.sqlite'
 
 let dir: string
 beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'nexra-')) ; initSettingsDb(join(dir, 'nexra.db')) })
-afterEach(() => rmSync(dir, { recursive: true, force: true }))
+afterEach(() => { closeDb(); rmSync(dir, { recursive: true, force: true }) })
 
 describe('settings store', () => {
   it('returns undefined for a missing key', () => {

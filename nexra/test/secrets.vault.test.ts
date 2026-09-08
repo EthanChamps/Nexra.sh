@@ -12,7 +12,7 @@ vi.mock('electron', () => ({
   },
 }))
 
-import { initSettingsDb } from '../electron/services/store.sqlite'
+import { closeDb, initSettingsDb } from '../electron/services/store.sqlite'
 import { createSecret, fillSecret, tieSecret, listSecrets, deleteSecret, hasFilledSecret, injectEnv, filledEnvVars, upsertFilledInput } from '../electron/services/secrets.vault'
 
 let dir: string
@@ -21,7 +21,7 @@ beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'nexra-vault-'))
   initSettingsDb(join(dir, 'nexra.db'))
 })
-afterEach(() => rmSync(dir, { recursive: true, force: true }))
+afterEach(() => { closeDb(); rmSync(dir, { recursive: true, force: true }) })
 
 const AWS = [{ envVar: 'AWS_ACCESS_KEY_ID' }, { envVar: 'AWS_SECRET_ACCESS_KEY' }]
 

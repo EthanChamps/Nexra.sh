@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+// No Electron runtime is needed for deterministic agent tests.
+vi.mock('electron', () => ({ safeStorage: {} }))
 
 const streamText = vi.fn()
 vi.mock('ai', () => ({ streamText: (o: any) => streamText(o) }))

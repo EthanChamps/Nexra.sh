@@ -7,3 +7,16 @@ out/
 .DS_Store
 *.log
 .superpowers/
+.env.*
+!.env.example
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.pem
+*.pfx
+*.p12
+coverage/
+release/
+output/

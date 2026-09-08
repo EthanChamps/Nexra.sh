@@ -8,7 +8,7 @@
     "dev": "vite",
     "typecheck": "tsc -p tsconfig.json",
     "build": "npm run typecheck && tsc -p tsconfig.node.json && vite build && npm run copy:scripts",
-    "copy:scripts": "node -e \"const fs=require('node:fs');fs.cpSync('electron/services/scripts','dist-electron/scripts',{recursive:true});fs.cpSync('electron/services/assets','dist-electron/assets',{recursive:true})\"",
+    "copy:scripts": "node scripts/copy-assets.cjs",
     "pretest": "npm rebuild better-sqlite3",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -17,28 +17,28 @@
     "postinstall": "node scripts/fix-native-permissions.cjs"
   },
   "devDependencies": {
-    "@electron/rebuild": "^4.1.0",
+    "@electron/rebuild": "^4.2.0",
     "@testing-library/jest-dom": "^6.4.0",
     "@testing-library/react": "^16.0.0",
     "@types/better-sqlite3": "^7.6.13",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.0",
-    "electron": "^31.0.0",
-    "electron-builder": "^24.13.0",
+    "electron": "^42.11.2",
+    "electron-builder": "^26.15.3",
     "jsdom": "^24.1.0",
     "typescript": "^5.5.0",
-    "vite": "^5.4.0",
+    "vite": "^6.4.3",
     "vite-plugin-electron": "^0.28.0",
     "vite-plugin-electron-renderer": "^0.14.0",
-    "vitest": "^2.0.0"
+    "vitest": "^3.2.7"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^2.0.85",
-    "@ai-sdk/openai-compatible": "^1.0.42",
+    "@ai-sdk/anthropic": "^3.0.116",
+    "@ai-sdk/openai-compatible": "^2.0.74",
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/xterm": "^6.0.0",
-    "ai": "^5.0.209",
+    "ai": "^6.0.277",
     "better-sqlite3": "^12.11.1",
     "node-pty": "^1.1.0",
     "react": "^18.3.0",
@@ -48,11 +48,10 @@
     "remark-gfm": "^4.0.1",
     "zod": "^4.4.3"
   },
-  "allowScripts": {
-    "better-sqlite3@12.11.1": true,
-    "electron@31.7.7": true,
-    "esbuild@0.21.5": true,
-    "fsevents@2.3.3": true,
-    "node-pty@1.1.0": true
-  }
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "private": true,
+  "license": "UNLICENSED",
+  "author": "EthanChamps"
 }

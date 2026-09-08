@@ -1,4 +1,6 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
+// No Electron runtime is needed for deterministic agent tests.
+vi.mock('electron', () => ({ safeStorage: {} }))
 import { systemPrompt } from '../electron/services/agent.live'
 import { skillsForEngagement } from '../electron/services/agent.tools'
 

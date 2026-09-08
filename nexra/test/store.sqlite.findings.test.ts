@@ -2,12 +2,12 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { initSettingsDb, setSetting, getSetting, upsertFinding, listFindingsByChat } from '../electron/services/store.sqlite'
+import { closeDb, initSettingsDb, setSetting, getSetting, upsertFinding, listFindingsByChat } from '../electron/services/store.sqlite'
 import type { Finding } from '../electron/services/store.types'
 
 let dir: string
 beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'nexra-fnd-')); initSettingsDb(join(dir, 'nexra.db')) })
-afterEach(() => rmSync(dir, { recursive: true, force: true }))
+afterEach(() => { closeDb(); rmSync(dir, { recursive: true, force: true }) })
 
 const f = (over: Partial<Finding> = {}): Finding => ({
   id: 'f1', title: 'Public S3 bucket', sev: 'High', phase: 'Storage', time: 'just now',

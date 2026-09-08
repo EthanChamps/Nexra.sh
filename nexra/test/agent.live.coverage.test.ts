@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+// No Electron runtime is needed for deterministic agent tests.
+vi.mock('electron', () => ({ safeStorage: {} }))
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -7,7 +9,7 @@ const streamText = vi.fn()
 vi.mock('ai', () => ({ streamText: (o: any) => streamText(o) }))
 vi.mock('../electron/services/providers', () => ({ resolveModel: () => ({ tag: 'fake-model' }) }))
 
-import { initSettingsDb } from '../electron/services/store.sqlite'
+import { closeDb, initSettingsDb } from '../electron/services/store.sqlite'
 import { setScope } from '../electron/services/scope'
 import { listPhaseCoverage } from '../electron/services/store.memory'
 import { runSend } from '../electron/services/agent.live'
@@ -28,7 +30,7 @@ beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'nexra-cov-'))
   initSettingsDb(join(dir, 'nexra.db'))
 })
-afterEach(() => rmSync(dir, { recursive: true, force: true }))
+afterEach(() => { closeDb(); rmSync(dir, { recursive: true, force: true }) })
 
 describe('runSend marks phase coverage on a skill run (M4)', () => {
   it('marks the requested phase in_progress after a skill runs for an engagement', async () => {

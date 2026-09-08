@@ -23,6 +23,7 @@ vi.mock('../electron/services/agent.tools', async (orig) => {
 
 import { runSend } from '../electron/services/agent.live'
 import { initSettingsDb, closeDb } from '../electron/services/store.sqlite'
+import { setScope } from '../electron/services/scope'
 import type { AgentEvent, AgentSendRequest } from '../electron/services/agent.types'
 
 const cfg = { provider: 'ollama' as const, model: 'gemma3:27b' }
@@ -30,7 +31,11 @@ const req: AgentSendRequest = { chatId: 'c1', engagementType: 'web', phaseLabel:
 
 describe('runSend (web)', () => {
   let dir: string
-  beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'nexra-webloop-')); initSettingsDb(join(dir, 'nexra.db')) })
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'nexra-webloop-'))
+    initSettingsDb(join(dir, 'nexra.db'))
+    setScope('e1', { mode: 'allowlist', accounts: [], regions: [], hosts: ['app.acme.com'] })
+  })
   afterEach(() => { closeDb(); rmSync(dir, { recursive: true, force: true }) })
 
   it('runs the phase skill, pre-drafts a candidate finding, and checkpoints', async () => {

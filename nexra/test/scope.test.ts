@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { initSettingsDb } from '../electron/services/store.sqlite'
+import { closeDb, initSettingsDb } from '../electron/services/store.sqlite'
 import { getScope, setScope, validate } from '../electron/services/scope'
 import type { EngagementScope } from '../electron/services/store.types'
 
@@ -72,7 +72,7 @@ describe('scope.validate (pure, below the LLM)', () => {
 describe('scope persistence', () => {
   let dir: string
   beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'nexra-scope-')); initSettingsDb(join(dir, 'nexra.db')) })
-  afterEach(() => rmSync(dir, { recursive: true, force: true }))
+  afterEach(() => { closeDb(); rmSync(dir, { recursive: true, force: true }) })
 
   it('is undefined until set (the gate)', () => {
     expect(getScope('eng1')).toBeUndefined()

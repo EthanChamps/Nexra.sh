@@ -24,7 +24,8 @@ const PROVIDERS: Record<ProviderId, ProviderConfig> = {
   ollama: { label: 'Ollama', models: [], defaultModel: 'llama3.3' },
 }
 
-const PROVIDER_ORDER: ProviderId[] = ['anthropic', 'openai', 'google', 'ollama']
+// Only offer providers with a working backend adapter.
+const PROVIDER_ORDER: ProviderId[] = ['anthropic', 'ollama']
 
 const labelStyle: CSSProperties = {
   fontSize: 10.5, fontWeight: 500, letterSpacing: '0.08em', color: theme.dim2,
@@ -113,24 +114,15 @@ export function Settings({ state: _state, dispatch }: { state: AppState; dispatc
 
         <div style={{ padding: '16px 22px 4px' }}>
           <div style={labelStyle}>Model</div>
-          {isOllama ? (
+          {(
             <input
+              aria-label="Model identifier"
               value={model}
               onChange={e => setModel(e.target.value)}
               onBlur={e => { if (e.target.value) window.nexra.settings.set({ model: e.target.value }) }}
-              placeholder="gemma4:e4b"
+              placeholder={isOllama ? 'Installed Ollama model name' : 'Anthropic model identifier'}
               style={fieldStyle}
             />
-          ) : (
-            <select
-              value={model}
-              onChange={e => { setModel(e.target.value); window.nexra.settings.set({ model: e.target.value }) }}
-              style={fieldStyle}
-            >
-              {cfg.models.map(m => (
-                <option key={m} value={m}>{m}</option>
-              ))}
-            </select>
           )}
         </div>
 
@@ -164,7 +156,7 @@ export function Settings({ state: _state, dispatch }: { state: AppState; dispatc
 
         <div style={{ padding: '4px 22px 8px' }}>
           <div style={{ fontSize: 11.5, lineHeight: 1.5, color: theme.dim2 }}>
-            Saved locally. API key stored in your OS keychain.
+            Saved locally. API key encrypted using OS secure storage.
           </div>
         </div>
 

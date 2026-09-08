@@ -2,13 +2,13 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { initSettingsDb, upsertFinding } from '../electron/services/store.sqlite'
+import { closeDb, initSettingsDb, upsertFinding } from '../electron/services/store.sqlite'
 import { saveGraph, readGraph, isEmptyGraph } from '../electron/services/store.graph'
 import type { Company, Message } from '../electron/services/store.types'
 
 let dir: string
 beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'nexra-graph-')); initSettingsDb(join(dir, 'nexra.db')) })
-afterEach(() => rmSync(dir, { recursive: true, force: true }))
+afterEach(() => { closeDb(); rmSync(dir, { recursive: true, force: true }) })
 
 const msg = (over: Partial<Message> = {}): Message => ({ id: 'm1', role: 'user', kind: 'text', content: 'hi', ...over })
 

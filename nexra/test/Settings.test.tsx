@@ -10,6 +10,17 @@ beforeEach(() => {
 })
 
 describe('Settings persistence', () => {
+  it('offers only implemented providers and saves a custom cloud model', async () => {
+    render(<Settings state={{} as any} dispatch={() => {}} />)
+    await screen.findByDisplayValue('Ollama')
+    expect(screen.queryByRole('option', { name: 'OpenAI' })).toBeNull()
+    expect(screen.queryByRole('option', { name: 'Google' })).toBeNull()
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'anthropic' } })
+    const model = screen.getByRole('textbox', { name: 'Model identifier' })
+    fireEvent.change(model, { target: { value: 'custom-model-id' } })
+    fireEvent.blur(model)
+    await waitFor(() => expect(api.set).toHaveBeenCalledWith({ model: 'custom-model-id' }))
+  })
   it('loads persisted provider on open', async () => {
     render(<Settings state={{} as any} dispatch={() => {}} />)
     await waitFor(() => expect(api.get).toHaveBeenCalled())

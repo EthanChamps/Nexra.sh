@@ -15,7 +15,7 @@ describe('resolveModel', () => {
   })
   it('builds an Ollama model against baseUrl + /v1, no key', () => {
     const m = resolveModel({ provider: 'ollama', model: 'llama3.3', baseUrl: 'http://localhost:11434' }) as any
-    expect(compatFactory).toHaveBeenCalledWith({ name: 'ollama', baseURL: 'http://localhost:11434/v1' })
+    expect(compatFactory).toHaveBeenCalledWith({ name: 'ollama', baseURL: 'http://localhost:11434/v1', supportsStructuredOutputs: true })
     expect(m).toEqual({ tag: 'ollama', model: 'llama3.3' })
   })
   it('throws for anthropic with no key', () => {
