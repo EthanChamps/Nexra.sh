@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { reducer, initialUI, deriveTitle, inferFocus } from '../src/state/reducer'
-import { activeChat, activeEngagement, chatByGlobalId } from '../src/state/selectors'
+import { activeChat, activeEngagement, chatByGlobalId, getDraft } from '../src/state/selectors'
 import { buildSnapshot } from '../electron/services/store.mock'
 import type { Finding } from '../electron/services/store.types'
 
@@ -25,7 +25,7 @@ describe('reducer', () => {
     expect(s.data.companies[0].name).toBe('Initech')
     expect(s.data.companies[0].engagements).toHaveLength(0)
   })
-  it('creates a provisional chat, makes it active, seeds a greeting', () => {
+  it('creates a pending chat, makes it active, seeds a greeting — without persisting it yet', () => {
     let s = reducer(boot(), { t: 'openCompany', id: 'c1' })
     const engId = activeEngagement(s)!.id
     s = reducer(s, { t: 'createChat', engId })
@@ -34,7 +34,31 @@ describe('reducer', () => {
     expect(chat.phaseId).toBe('')
     expect(chat.color).toBe('#0a0b0d')
     expect(chat.messages[0].role).toBe('assistant')
+    expect(activeEngagement(s)!.chats.some(c => c.id === chat.id)).toBe(false)
   })
+
+  it('createProject lands the user on an active pending chat for the new engagement', () => {
+    let s = reducer(boot(), { t: 'openCompany', id: 'c1' })
+    s = reducer(s, { t: 'createProject' })
+    const eng = activeEngagement(s)!
+    expect(eng.chats).toHaveLength(0)
+    const chat = activeChat(s)!
+    expect(chat.name).toBe('New chat')
+    expect(chat.messages[0].role).toBe('assistant')
+  })
+
+  it('sending a message while viewing a pending chat promotes it into a real, persisted chat', () => {
+    let s = reducer(boot(), { t: 'openCompany', id: 'c1' })
+    const engId = activeEngagement(s)!.id
+    s = reducer(s, { t: 'createChat', engId })
+    const chatId = activeChat(s)!.id
+    expect(activeEngagement(s)!.chats.some(c => c.id === chatId)).toBe(false)
+    s = reducer(s, { t: 'appendUserMessage', chatId, engId, text: 'hello agent' })
+    expect(activeEngagement(s)!.chats.some(c => c.id === chatId)).toBe(true)
+    const chat = chatByGlobalId(s, chatId)!
+    expect(chat.messages.some(m => m.role === 'user' && m.content === 'hello agent')).toBe(true)
+  })
+
   it('advances the id counter past hydrated ids so a new chat cannot collide (dup-highlight bug)', () => {
     let s = reducer(boot(), { t: 'openCompany', id: 'c1' })
     const engId = activeEngagement(s)!.id
@@ -43,18 +67,23 @@ describe('reducer', () => {
     // still holds higher ids minted in a prior session.
     s = reducer(s, { t: 'createChat', engId })
     const probe = parseInt(activeChat(s)!.id.replace(/^\D+/, ''), 10)
+    // Hold the pending chat open with a draft so the second "+ New chat" below
+    // commits it (instead of discarding it) — otherwise it never reaches
+    // eng.chats and the duplicate-id check below is vacuous.
+    s = reducer(s, { t: 'setDraft', value: 'hold this chat open' })
     const highNum = probe + 500
     const data = JSON.parse(JSON.stringify(s.data)) as typeof s.data
     const eng = data.companies.flatMap((c: any) => c.engagements).find((e: any) => e.id === engId)
     eng.chats.unshift({ id: 'ch' + highNum, name: 'Persisted', phaseId: '', color: '#0a0b0d', messages: [], findings: [] })
 
     s = reducer(s, { t: 'hydrate', data })
-    s = reducer(s, { t: 'createChat', engId })
+    s = reducer(s, { t: 'createChat', engId })   // leaves the first pending chat — commits it (non-blank draft) — then opens a second pending chat
 
     const newNum = parseInt(activeChat(s)!.id.replace(/^\D+/, ''), 10)
     const ids = activeEngagement(s)!.chats.map(c => c.id)
     expect(newNum).toBeGreaterThan(highNum)                       // clears the hydrated id
     expect(new Set(ids).size).toBe(ids.length)                   // no duplicate ids
+    expect(ids).toContain('ch' + probe)                          // the held-open first chat was committed, not lost
   })
   it('renames the active chat', () => {
     let s = reducer(boot(), { t: 'openCompany', id: 'c1' })
@@ -155,7 +184,7 @@ describe('reducer', () => {
     const engId = activeEngagement(s)!.id
     s = reducer(s, { t: 'createChat', engId })
     const chatId = activeChat(s)!.id
-    s = reducer(s, { t: 'appendUserMessage', chatId, text: 'review iam roles for privilege escalation' })
+    s = reducer(s, { t: 'appendUserMessage', chatId, engId, text: 'review iam roles for privilege escalation' })
     const chat = chatByGlobalId(s, chatId)!
     expect(chat.name).toBe('New chat')
     expect(chat.phaseId).toBe('iam')
@@ -165,6 +194,7 @@ describe('reducer', () => {
     const engId = activeEngagement(s)!.id
     s = reducer(s, { t: 'createChat', engId })
     const chatId = activeChat(s)!.id
+    s = reducer(s, { t: 'appendUserMessage', chatId, engId, text: 'review iam roles' })
     s = reducer(s, { t: 'setChatTitle', chatId, title: 'Review IAM Privilege Escalation' })
     expect(chatByGlobalId(s, chatId)!.name).toBe('Review IAM Privilege Escalation')
   })
@@ -207,10 +237,11 @@ describe('upsertFinding', () => {
 
 describe('m3a streaming reducer actions', () => {
   it('appendTextDelta creates an assistant message then appends to it', () => {
-    let s = boot()
+    let s = reducer(boot(), { t: 'openCompany', id: 'c1' })
+    const engId = activeEngagement(s)!.id
     const id = s.data.companies[0].engagements[0].chats[0].id
     const startCount = chatByGlobalId(s, id)!.messages.length
-    s = reducer(s, { t: 'appendUserMessage', chatId: id, text: 'hello' })
+    s = reducer(s, { t: 'appendUserMessage', chatId: id, engId, text: 'hello' })
     s = reducer(s, { t: 'appendTextDelta', chatId: id, delta: 'Hel' })
     s = reducer(s, { t: 'appendTextDelta', chatId: id, delta: 'lo' })
     const msgs = chatByGlobalId(s, id)!.messages
@@ -221,9 +252,10 @@ describe('m3a streaming reducer actions', () => {
     expect(msgs.length).toBe(startCount + 2)
   })
   it('appendTextDelta does not mutate the previous state (reducer purity)', () => {
-    let s = boot()
+    let s = reducer(boot(), { t: 'openCompany', id: 'c1' })
+    const engId = activeEngagement(s)!.id
     const id = s.data.companies[0].engagements[0].chats[0].id
-    s = reducer(s, { t: 'appendUserMessage', chatId: id, text: 'hi' })
+    s = reducer(s, { t: 'appendUserMessage', chatId: id, engId, text: 'hi' })
     const s1 = reducer(s, { t: 'appendTextDelta', chatId: id, delta: 'Hel' })
     const s1msgs = chatByGlobalId(s1, id)!.messages
     const s1last = s1msgs[s1msgs.length - 1]
@@ -275,5 +307,96 @@ describe('reducer — request cards (M3d)', () => {
     expect(msg.kind).toBe('request')
     expect(msg.requestKind).toBe('scope')
     expect(msg.engagementId).toBe('e1')
+  })
+})
+
+describe('pending chat — leave scenarios', () => {
+  it('discards a blank pending chat when switching to a real chat in the same engagement', () => {
+    let s = reducer(boot(), { t: 'openCompany', id: 'c1' })
+    const engId = activeEngagement(s)!.id
+    const otherRealChatId = activeEngagement(s)!.chats[0].id
+    s = reducer(s, { t: 'createChat', engId })
+    const pendingId = activeChat(s)!.id
+    s = reducer(s, { t: 'selectChat', id: otherRealChatId })
+    expect(activeEngagement(s)!.chats.some(c => c.id === pendingId)).toBe(false)
+    expect(activeChat(s)!.id).toBe(otherRealChatId)
+  })
+
+  it('commits a pending chat with a draft when switching to a real chat in the same engagement', () => {
+    let s = reducer(boot(), { t: 'openCompany', id: 'c1' })
+    const engId = activeEngagement(s)!.id
+    const otherRealChatId = activeEngagement(s)!.chats[0].id
+    s = reducer(s, { t: 'createChat', engId })
+    const pendingId = activeChat(s)!.id
+    s = reducer(s, { t: 'setDraft', value: 'unsent question' })
+    s = reducer(s, { t: 'selectChat', id: otherRealChatId })
+    expect(activeEngagement(s)!.chats.some(c => c.id === pendingId)).toBe(true)
+    expect(activeChat(s)!.id).toBe(otherRealChatId) // navigation target is respected, not overridden
+  })
+
+  it('keeps each chat\'s draft independent when switching between them, and restores it on return', () => {
+    let s = reducer(boot(), { t: 'openCompany', id: 'c1' })
+    const eng = activeEngagement(s)!
+    const chatA = eng.chats[0].id
+    const chatB = eng.chats[1].id
+    s = reducer(s, { t: 'selectChat', id: chatA })
+    s = reducer(s, { t: 'setDraft', value: 'draft for A' })
+    s = reducer(s, { t: 'selectChat', id: chatB })
+    expect(getDraft(s)).toBe('')
+    s = reducer(s, { t: 'setDraft', value: 'draft for B' })
+    s = reducer(s, { t: 'selectChat', id: chatA })
+    expect(getDraft(s)).toBe('draft for A')
+    s = reducer(s, { t: 'selectChat', id: chatB })
+    expect(getDraft(s)).toBe('draft for B')
+  })
+
+  it('commits a draft-holding pending chat when switching engagement', () => {
+    let s = reducer(boot(), { t: 'openCompany', id: 'c1' })
+    const engId = activeEngagement(s)!.id
+    const otherEngId = s.data.companies.find(c => c.id === 'c1')!.engagements.find(e => e.id !== engId)!.id
+    s = reducer(s, { t: 'createChat', engId })
+    const pendingId = activeChat(s)!.id
+    s = reducer(s, { t: 'setDraft', value: 'unsent question' })
+    s = reducer(s, { t: 'selectEngagement', id: otherEngId })
+    const eng = s.data.companies.find(c => c.id === 'c1')!.engagements.find(e => e.id === engId)!
+    expect(eng.chats.some(c => c.id === pendingId)).toBe(true)
+  })
+
+  it('discards a blank pending chat when switching companies', () => {
+    let s = reducer(boot(), { t: 'openCompany', id: 'c1' })
+    const engId = activeEngagement(s)!.id
+    s = reducer(s, { t: 'createChat', engId })
+    const pendingId = activeChat(s)!.id
+    s = reducer(s, { t: 'openCompany', id: 'c2' })
+    const eng = s.data.companies.find(c => c.id === 'c1')!.engagements.find(e => e.id === engId)!
+    expect(eng.chats.some(c => c.id === pendingId)).toBe(false)
+  })
+
+  it('commits a draft-holding pending chat when switching companies', () => {
+    // Regression guard: settlePendingChat must resolve the engagement by the
+    // company it actually belongs to (captured before the dispatch), not by
+    // whichever company is active by the time it runs — openCompany has
+    // already flipped activeCompanyId to 'c2' before the wrapper settles.
+    let s = reducer(boot(), { t: 'openCompany', id: 'c1' })
+    const engId = activeEngagement(s)!.id
+    s = reducer(s, { t: 'createChat', engId })
+    const pendingId = activeChat(s)!.id
+    s = reducer(s, { t: 'setDraft', value: 'unsent question' })
+    s = reducer(s, { t: 'openCompany', id: 'c2' })
+    const eng = s.data.companies.find(c => c.id === 'c1')!.engagements.find(e => e.id === engId)!
+    expect(eng.chats.some(c => c.id === pendingId)).toBe(true)
+    expect(s.ui.activeCompanyId).toBe('c2')   // navigation target still respected
+  })
+
+  it('commits a draft-holding pending chat when going Home', () => {
+    let s = reducer(boot(), { t: 'openCompany', id: 'c1' })
+    const engId = activeEngagement(s)!.id
+    s = reducer(s, { t: 'createChat', engId })
+    const pendingId = activeChat(s)!.id
+    s = reducer(s, { t: 'setDraft', value: 'unsent question' })
+    s = reducer(s, { t: 'goHome' })
+    const eng = s.data.companies.find(c => c.id === 'c1')!.engagements.find(e => e.id === engId)!
+    expect(eng.chats.some(c => c.id === pendingId)).toBe(true)
+    expect(s.ui.view).toBe('home')
   })
 })

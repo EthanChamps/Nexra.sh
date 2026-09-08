@@ -13,10 +13,23 @@ export const engagementById = (s: AppState, id: string): Engagement | null => {
   const c = activeCompany(s); if (!c) return null
   return c.engagements.find(e => e.id === id) || null
 }
+// The M1 stand-in greeting (see reducer.ts makeChat) — shared with the pending-chat
+// view-model below so a not-yet-persisted "new chat" reads identically to a real one.
+export const greetingFor = (s: AppState, eng: Engagement): string => {
+  const cfg = s.data.types[eng.type]
+  return "I'm the agent for this " + cfg.label + ". Ask me to enumerate configuration, run automated checks, or log findings — this chat keeps its own context."
+}
 export const activeChat = (s: AppState): Chat | null => {
   const e = activeEngagement(s); if (!e) return null
   const id = s.ui.activeChatByEngagement[e.id]
-  return e.chats.find(ch => ch.id === id) || null
+  const real = e.chats.find(ch => ch.id === id)
+  if (real) return real
+  const pending = s.ui.pendingChatByEngagement[e.id]
+  if (!pending || pending.id !== id) return null
+  return {
+    id: pending.id, name: 'New chat', phaseId: '', color: '#0a0b0d', findings: [],
+    messages: [{ id: 'pending-greeting-' + pending.id, role: 'assistant', kind: 'text', content: greetingFor(s, e) }],
+  }
 }
 export const chatByIds = (s: AppState, engId: string, chatId: string): Chat | null => {
   const e = engagementById(s, engId); if (!e) return null
@@ -32,6 +45,16 @@ export const chatByGlobalId = (s: AppState, chatId: string): Chat | null => {
     }
   }
   return null
+}
+
+// Per-chat composer draft — resolves to the pending chat's own draft slot while
+// viewing an uncommitted "new chat", else the persisted chat's draftByChatId entry.
+export const getDraft = (s: AppState): string => {
+  const e = activeEngagement(s); if (!e) return ''
+  const id = s.ui.activeChatByEngagement[e.id]
+  const pending = s.ui.pendingChatByEngagement[e.id]
+  if (pending && pending.id === id) return pending.draft
+  return id ? (s.ui.draftByChatId[id] ?? '') : ''
 }
 
 export const phaseLabel = (eng: Engagement | null, id: string): string =>
